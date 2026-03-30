@@ -12,8 +12,8 @@
 
 - **Modules**
     - **Dashboard**
-        - Today’s visits (invoice count for today)
-        - Today’s revenue (sum of today’s invoice totals)
+        - Today’s visits (count of **confirmed** invoices for the current business day window)
+        - Today’s revenue (sum of **confirmed** invoice totals for that window)
         - Total products count
         - Total vaccinations count
         - Upcoming vaccinations
@@ -22,7 +22,7 @@
     - **Customers**
         - Customer master data (name, normalized phone, address, animal_type, notes)
         - Customer list with search and last vaccination date
-        - Customer visit form: creates/updates customer, invoice, invoice_items, vaccination (if any), and stock deductions in one transaction
+        - Customer visit form: creates/updates customer, invoice, invoice_items, **zero or more vaccination rows** (`vaccinations[]`), and stock deductions in one transaction
     - **Products**
         - Unified catalog of:
             - `product` (physical goods)
@@ -47,16 +47,19 @@
         - Normalizes phone
         - Finds or creates customer by normalized phone
         - Creates invoice + invoice_items for consultation, vaccines, and additional products/services
-        - Creates vaccination record when `has_vaccination = yes`
+        - Creates one `vaccinations` row per element in the **`vaccinations[]` array** (zero or more per visit; see Phase 7). The legacy single-flag `has_vaccination` form field is **not** submitted to the server; presence of vaccinations is defined solely by the array contents.
         - Delegates stock handling (including FEFO vaccine batches) to StockService
         - Runs everything in a DB transaction
     - **InvoiceService**
         - Handles quick-sale invoices
+        - **`cancelInvoice(Invoice $invoice, ?string $reason)`**: cancels a confirmed invoice, restores stock (see Phase 8), sets `status`, `cancellation_reason`, and `cancelled_at`
         - Generates unique, sequential `invoice_number` (e.g. `INV-000001`)
-        - Creates invoices and invoice_items
+        - Creates invoices and invoice_items (new invoices default to `status = confirmed`)
         - Delegates stock handling to StockService
     - **StockService**
         - Handles stock deduction and status updates
+        - **`restoreVaccineStock(InvoiceItem $invoiceItem)`**: on invoice cancellation, restores quantities to each linked `vaccine_batches` row via `invoice_item_vaccine_batches`, then recalculates vaccine `products.quantity` (usable batches only)
+        - **`increaseStock`**: restores non-vaccine tracked stock when a line item is cancelled
         - For normal products:
             - Simple decrement of `products.quantity` when `track_stock = true`
         - For vaccines:
@@ -127,7 +130,11 @@
     - `customer_name` string (snapshot)
     - `source` string/enum: `customer`, `quick_sale`
     - `total` decimal(10, 2)
-    - Optional: `status` string/enum (e.g. `confirmed`, `cancelled`) for future controlled cancellation
+    - `status` string (nullable in DB migration; **implemented values**: `confirmed`, `cancelled`)
+        - New invoices are created with **`confirmed`** (customer visits and quick sale).
+        - **`cancelled`**: invoice is voided for reporting; monetary totals must not contribute to revenue metrics; stock must be restored (see §3 and Phase 8).
+    - `cancellation_reason` string nullable — optional free-text reason entered when cancelling (UI modal).
+    - `cancelled_at` timestamp nullable — set automatically when status becomes `cancelled`.
     - Timestamps
 - **Indexes**
     - Index on `created_at` (for dashboard metrics)
@@ -219,9 +226,11 @@
 ### 3.1 Global Financial Rules
 
 - Anything that involves money must be represented as an invoice (`invoices` + `invoice_items`)
-- Today’s metrics:
-    - Today’s visits: count invoices where `DATE(created_at) = today`
-    - Today’s revenue: sum `total` where `DATE(created_at) = today`
+- Today’s metrics (implemented):
+    - **Confirmed-only:** “Today’s visits” and “Today’s revenue” on the dashboard use **`Invoice::scopeConfirmed()`** (`status = confirmed`) so **cancelled invoices are excluded** from these headline figures.
+    - **Business day window (dashboard):** “Today” is implemented as the period from **02:00** local time on the calendar day through **01:59:59** the next calendar day (shifts after midnight still count as the previous business day until 02:00). This applies to the `created_at` filter for `todayVisits` / `todayRevenue`.
+    - Legacy plan wording (calendar `DATE(created_at) = today`) is superseded for the dashboard by the above; other reporting may still use simple date filters where appropriate.
+    - **Scope note:** Metrics that are **not** computed from the `invoices` table (e.g. a raw `vaccinations` row count on the dashboard) do not automatically exclude rows linked to cancelled invoices unless the query is joined and filtered; **invoice-based** KPIs use `scopeConfirmed` as above.
 - Invoices must not be hard-deleted:
     - Deletion is restricted; use status/cancellation in future versions, but no physical delete
 
@@ -254,12 +263,12 @@
     - `invoice_items.product_id` = consultation product ID
 - Customer visit save (transactional):
     - Normalize phone → find or create customer (reusing normalized phone)
-    - Create `invoice` with `source = 'customer'`
+    - Create `invoice` with `source = 'customer'` and **`status = confirmed`**
     - Add `invoice_items` for:
         - Consultation
-        - Vaccine (if `has_vaccination = yes`)
+        - **One line per vaccination entry** in the **`vaccinations[]`** array (each with its own product, quantity, unit price, and FEFO deduction)
         - Additional products/services
-    - If `has_vaccination = yes`, create `vaccinations` record linked to customer, vaccine product, and invoice
+    - For **each** element in `vaccinations[]`, create a **`vaccinations`** row linked to customer, vaccine product, and invoice (same visit may create **multiple** vaccination records)
     - Invoke `StockService` to handle stock and vaccine batches
     - Roll back everything on any error
 
@@ -280,6 +289,14 @@
 - Sources:
     - `customer` (created from visit form)
     - `quick_sale` (created directly on invoices page)
+- **Invoice cancellation (implemented):**
+    - Only **`confirmed`** invoices may be cancelled via the UI/controller flow.
+    - Cancelling sets `status = cancelled`, optional `cancellation_reason`, and `cancelled_at = now()`.
+    - **Stock restoration:** For each invoice line with `track_stock`:
+        - **Vaccination products:** `StockService::restoreVaccineStock` reverses `invoice_item_vaccine_batches` allocations back into `vaccine_batches.quantity_remaining`, then recalculates vaccine `products.quantity`.
+        - **Non-vaccine products:** `StockService::increaseStock` adds the line quantity back to `products.quantity` and updates `stock_status`.
+    - Double-cancellation is rejected (throws / validation error if already `cancelled`).
+    - Cancelled invoices remain in the database for audit; they are visually distinct in list/show views and excluded from confirmed revenue/visit counts (see §3.1).
 - Invoice number:
     - Sequential, unique, human-readable, e.g. `INV-000001`
 - Quick sale:
@@ -291,6 +308,17 @@
         - Creates `invoice` + `invoice_items`
         - Triggers FEFO vaccine batch stock deduction
         - **Does not create any record in `vaccinations`**
+
+### 3.6 Vaccination Records & Visit Payload (Multiple per Visit)
+
+- **Request payload:** `vaccinations` is a **nullable array**. Each item must satisfy `StoreCustomerVisitRequest` rules (see Phase 7).
+- **Per-item structure (locked to implementation):**
+    - `vaccine_product_id` — `products.id` where `type = vaccination` and `is_active = true`
+    - `vaccine_quantity` — decimal ≥ 0.01
+    - `vaccine_unit_price` — decimal ≥ 0 (charged line price; may differ from catalog `products.price`)
+    - `vaccination_date` — date (required per row)
+    - `next_dose_date` — nullable date; if present, must be **after** `vaccination_date` for that row
+- **Empty array:** visit has no vaccination lines and creates no `vaccinations` rows (equivalent to previous “no vaccination” behavior without a `has_vaccination` boolean in the request).
 
 ---
 
@@ -398,7 +426,7 @@
     - Trigger FEFO deduction via `StockService`
 - No `vaccinations` record:
     - Quick sale of vaccines **never** creates a row in `vaccinations`
-    - Only the customer visit flow (`has_vaccination = yes`) creates vaccination records
+    - Only the **customer visit flow** creates vaccination records — specifically, **one `vaccinations` row per entry** in the submitted **`vaccinations[]`** array (see §3.6)
 
 ### 5.4 Product Deletion
 
@@ -511,16 +539,25 @@
 - Implement:
     - Customers list page with search and “Add customer visit” button
     - Customer visit form:
-        - Customer info, consultation fee, `has_vaccination`, vaccination fields, additional products/services, final price
+        - Customer info, consultation fee, **vaccinations section (optional, multiple rows)**, additional products/services, final price
+        - **UI behavior (implemented):** a **form-switch checkbox** (“has vaccination” label) controls visibility only; the vaccinations block (`#vaccinations-card`) is **`display: none` by default** and is shown when the user enables the switch. This does **not** send a legacy `has_vaccination` boolean to the server — the backend relies on the **`vaccinations[]`** array only.
+        - **Dynamic rows:** “Add vaccination” appends rows to a table; each row maps to one array element with product select (Choices.js), quantity, unit price, vaccination date, next dose date, line total, and remove row.
+- **`vaccinations[]` array structure** (matches `StoreCustomerVisitRequest` + `CustomerVisitService::saveVisit`):
+    - `vaccinations.*.vaccine_product_id` — required; active `vaccination` product
+    - `vaccinations.*.vaccine_quantity` — required; min 0.01
+    - `vaccinations.*.vaccine_unit_price` — required; min 0
+    - `vaccinations.*.vaccination_date` — required date
+    - `vaccinations.*.next_dose_date` — optional; must be after `vaccination_date` when provided
+    - Omit the key or pass an **empty array** for visits with no vaccinations.
 - Execution details:
     - Normalize phone and reuse existing customer if phone matches
     - Fetch consultation product price as default; allow override
     - On submit:
         - Run `CustomerVisitService` with full transaction:
             - Find/create customer by normalized phone
-            - Create invoice (`source = 'customer'`)
-            - Create invoice_items (consultation, vaccine, additional items)
-            - Create vaccination entry if `has_vaccination = yes`
+            - Create invoice (`source = 'customer'`, `status = confirmed`)
+            - Create invoice_items (consultation; **one item per `vaccinations[]` element**; additional items)
+            - **Loop `vaccinations[]`:** for each entry, create `invoice_item`, run FEFO deduction, create **`Vaccination`** model row
             - Invoke `StockService` for stock and vaccine batches
 - Error handling:
     - If vaccine stock insufficient (usable-only), block save and show Arabic error
@@ -531,45 +568,62 @@
     - Invoice list view in Arabic:
         - Search by invoice number and/or customer name
         - Filter by source (customer, quick_sale)
+        - **Period tabs (implemented in view):** today / this month / all — with counts; default first load redirects to “today”
+        - **Cancelled invoices styling:** rows use `table-secondary text-muted`; invoice number and total **strikethrough**; **red “ملغية” badge** next to number
         - Link to single invoice view (show)
-    - Single invoice view (show): invoice header, items table, and linked vaccinations section (if any)
+    - Single invoice view (show): invoice header (including **status badge**: confirmed vs cancelled), items table, linked vaccinations section (supports **multiple** vaccination rows per invoice)
+        - **Cancellation (implemented):** for **`confirmed`** invoices only, show **“إلغاء الفاتورة”** button opening a **Bootstrap modal** (`#cancelModal`) with optional `cancellation_reason` text input; POST to **`invoices.cancel`** (`POST invoices/{invoice}/cancel`).
+        - **Cancelled state:** top **alert-danger** banner with reason and **`cancelled_at`** timestamp; total shown strikethrough; cancel button hidden.
     - Quick sale form:
         - Customer name (and optional phone → normalized for linking)
         - Multiple item rows with dynamic totals (vanilla JS)
 - Routes:
     - Resource routes for invoices including `show` (e.g. `invoices.index`, `invoices.create`, `invoices.store`, `invoices.show`)
+    - **`POST invoices/{invoice}/cancel`** → `InvoiceController@cancel` (named `invoices.cancel`)
 - `InvoiceService`:
     - Generate `invoice_number`
-    - Create invoice and items
+    - Create invoice and items (`status = confirmed` on create)
     - Call `StockService` for stock handling
+    - **`cancelInvoice(Invoice $invoice, ?string $reason)`:** loads items with products and vaccine batch links; restores vaccine stock via **`StockService::restoreVaccineStock`** per vaccine line; restores non-vaccine stock via **`increaseStock`**; updates `status`, `cancellation_reason`, `cancelled_at`; throws if already cancelled
+- **`StockService::restoreVaccineStock(InvoiceItem $invoiceItem)`:** restores batch quantities from `invoice_item_vaccine_batches`, then `recalculateVaccineStock` for the product
 - Ensure:
     - Vaccine sales via quick sale do not create `vaccinations` records
+- **Database:** migration adds **`cancellation_reason`** (nullable string) and **`cancelled_at`** (nullable timestamp) after **`status`** on `invoices` (see §2.3).
 
 ### Phase 9: Vaccinations Module & WhatsApp
 
 - Implement:
     - Vaccinations list page:
-        - Customer name, normalized phone, animal_type, vaccine name, vaccination_date, next_dose_date, WhatsApp button
-    - WhatsApp button:
-        - Use normalized phone with `https://wa.me/<phone>`
+        - Customer name (**clickable** — opens modal), animal_type, vaccine name, vaccination_date, next_dose_date, per-row WhatsApp, invoice reference link, checkbox workflow for complete/reschedule (AJAX to `vaccinations.complete` / `vaccinations.reschedule`)
+        - Filters: search by customer name/phone, **is_completed** (pending / completed / all), **sort** (latest, oldest, upcoming)
+    - **`$customerVaccinationsMap` (implemented in Blade):** built from the current page’s vaccination rows, keyed by **`customer_id`**. Each value: `name`, `animal_type`, `phone`, `vaccinations` array of `{ name, vaccination_date, next_dose_date, is_completed, status }` where **`status`** is one of **`late` | `soon` | `ok` | `done`** for color coding (see below).
+    - **Customer vaccinations modal (`#customerVaccinationsModal`):** clicking the customer name loads modal title/subtitle and a table built from `$customerVaccinationsMap` via JSON passed to JS (`customerData`). Rows show a **color dot** and **badge** for next dose date.
+    - **Color coding system (modal dots + table badges on index):**
+        - **Red / danger:** overdue next dose (`next_dose_date` < today, not completed)
+        - **Orange / warning:** upcoming within short window (e.g. next 3 days on row badges; modal **`soon`** for doses within ~7 days)
+        - **Green / success:** on track / “ok” (future dose not urgent)
+        - **Gray / secondary:** completed (`is_completed` or status `done`)
+    - **WhatsApp — single row:** `https://wa.me/<phone>?text=...` with reminder for that vaccine/animal/next dose.
+    - **WhatsApp — “إرسال كل المواعيد” (modal):** builds a multi-line message listing **all upcoming** doses for that customer (from `customerData`, excluding completed), then **opens WhatsApp** with the composed text.
+    - **“مواعيد الـ 3 أيام” button:** opens modal listing vaccinations with `next_dose_date` in the next 3 days (`is_completed = false`), with WhatsApp per row.
 - Upcoming doses:
-    - Filter by `next_dose_date >= today`
+    - Filter by `next_dose_date >= today` (dashboard and list views use specific windows as implemented — e.g. dashboard upcoming list uses **3 days** and `is_completed = false`)
 
 ### Phase 10: Dashboard
 
 - Metrics:
-    - Today’s visits (invoice count)
-    - Today’s revenue (invoice sum)
+    - **Today’s visits:** count of invoices with **`Invoice::confirmed()`** and `created_at` within the **current business day window** (02:00–next day 01:59:59 local — see §3.1). **Cancelled invoices are excluded** via `scopeConfirmed`.
+    - **Today’s revenue:** sum of `total` for the same confirmed + time-window query. **Cancelled invoices excluded.**
     - Total products
     - Total vaccinations
-    - Upcoming vaccinations (next 7 days)
+    - **Upcoming vaccinations (implemented):** next 3 days, `is_completed = false`, `next_dose_date` within today..today+3 (not 7 days in current code)
     - Low-stock items
     - Vaccine expiry monitor:
         - Count/list expired and expiring-soon batches
 - UI:
     - Quick Actions card with links to: New visit, Quick sale, Add product, Add vaccine batch
 - Implementation:
-    - Dashboard may be implemented as a route closure (e.g. `Route::get('/', ...)`) or a dedicated controller; use efficient aggregate queries and Eloquent where practical
+    - Dashboard implemented as a **route closure** (`Route::get('/')` in `web.php`); uses **`Invoice::confirmed()`** for visit count and revenue aggregates
 
 ### Phase 11: Validation, Policies, and Edge Cases
 
@@ -592,14 +646,37 @@
     - Default consultation service product (“كشف”) with default price
     - Example products, services, vaccines
     - Example vaccine_batches with realistic dates and quantities
-    - Example customers, invoices, vaccinations
+    - **Customer visits via `CustomerVisitService::saveVisit`** using the **`vaccinations[]` array** (not `has_vaccination`):
+        - Visit 1: one rabies vaccination
+        - Visit 2: empty `vaccinations: []`
+        - Visit 3: one quad vaccination (phone normalization test)
+        - Visit 4: **two vaccinations in one visit** (rabies + quad)
+        - Visit 5: **three vaccinations** + **additional_items** (flea collar) — maximum complexity scenario
+    - **Cancelled invoice test case (DatabaseSeeder):** after seeding visits, locate **Ahmed Mohamed’s** first invoice (`customer_name = أحمد محمد`) and call **`InvoiceService::cancelInvoice`** with reason **`بيانات تجريبية - اختبار الإلغاء`** to verify status + stock restoration
+    - **`TestDataSeeder` (bulk):** generates invoices with **`status = confirmed`** by default; **~10%** randomly set to **`cancelled`** with **`cancellation_reason`** and past **`cancelled_at`**; runs **300 iterations** that each attach **1–3** `Vaccination` rows to a random **customer**-source invoice (so total vaccination rows can exceed 300; **multiple vaccinations per invoice** are explicitly generated)
 - Factories:
     - For core models to enable future testing
 - Installation guide:
     - Environment setup
     - Database creation
     - `composer install`, `php artisan migrate --seed`
-    - Overview of phone normalization, invoice number format, and batch-based vaccine stock
+    - Overview of phone normalization, invoice number format, batch-based vaccine stock, **`vaccinations[]` payload**, and invoice cancellation columns
+
+---
+
+## 7. Implemented Changes Beyond Original Plan
+
+This section records **additive behavior and schema** that were implemented after the initial plan lock, without changing the overall module layout. Dates refer to migration timestamps in-repo where applicable.
+
+- **2026-03-24 — Invoice cancellation columns** (`migration 2026_03_24_120011_add_cancellation_fields_to_invoices_table`): added **`cancellation_reason`** and **`cancelled_at`** to `invoices` (see §2.3). The base `create_invoices_table` migration already included a nullable **`status`** string; runtime values **`confirmed` / `cancelled`** are now canonical.
+- **Invoice model:** **`scopeConfirmed`**, **`scopeCancelled`**, **`isConfirmed()`**, **`isCancelled()`** for queries and views.
+- **Multiple vaccinations per visit:** Replaced the single **`has_vaccination`** server flag with **`vaccinations[]`** in **`StoreCustomerVisitRequest`** and **`CustomerVisitService::saveVisit`**; visit form uses a **checkbox + hidden-by-default** vaccinations card and JS-driven rows.
+- **InvoiceService::cancelInvoice** and **InvoiceController::cancel** + route **`invoices.cancel`**; **StockService::restoreVaccineStock** + **increaseStock** for reversal.
+- **Invoices UI:** index period tabs and **muted/strikethrough** styling for cancelled rows; show page **modal** cancellation and danger alert for cancelled state.
+- **Dashboard:** **`Invoice::confirmed()`** for today’s visit count and revenue; **business-day** window starting at **02:00** for “today” metrics.
+- **Vaccinations index:** **`$customerVaccinationsMap`**, customer **modal**, **status** color semantics (**late / soon / ok / done**), **3-day upcoming** modal, **batch WhatsApp** message for all upcoming doses per customer; extended filters/sort and completion/reschedule flows.
+- **Arabic localization:** strings under project **`lang/ar/invoices.php`**, **`lang/ar/customers.php`** (paths may appear as `resources/lang/...` in some Laravel layouts) extended for cancellation, vaccinations, and UI labels.
+- **Seeders:** **`DatabaseSeeder`** rewritten as comprehensive transactional demo including **`vaccinations[]`** scenarios and a **cancelled invoice**; **`TestDataSeeder`** documents multi-vaccination-per-visit generation and random cancelled invoices.
 
 ---
 

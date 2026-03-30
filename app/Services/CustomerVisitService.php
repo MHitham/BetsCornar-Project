@@ -100,14 +100,14 @@ class CustomerVisitService
                 }
             }
 
-            // 4. Vaccine invoice item (if has_vaccination)
-            $hasVaccination = filter_var($data['has_vaccination'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            if ($hasVaccination && !empty($data['vaccine_product_id'])) {
-                $vaccineProduct  = Product::lockForUpdate()->findOrFail((int) $data['vaccine_product_id']);
-                $vaccineQty      = round((float) ($data['vaccine_quantity'] ?? 1), 2);
-                $vaccinePrice    = round((float) ($data['vaccine_unit_price'] ?? $vaccineProduct->price), 2);
+            // 4. التطعيمات المتعددة ─────────────────────────────────────
+            foreach ($data['vaccinations'] ?? [] as $vaccinationData) {
+                $vaccineProduct   = Product::lockForUpdate()->findOrFail((int) $vaccinationData['vaccine_product_id']);
+                $vaccineQty       = round((float) ($vaccinationData['vaccine_quantity'] ?? 1), 2);
+                $vaccinePrice     = round((float) ($vaccinationData['vaccine_unit_price'] ?? $vaccineProduct->price), 2);
                 $vaccineLineTotal = round($vaccineQty * $vaccinePrice, 2);
 
+                // إنشاء بند الفاتورة للتطعيم
                 $vaccineItem = $invoice->items()->create([
                     'product_id' => $vaccineProduct->id,
                     'quantity'   => $vaccineQty,
@@ -116,16 +116,16 @@ class CustomerVisitService
                 ]);
                 $lineTotal += $vaccineLineTotal;
 
-                // Deduct vaccine stock via FEFO (throws RuntimeException if insufficient)
+                // خصم ستوك التطعيم عبر وحدات FEFO (يرمي استثناء إذا كان الستوك غير كافي)
                 $this->stockService->deductVaccineStockFefo($vaccineProduct, $vaccineQty, $vaccineItem);
 
-                // 5. Create vaccination record
+                // إنشاء سجل التطعيم
                 Vaccination::create([
                     'customer_id'      => $customer->id,
                     'product_id'       => $vaccineProduct->id,
                     'invoice_id'       => $invoice->id,
-                    'vaccination_date' => $data['vaccination_date'] ?? now()->toDateString(),
-                    'next_dose_date'   => !empty($data['next_dose_date']) ? $data['next_dose_date'] : null,
+                    'vaccination_date' => $vaccinationData['vaccination_date'] ?? now()->toDateString(),
+                    'next_dose_date'   => !empty($vaccinationData['next_dose_date']) ? $vaccinationData['next_dose_date'] : null,
                 ]);
             }
 

@@ -33,6 +33,45 @@ class StockService
         ]);
     }
 
+    /**
+     * إرجاع ستوك التطعيم عند إلغاء فاتورة.
+     * بيرجع الكميات المخصومة لكل batch عبر invoice_item_vaccine_batches،
+     * ثم يعيد حساب products.quantity من الـ batches الصالحة.
+     */
+    public function restoreVaccineStock(InvoiceItem $invoiceItem): void
+    {
+        DB::transaction(function () use ($invoiceItem) {
+            // جلب كل الـ batches المرتبطة بهذا البند مع lock
+            $batches = InvoiceItemVaccineBatch::query()
+                ->where('invoice_item_id', $invoiceItem->id)
+                ->with('vaccineBatch')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($batches as $link) {
+                $batch = $link->vaccineBatch;
+
+                if (! $batch) {
+                    continue;
+                }
+
+                // إرجاع الكمية المخصومة لكل batch
+                $batch->update([
+                    'quantity_remaining' => $this->normalizeDecimal(
+                        (float) $batch->quantity_remaining + (float) $link->quantity
+                    ),
+                ]);
+            }
+
+            // إعادة حساب products.quantity من الـ batches الصالحة فقط
+            $product = $invoiceItem->product;
+
+            if ($product) {
+                $this->recalculateVaccineStock($product->fresh());
+            }
+        });
+    }
+
     public function decreaseStock(Product $product, float $quantity): void
     {
         if ($quantity <= 0 || ! $product->track_stock) {

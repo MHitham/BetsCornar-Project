@@ -14,28 +14,30 @@ class StoreCustomerVisitRequest extends FormRequest
 
     public function rules(): array
     {
-        $hasVaccination = $this->boolean('has_vaccination');
-
         return [
+            // ─── بيانات العميل ─────────────────────────────────────
             'name'                              => ['required', 'string', 'max:255'],
             'phone'                             => ['required', 'string', 'max:20'],
             'address'                           => ['nullable', 'string', 'max:500'],
             'animal_type'                       => ['required', 'string', 'max:100'],
             'notes'                             => ['nullable', 'string', 'max:1000'],
 
+            // ─── سعر الكشف ──────────────────────────────────────────
             'consultation_price'                => ['required', 'numeric', 'min:0'],
 
-            'has_vaccination'                   => ['nullable', 'boolean'],
-            'vaccine_product_id'                => [
-                $hasVaccination ? 'required' : 'nullable',
+            // ─── التطعيمات المتعددة (array) ────────────────────────
+            'vaccinations'                      => ['nullable', 'array'],
+            'vaccinations.*.vaccine_product_id' => [
+                'required',
                 'integer',
                 Rule::exists('products', 'id')->where(fn ($q) => $q->where('is_active', true)->where('type', 'vaccination')),
             ],
-            'vaccine_quantity'                  => [$hasVaccination ? 'required' : 'nullable', 'numeric', 'min:0.01'],
-            'vaccine_unit_price'                => [$hasVaccination ? 'required' : 'nullable', 'numeric', 'min:0'],
-            'vaccination_date'                  => [$hasVaccination ? 'required' : 'nullable', 'date'],
-            'next_dose_date'                    => ['nullable', 'date', 'after:vaccination_date'],
+            'vaccinations.*.vaccine_quantity'   => ['required', 'numeric', 'min:0.01'],
+            'vaccinations.*.vaccine_unit_price' => ['required', 'numeric', 'min:0'],
+            'vaccinations.*.vaccination_date'   => ['required', 'date'],
+            'vaccinations.*.next_dose_date'     => ['nullable', 'date', 'after:vaccinations.*.vaccination_date'],
 
+            // ─── المنتجات/الخدمات الإضافية ──────────────────────
             'additional_items'                  => ['nullable', 'array'],
             'additional_items.*.product_id'     => [
                 'required',
@@ -54,10 +56,12 @@ class StoreCustomerVisitRequest extends FormRequest
             'phone'              => __('customers.fields.phone'),
             'animal_type'        => __('customers.fields.animal_type'),
             'consultation_price' => __('customers.visit.consultation_price'),
-            'vaccine_product_id' => __('customers.visit.vaccine_product'),
-            'vaccine_quantity'   => __('customers.visit.vaccine_quantity'),
-            'vaccination_date'   => __('customers.visit.vaccination_date'),
-            'next_dose_date'     => __('customers.visit.next_dose_date'),
+            // ─── رسائل الخطأ للتطعيمات المتعددة ─────────────────
+            'vaccinations.*.vaccine_product_id' => __('customers.visit.vaccine_product'),
+            'vaccinations.*.vaccine_quantity'   => __('customers.visit.vaccine_quantity'),
+            'vaccinations.*.vaccine_unit_price' => __('customers.visit.unit_price'),
+            'vaccinations.*.vaccination_date'   => __('customers.visit.vaccination_date'),
+            'vaccinations.*.next_dose_date'     => __('customers.visit.next_dose_date'),
         ];
     }
 }

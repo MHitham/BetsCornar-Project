@@ -26,11 +26,15 @@ return [
         'title'                  => 'تفاصيل الزيارة',
         'consultation'           => 'الكشف',
         'consultation_price'     => 'سعر الكشف',
+        // ─── التطعيمات المتعددة ─────────────────────────────────
         'has_vaccination'        => 'يوجد تطعيم في هذه الزيارة؟',
-        'vaccination_section'    => 'بيانات التطعيم',
+        'vaccinations_section'   => 'التطعيمات',
         'vaccine_product'        => 'نوع اللقاح',
         'vaccine_quantity'       => 'الكمية',
         'next_dose_date'         => 'موعد الجرعة القادمة',
+        'add_vaccination'        => 'إضافة تطعيم',
+        'remove_vaccination'     => 'حذف التطعيم',
+        // ─── المنتجات/الخدمات الإضافية ─────────────────────────
         'additional_items'       => 'منتجات / خدمات إضافية',
         'add_item'               => 'إضافة عنصر',
         'remove_item'            => 'حذف',

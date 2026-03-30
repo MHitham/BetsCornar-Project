@@ -31,7 +31,7 @@ class InvoiceService
             $next = 1;
         }
 
-        return 'INV-' . str_pad($next, 6, '0', STR_PAD_LEFT);
+        return 'INV-'.str_pad($next, 6, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -54,7 +54,7 @@ class InvoiceService
             }
 
             // Optionally link to existing customer by phone
-            if (!empty($data['customer_phone'])) {
+            if (! empty($data['customer_phone'])) {
                 $normalizedPhone = $this->normalizePhone($data['customer_phone']);
                 $customer = Customer::where('phone', '=', $normalizedPhone)->first(['*']);
                 if ($customer) {
@@ -64,24 +64,24 @@ class InvoiceService
 
             $invoice = Invoice::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
-                'customer_id'    => $customerId,
-                'customer_name'  => $customerName,
-                'source'         => 'quick_sale',
-                'total'          => 0,
-                'status'         => 'confirmed',
+                'customer_id' => $customerId,
+                'customer_name' => $customerName,
+                'source' => 'quick_sale',
+                'total' => 0,
+                'status' => 'confirmed',
             ]);
 
             $lineTotal = 0.0;
 
             foreach ($data['items'] as $item) {
-                $product  = Product::lockForUpdate()->findOrFail((int) $item['product_id']);
-                $qty      = round((float) $item['quantity'], 2);
-                $price    = round((float) $item['unit_price'], 2);
-                $total    = round($qty * $price, 2);
+                $product = Product::lockForUpdate()->findOrFail((int) $item['product_id']);
+                $qty = round((float) $item['quantity'], 2);
+                $price = round((float) $item['unit_price'], 2);
+                $total = round($qty * $price, 2);
 
                 $invoiceItem = $invoice->items()->create([
                     'product_id' => $product->id,
-                    'quantity'   => $qty,
+                    'quantity' => $qty,
                     'unit_price' => $price,
                     'line_total' => $total,
                 ]);
@@ -104,13 +104,56 @@ class InvoiceService
         });
     }
 
+    /**
+     * إلغاء فاتورة مع إرجاع الستوك كاملاً في transaction واحدة.
+     * يرفض الإلغاء إذا كانت الفاتورة ملغية بالفعل.
+     */
+    public function cancelInvoice(Invoice $invoice, ?string $reason = null): Invoice
+    {
+        // منع إلغاء فاتورة ملغية مسبقاً
+        if ($invoice->isCancelled()) {
+            throw new RuntimeException(__('invoices.messages.already_cancelled'));
+        }
+
+        return DB::transaction(function () use ($invoice, $reason) {
+            // تحميل البنود مع المنتجات والـ vaccine batches
+            $invoice->load(['items.product', 'items.vaccineBatches']);
+
+            foreach ($invoice->items as $item) {
+                $product = $item->product;
+
+                if (! $product || ! $product->track_stock) {
+                    continue;
+                }
+
+                if ($product->type === 'vaccination') {
+                    // إرجاع ستوك التطعيم عبر الـ batches
+                    $this->stockService->restoreVaccineStock($item);
+                } else {
+                    // إرجاع ستوك المنتج العادي
+                    $this->stockService->increaseStock($product, $item->quantity);
+                }
+            }
+
+            // تحديث حالة الفاتورة إلى ملغية مع تسجيل السبب والوقت
+            $invoice->update([
+                'status'              => 'cancelled',
+                'cancellation_reason' => $reason,
+                'cancelled_at'        => now(),
+            ]);
+
+            return $invoice->fresh();
+        });
+    }
+
     private function normalizePhone(string $phone): string
     {
         $digits = preg_replace('/\D/', '', $phone);
         $digits = ltrim($digits, '0');
-        if (!str_starts_with($digits, '20')) {
-            $digits = '20' . $digits;
+        if (! str_starts_with($digits, '20')) {
+            $digits = '20'.$digits;
         }
+
         return $digits;
     }
 }

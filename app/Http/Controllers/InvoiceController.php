@@ -22,6 +22,8 @@ class InvoiceController extends Controller
     {
         $q = $request->input('q', '');
         $source = $request->input('source', '');
+        // فلتر الحالة — مؤكدة أو ملغية
+        $status = $request->input('status', '');
 
         $invoices = Invoice::query()
             ->with('customer')
@@ -30,11 +32,13 @@ class InvoiceController extends Controller
                     ->orWhere('customer_name', 'like', "%{$q}%");
             })
             ->when($source, fn ($query) => $query->where('source', $source))
+            // تطبيق فلتر الحالة إذا تم اختياره
+            ->when($status, fn($query) => $query->where('status', $status))
             ->latest()
             ->paginate(25)
             ->withQueryString();
 
-        return view('invoices.index', compact('invoices', 'q', 'source'));
+        return view('invoices.index', compact('invoices', 'q', 'source', 'status'));
     }
 
     /**
@@ -76,5 +80,25 @@ class InvoiceController extends Controller
         $invoice->load(['customer', 'items.product', 'vaccinations']);
 
         return view('invoices.show', compact('invoice'));
+    }
+
+    /**
+     * إلغاء فاتورة مع إرجاع الستوك — يستدعي InvoiceService::cancelInvoice()
+     */
+    public function cancel(Request $request, Invoice $invoice)
+    {
+        try {
+            // تمرير سبب الإلغاء إن وُجد
+            $this->invoiceService->cancelInvoice(
+                $invoice,
+                $request->input('cancellation_reason')
+            );
+
+            return redirect()
+                ->route('invoices.show', $invoice)
+                ->with('success', __('invoices.messages.cancelled'));
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['cancel' => $e->getMessage()]);
+        }
     }
 }

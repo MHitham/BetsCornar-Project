@@ -5,188 +5,211 @@
 
 @section('content')
 
-@php
-    // Overriding the controller's query to apply the requested logic entirely within the view
-    $q = request('q', '');
-    $source = request('source', '');
-    $period = request('period', 'today'); // Default period
+    @php
+        // Overriding the controller's query to apply the requested logic entirely within the view
+$q = request('q', '');
+$source = request('source', '');
+$period = request('period', 'today'); // Default period
 
-    // 1. Build Base Query for Counting without the period filter
-    $baseQuery = \App\Models\Invoice::query()
-        ->when($q, function ($query) use ($q) {
-            $query->where(function($subQuery) use ($q) {
-                $subQuery->where('invoice_number', 'like', "%{$q}%")
-                         ->orWhere('customer_name', 'like', "%{$q}%");
-            });
-        })
-        ->when($source, function ($query) use ($source) {
-            $query->where('source', $source);
+// 1. Build Base Query for Counting without the period filter
+$baseQuery = \App\Models\Invoice::query()
+    ->when($q, function ($query) use ($q) {
+        $query->where(function ($subQuery) use ($q) {
+            $subQuery->where('invoice_number', 'like', "%{$q}%")->orWhere('customer_name', 'like', "%{$q}%");
         });
+    })
+    ->when($source, function ($query) use ($source) {
+        $query->where('source', $source);
+    });
 
-    // 2. Compute Tab Counts based on the current search text and source filters
-    $countToday = (clone $baseQuery)->whereDate('created_at', today())->count();
-    $countMonth = (clone $baseQuery)->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year)->count();
-    $countAll = (clone $baseQuery)->count();
+// 2. Compute Tab Counts based on the current search text and source filters
+$countToday = (clone $baseQuery)->whereDate('created_at', today())->count();
+$countMonth = (clone $baseQuery)
+    ->whereMonth('created_at', today()->month)
+    ->whereYear('created_at', today()->year)
+    ->count();
+$countAll = (clone $baseQuery)->count();
 
-    // 3. Apply the period filter for the actual list
-    $query = clone $baseQuery;
-    if ($period === 'today') {
-        $query->whereDate('created_at', today());
-    } elseif ($period === 'month') {
-        $query->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year);
-    } // 'all' requires no extra filter
+// 3. Apply the period filter for the actual list
+$query = clone $baseQuery;
+if ($period === 'today') {
+    $query->whereDate('created_at', today());
+} elseif ($period === 'month') {
+    $query->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year);
+} // 'all' requires no extra filter
 
-    $invoices = $query->with('customer')
-                      ->latest()
-                      ->paginate(25)
-                      ->withQueryString();
+$invoices = $query->with('customer')->latest()->paginate(25)->withQueryString();
 
-    $hasFilters = request()->hasAny(['q', 'source', 'period', 'page']);
-@endphp
+$hasFilters = request()->hasAny(['q', 'source', 'period', 'page']);
+    @endphp
 
-@if(!$hasFilters)
-    <script>
-        // Redirect seamlessly to apply default period filter on first load
-        window.location.replace("{{ route('invoices.index', ['period' => 'today']) }}");
-    </script>
-@endif
+    @if (!$hasFilters)
+        <script>
+            // Redirect seamlessly to apply default period filter on first load
+            window.location.replace("{{ route('invoices.index', ['period' => 'today']) }}");
+        </script>
+    @endif
 
-<div class="card mb-4 shadow-sm border-0">
-    <div class="card-body pb-0">
-        {{-- Filter Tabs --}}
-        <ul class="nav nav-tabs border-0 gap-2 mb-3">
-            <li class="nav-item">
-                <a class="nav-link {{ $period === 'today' ? 'active fw-bold border-bottom flex-column bg-light' : 'text-muted' }}" 
-                   href="{{ request()->fullUrlWithQuery(['period' => 'today', 'page' => null]) }}"
-                   @if($period === 'today') style="border-bottom-width: 3px !important; border-bottom-color: #0d6efd !important;" @endif>
-                   اليوم
-                   <span class="badge {{ $period === 'today' ? 'bg-primary' : 'bg-secondary' }} ms-1 rounded-pill">{{ $countToday }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ $period === 'month' ? 'active fw-bold border-bottom bg-light' : 'text-muted' }}" 
-                   href="{{ request()->fullUrlWithQuery(['period' => 'month', 'page' => null]) }}"
-                   @if($period === 'month') style="border-bottom-width: 3px !important; border-bottom-color: #0d6efd !important;" @endif>
-                   هذا الشهر
-                   <span class="badge {{ $period === 'month' ? 'bg-primary' : 'bg-secondary' }} ms-1 rounded-pill">{{ $countMonth }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ $period === 'all' ? 'active fw-bold border-bottom bg-light' : 'text-muted' }}" 
-                   href="{{ request()->fullUrlWithQuery(['period' => 'all', 'page' => null]) }}"
-                   @if($period === 'all') style="border-bottom-width: 3px !important; border-bottom-color: #0d6efd !important;" @endif>
-                   الكل
-                   <span class="badge {{ $period === 'all' ? 'bg-primary' : 'bg-secondary' }} ms-1 rounded-pill">{{ $countAll }}</span>
-                </a>
-            </li>
-        </ul>
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-body pb-0">
+            {{-- Filter Tabs --}}
+            <ul class="nav nav-tabs border-0 gap-2 mb-3">
+                <li class="nav-item">
+                    <a class="nav-link {{ $period === 'today' ? 'active fw-bold border-bottom flex-column bg-light' : 'text-muted' }}"
+                        href="{{ request()->fullUrlWithQuery(['period' => 'today', 'page' => null]) }}"
+                        @if ($period === 'today') style="border-bottom-width: 3px !important; border-bottom-color: #0d6efd !important;" @endif>
+                        اليوم
+                        <span
+                            class="badge {{ $period === 'today' ? 'bg-primary' : 'bg-secondary' }} ms-1 rounded-pill">{{ $countToday }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $period === 'month' ? 'active fw-bold border-bottom bg-light' : 'text-muted' }}"
+                        href="{{ request()->fullUrlWithQuery(['period' => 'month', 'page' => null]) }}"
+                        @if ($period === 'month') style="border-bottom-width: 3px !important; border-bottom-color: #0d6efd !important;" @endif>
+                        هذا الشهر
+                        <span
+                            class="badge {{ $period === 'month' ? 'bg-primary' : 'bg-secondary' }} ms-1 rounded-pill">{{ $countMonth }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $period === 'all' ? 'active fw-bold border-bottom bg-light' : 'text-muted' }}"
+                        href="{{ request()->fullUrlWithQuery(['period' => 'all', 'page' => null]) }}"
+                        @if ($period === 'all') style="border-bottom-width: 3px !important; border-bottom-color: #0d6efd !important;" @endif>
+                        الكل
+                        <span
+                            class="badge {{ $period === 'all' ? 'bg-primary' : 'bg-secondary' }} ms-1 rounded-pill">{{ $countAll }}</span>
+                    </a>
+                </li>
+            </ul>
 
-        {{-- Search / Filter --}}
-        <form method="GET" action="{{ route('invoices.index') }}" class="row g-3 align-items-end mb-3">
-            <input type="hidden" name="period" value="{{ $period }}">
-            <div class="col-md-5">
-                <label class="form-label text-muted">بحث</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input type="text" name="q" class="form-control" value="{{ $q }}"
-                        placeholder="{{ __('invoices.filters.search_placeholder') }}">
+            {{-- Search / Filter --}}
+            <form method="GET" action="{{ route('invoices.index') }}" class="row g-3 align-items-end mb-3">
+                <input type="hidden" name="period" value="{{ $period }}">
+                <div class="col-md-5">
+                    <label class="form-label text-muted">بحث</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" class="form-control" value="{{ $q }}"
+                            placeholder="{{ __('invoices.filters.search_placeholder') }}">
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label text-muted">{{ __('invoices.fields.source') }}</label>
-                <select name="source" class="form-select" onchange="this.form.submit()">
-                    <option value="">{{ __('invoices.sources.all') }}</option>
-                    <option value="customer" {{ $source === 'customer' ? 'selected' : '' }}>
-                        {{ __('invoices.sources.customer') }}</option>
-                    <option value="quick_sale" {{ $source === 'quick_sale' ? 'selected' : '' }}>
-                        {{ __('invoices.sources.quick_sale') }}</option>
-                </select>
-            </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-primary flex-fill">
-                    بحث
-                </button>
-                <a href="{{ route('invoices.index', ['period' => $period]) }}" class="btn btn-outline-secondary" title="إعادة ضبط">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </a>
-            </div>
-        </form>
+                <div class="col-md-4">
+                    <label class="form-label text-muted">{{ __('invoices.fields.source') }}</label>
+                    <select name="source" class="form-select" onchange="this.form.submit()">
+                        <option value="">{{ __('invoices.sources.all') }}</option>
+                        <option value="customer" {{ $source === 'customer' ? 'selected' : '' }}>
+                            {{ __('invoices.sources.customer') }}</option>
+                        <option value="quick_sale" {{ $source === 'quick_sale' ? 'selected' : '' }}>
+                            {{ __('invoices.sources.quick_sale') }}</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        بحث
+                    </button>
+                    <a href="{{ route('invoices.index', ['period' => $period]) }}" class="btn btn-outline-secondary"
+                        title="إعادة ضبط">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
-{{-- Header --}}
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <span class="fw-bold fs-5">
-        <i class="bi bi-receipt text-primary me-2"></i>
-        {{ $invoices->total() }} فاتورة
-    </span>
-    <a href="{{ route('invoices.create') }}" class="btn btn-success fw-bold shadow-sm">
-        <i class="bi bi-lightning-fill me-1"></i>{{ __('invoices.actions.add') }}
-    </a>
-</div>
+    {{-- Header --}}
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="fw-bold fs-5">
+            <i class="bi bi-receipt text-primary me-2"></i>
+            {{ $invoices->total() }} فاتورة
+        </span>
+        <a href="{{ route('invoices.create') }}" class="btn btn-success fw-bold shadow-sm">
+            <i class="bi bi-lightning-fill me-1"></i>{{ __('invoices.actions.add') }}
+        </a>
+    </div>
 
-{{-- Table --}}
-<div class="card shadow-sm border-0">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>{{ __('invoices.fields.invoice_number') }}</th>
-                    <th>{{ __('invoices.fields.customer_name') }}</th>
-                    <th>{{ __('invoices.fields.source') }}</th>
-                    <th>{{ __('invoices.fields.total') }}</th>
-                    <th>{{ __('invoices.fields.date') }}</th>
-                    <th class="text-center">{{ __('messages.actions') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if($invoices->isNotEmpty())
-                    @foreach($invoices as $invoice)
+    {{-- Table --}}
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>{{ __('invoices.fields.invoice_number') }}</th>
+                        <th>{{ __('invoices.fields.customer_name') }}</th>
+                        <th>{{ __('invoices.fields.source') }}</th>
+                        <th>{{ __('invoices.fields.total') }}</th>
+                        <th>{{ __('invoices.fields.date') }}</th>
+                        <th class="text-center">{{ __('messages.actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if ($invoices->isNotEmpty())
+                        @foreach ($invoices as $invoice)
+                            {{-- الصف يتلون بالرمادي الفاتح لو الفاتورة ملغية --}}
+                            <tr class="{{ $invoice->isCancelled() ? 'table-secondary text-muted' : '' }}">
+
+                                <td>
+                                    {{-- رقم الفاتورة — عليه خط لو ملغية --}}
+                                    <span
+                                        class="fw-bold font-monospace {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-primary' }}">
+                                        {{ $invoice->invoice_number }}
+                                    </span>
+                                    {{-- badge ملغية تظهر جنب الرقم --}}
+                                    @if ($invoice->isCancelled())
+                                        <span class="badge bg-danger me-1">ملغية</span>
+                                    @endif
+                                </td>
+
+                                <td>{{ $invoice->customer_name }}</td>
+
+                                <td>
+                                    @if ($invoice->source === 'customer')
+                                        <span class="badge bg-primary text-white">
+                                            <i class="bi bi-person-fill me-1"></i>{{ __('invoices.sources.customer') }}
+                                        </span>
+                                    @else
+                                        <span class="badge bg-success text-white">
+                                            <i
+                                                class="bi bi-lightning-fill me-1"></i>{{ __('invoices.sources.quick_sale') }}
+                                        </span>
+                                    @endif
+                                </td>
+
+                                {{-- الإجمالي — مشطوب ورمادي لو الفاتورة ملغية --}}
+                                <td
+                                    class="fw-bold {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-success' }}">
+                                    {{ number_format($invoice->total, 2) }} {{ __('messages.currency') }}
+                                </td>
+
+                                <td class="text-muted small">{{ $invoice->created_at->format('Y-m-d H:i') }}</td>
+
+                                <td class="text-center">
+                                    <a href="{{ route('invoices.show', $invoice) }}"
+                                        class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye me-1"></i>عرض
+                                    </a>
+                                </td>
+
+                            </tr>
+                        @endforeach
+                    @else
                         <tr>
-                            <td>
-                                <span class="fw-bold text-primary font-monospace">{{ $invoice->invoice_number }}</span>
-                            </td>
-                            <td>{{ $invoice->customer_name }}</td>
-                            <td>
-                                @if ($invoice->source === 'customer')
-                                    <span class="badge bg-primary text-white">
-                                        <i class="bi bi-person-fill me-1"></i>{{ __('invoices.sources.customer') }}
-                                    </span>
-                                @else
-                                    <span class="badge bg-success text-white">
-                                        <i class="bi bi-lightning-fill me-1"></i>{{ __('invoices.sources.quick_sale') }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="fw-bold text-success">
-                                {{ number_format($invoice->total, 2) }} {{ __('messages.currency') }}
-                            </td>
-                            <td class="text-muted small">{{ $invoice->created_at->format('Y-m-d H:i') }}</td>
-                            <td class="text-center">
-                                <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-eye me-1"></i>عرض
-                                </a>
+                            <td colspan="6">
+                                <div class="text-center py-5 text-muted">
+                                    <i class="bi bi-receipt fs-1 d-block mb-3"></i>
+                                    <p>{{ __('invoices.messages.no_invoices') }}</p>
+                                </div>
                             </td>
                         </tr>
-                    @endforeach
-                @else
-                    <tr>
-                        <td colspan="6">
-                            <div class="text-center py-5 text-muted">
-                                <i class="bi bi-receipt fs-1 d-block mb-3"></i>
-                                <p>{{ __('invoices.messages.no_invoices') }}</p>
-                            </div>
-                        </td>
-                    </tr>
-                @endif
-            </tbody>
-        </table>
+                    @endif
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 
-{{-- Pagination --}}
-<div class="mt-4">
-    {{ $invoices->links() }}
-</div>
+    {{-- Pagination --}}
+    <div class="mt-4">
+        {{ $invoices->links() }}
+    </div>
 
 @endsection

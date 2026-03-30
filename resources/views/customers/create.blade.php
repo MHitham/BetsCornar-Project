@@ -93,87 +93,58 @@
                             @enderror
                         </div>
 
-                        {{-- Vaccination toggle --}}
+                        {{-- checkbox لتفعيل قسم التطعيمات --}}
                         <div class="col-12">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch" id="has_vaccination"
-                                    name="has_vaccination" value="1" {{ old('has_vaccination') ? 'checked' : '' }}>
+                                    onchange="toggleVaccinations(this)">
                                 <label class="form-check-label fw-semibold" for="has_vaccination">
                                     {{ __('customers.visit.has_vaccination') }}
                                 </label>
                             </div>
                         </div>
 
-                        {{-- Vaccination fields (hidden by default) --}}
-                        <div id="vaccination-section" class="{{ old('has_vaccination') ? '' : 'd-none' }} col-12">
-                            <div class="border rounded-3 p-3 bg-light row g-3">
-                                <div class="col-12">
-                                    <span class="section-heading" style="font-size:.95rem;">
-                                        <i
-                                            class="bi bi-capsule-pill me-1 text-primary"></i>{{ __('customers.visit.vaccination_section') }}
-                                    </span>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">{{ __('customers.visit.vaccine_product') }}</label>
-                                    <select name="vaccine_product_id" id="vaccine_product_id"
-                                        class="form-select @error('vaccine_product_id') is-invalid @enderror">
-                                        <option value="">{{ __('customers.visit.select_vaccine') }}</option>
-                                        @foreach ($vaccines as $v)
-                                            @php
-                                                $usableQty = $vaccineUsableQty[$v->id] ?? 0;
-                                                $isVaccineOos = $v->stock_status === 'out_of_stock' ||
-                                                    ($v->track_stock && $v->quantity <= 0) ||
-                                                    $usableQty <= 0;
-                                            @endphp
-                                            <option value="{{ $v->id }}" 
-                                                data-price="{{ $v->price }}"
-                                                {{ old('vaccine_product_id') == $v->id ? 'selected' : '' }}
-                                                {{ $isVaccineOos ? 'disabled' : '' }}
-                                                style="{{ $isVaccineOos ? 'color:#999;' : '' }}">
-                                                {{ $v->name }}{{ $isVaccineOos ? ' (نفد المخزون)' : '' }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('vaccine_product_id')
-                                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">{{ __('customers.visit.vaccine_quantity') }}</label>
-                                    <input type="number" name="vaccine_quantity" id="vaccine_quantity"
-                                        class="form-control" value="{{ old('vaccine_quantity', 1) }}" step="0.01"
-                                        min="0.01">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">سعر الوحدة</label>
-                                    <div class="input-group">
-                                        <input type="number" name="vaccine_unit_price" id="vaccine_unit_price"
-                                            class="form-control" value="{{ old('vaccine_unit_price', 0) }}"
-                                            step="0.01" min="0">
-                                        <span class="input-group-text">{{ __('messages.currency') }}</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">{{ __('customers.visit.vaccination_date') }}</label>
-                                    <input type="date" name="vaccination_date"
-                                        class="form-control @error('vaccination_date') is-invalid @enderror"
-                                        value="{{ old('vaccination_date', date('Y-m-d')) }}">
-                                    @error('vaccination_date')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">{{ __('customers.visit.next_dose_date') }}</label>
-                                    <input type="date" name="next_dose_date"
-                                        class="form-control @error('next_dose_date') is-invalid @enderror"
-                                        value="{{ old('next_dose_date') }}">
-                                    @error('next_dose_date')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
+                    </div>
+                </div>
+            </div>
 
+            {{-- قسم التطعيمات — مخفي بالافتراضي ويظهر عند تفعيل الـ checkbox --}}
+            <div class="col-12" id="vaccinations-card" style="display:none;">
+                <div class="card">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span class="fw-bold">
+                            <i class="bi bi-capsule-pill text-primary me-1"></i>
+                            {{ __('customers.visit.vaccinations_section') }}
+                        </span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addVaccination()">
+                            <i class="bi bi-plus-lg me-1"></i>{{ __('customers.visit.add_vaccination') }}
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table mb-0" id="vaccinations-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:30%">{{ __('customers.visit.vaccine_product') }}</th>
+                                    <th style="width:10%">{{ __('customers.visit.vaccine_quantity') }}</th>
+                                    <th style="width:15%">{{ __('customers.visit.unit_price') }}</th>
+                                    <th style="width:15%">{{ __('customers.visit.vaccination_date') }}</th>
+                                    <th style="width:15%">{{ __('customers.visit.next_dose_date') }}</th>
+                                    <th style="width:10%">{{ __('customers.visit.line_total') }}</th>
+                                    <th style="width:5%" class="text-center">حذف</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vaccinations-body">
+                                {{-- JS-rendered rows --}}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <td colspan="7" class="text-muted small py-2 px-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        اضغط "إضافة تطعيم" لإضافة تطعيم أو أكثر في هذه الزيارة
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -239,13 +210,13 @@
             @php
                 $vaccinesJson = $vaccines->map(function ($v) use ($vaccineUsableQty) {
                     return [
-                        'id'           => $v->id,
-                        'name'         => $v->name,
-                        'price'        => (float) $v->price,
+                        'id' => $v->id,
+                        'name' => $v->name,
+                        'price' => (float) $v->price,
                         'stock_status' => $v->stock_status,
-                        'quantity'     => (float) $v->quantity,
-                        'track_stock'  => (bool) $v->track_stock,
-                        'usable_qty'   => (float) ($vaccineUsableQty[$v->id] ?? 0),
+                        'quantity' => (float) $v->quantity,
+                        'track_stock' => (bool) $v->track_stock,
+                        'usable_qty' => (float) ($vaccineUsableQty[$v->id] ?? 0),
                     ];
                 });
             @endphp
@@ -254,6 +225,8 @@
             const selectProductPlaceholder = @json(__('customers.visit.select_product_service'));
             const selectVaccinePlaceholder = @json(__('customers.visit.select_vaccine'));
             let itemIndex = 0;
+            // ── عداد صفوف التطعيمات الديناميكية ────────────────────
+            let vaccinationIndex = 0;
 
             /* ─── OOS helpers ─────────────────────────────────────────── */
             function isProductOos(p) {
@@ -264,33 +237,132 @@
                 return v.stock_status === 'out_of_stock' || (v.track_stock && v.quantity <= 0) || v.usable_qty <= 0;
             }
 
-            /* ─── Vaccine Choices.js ──────────────────────────────────── */
-            var vaccineChoices = null;
+            /* ─── إدارة التطعيمات الديناميكية ──────────────────────── */
+            // ── إضافة صف تطعيم جديد ────────────────────────────────
+            window.addVaccination = function() {
+                const idx = vaccinationIndex++;
+                const row = `
+                    <tr id="vacc-row-${idx}">
+                        <td>
+                            <select name="vaccinations[${idx}][vaccine_product_id]"
+                                    id="vaccine-select-${idx}"
+                                    class="form-select form-select-sm vaccine-choices-select"
+                                    data-idx="${idx}" required>
+                                <option value=""></option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="vaccinations[${idx}][vaccine_quantity]"
+                                   class="form-control form-control-sm vacc-qty-input"
+                                   data-idx="${idx}" value="1" min="0.01" step="0.01"
+                                   oninput="recalcVaccRow(${idx})" required>
+                        </td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="vaccinations[${idx}][vaccine_unit_price]"
+                                       class="form-control form-control-sm vacc-price-input"
+                                       data-idx="${idx}" value="0.00" min="0" step="0.01"
+                                       oninput="recalcVaccRow(${idx})" required>
+                                <span class="input-group-text">ج.م</span>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="date" name="vaccinations[${idx}][vaccination_date]"
+                                   class="form-control form-control-sm"
+                                   value="{{ date('Y-m-d') }}" required>
+                        </td>
+                        <td>
+                            <input type="date" name="vaccinations[${idx}][next_dose_date]"
+                                   class="form-control form-control-sm">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm bg-light vacc-line-total"
+                                   id="vacc-line-total-${idx}" value="0.00" readonly>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeVaccination(${idx})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+                document.getElementById('vaccinations-body').insertAdjacentHTML('beforeend', row);
+                // تهيئة Choices.js للقاح الجديد بعد إدراج الصف في DOM
+                initVaccineSelect(document.getElementById('vaccine-select-' + idx));
+            };
 
-            document.getElementById('has_vaccination').addEventListener('change', function () {
-                document.getElementById('vaccination-section').classList.toggle('d-none', !this.checked);
+            // ── تهيئة Choices.js لقائمة اللقاحات (بيانات ثابتة) ───
+            function initVaccineSelect(selectEl) {
+                if (!selectEl) return;
+                const idx = selectEl.getAttribute('data-idx');
+
+                const instance = new Choices(selectEl, {
+                    searchEnabled: true,
+                    searchPlaceholderValue: 'ابحث عن لقاح...',
+                    noResultsText: 'لا توجد نتائج',
+                    itemSelectText: '',
+                    shouldSort: false,
+                    allowHTML: false,
+                });
+
+                selectEl._choicesInstance = instance;
+
+                // بناء قائمة اللقاحات من البيانات الثابتة
+                const choices = vaccinesData.map(function(v) {
+                    const oos = isVaccineOos(v);
+                    return {
+                        value: String(v.id),
+                        label: v.name + (oos ? ' (نفد المخزون)' : ''),
+                        customProperties: {
+                            price: v.price
+                        },
+                        disabled: oos,
+                    };
+                });
+                instance.setChoices(choices, 'value', 'label', true);
+
+                // ملء السعر تلقائياً عند اختيار لقاح
+                selectEl.addEventListener('change', function() {
+                    const val = this.value;
+                    if (!val) return;
+
+                    const selectedChoice = instance.getValue();
+                    const price = selectedChoice && selectedChoice.customProperties ?
+                        selectedChoice.customProperties.price :
+                        0;
+
+                    const priceInput = document.querySelector(
+                        '[name="vaccinations[' + idx + '][vaccine_unit_price]"]'
+                    );
+                    if (priceInput) {
+                        priceInput.value = parseFloat(price || 0).toFixed(2);
+                        recalcVaccRow(idx);
+                    }
+                });
+            }
+
+            // ── حساب الإجمالي لصف التطعيم ──────────────────────────
+            window.recalcVaccRow = function(idx) {
+                const qty = parseFloat(document.querySelector(`[name="vaccinations[${idx}][vaccine_quantity]"]`).value) ||
+                    0;
+                const price = parseFloat(document.querySelector(`[name="vaccinations[${idx}][vaccine_unit_price]"]`)
+                    .value) || 0;
+                document.getElementById(`vacc-line-total-${idx}`).value = (qty * price).toFixed(2);
                 recalcTotal();
+            };
 
-                if (this.checked && !vaccineChoices) {
-                    vaccineChoices = new Choices('#vaccine_product_id', {
-                        searchEnabled:          true,
-                        searchPlaceholderValue: 'ابحث عن لقاح...',
-                        noResultsText:          'لا توجد نتائج',
-                        itemSelectText:         '',
-                        shouldSort:             false,
-                        allowHTML:              false,
-                    });
-
-                    document.getElementById('vaccine_product_id').addEventListener('change', function () {
-                        var selected = this.options[this.selectedIndex];
-                        if (selected) {
-                            var price = selected.getAttribute('data-price') || 0;
-                            document.getElementById('vaccine_unit_price').value = parseFloat(price).toFixed(2);
-                            recalcTotal();
-                        }
-                    });
+            // ── حذف صف التطعيم ──────────────────────────────────────
+            window.removeVaccination = function(idx) {
+                const row = document.getElementById(`vacc-row-${idx}`);
+                if (row) {
+                    // تدمير مثيل Choices.js لتجنب تسriب الذاكرة
+                    const sel = row.querySelector('.vaccine-choices-select');
+                    if (sel && sel._choicesInstance) {
+                        sel._choicesInstance.destroy();
+                    }
+                    row.remove();
                 }
-            });
+                recalcTotal();
+            };
 
             /* ─── Product Choices.js (AJAX, per-row) ─────────────────── */
             function initProductSelect(selectEl) {
@@ -298,13 +370,13 @@
                 const idx = selectEl.getAttribute('data-idx');
 
                 const instance = new Choices(selectEl, {
-                    searchEnabled:          true,
+                    searchEnabled: true,
                     searchPlaceholderValue: 'ابحث عن منتج...',
-                    noResultsText:          'لا توجد نتائج',
-                    noChoicesText:          'اكتب للبحث...',
-                    itemSelectText:         '',
-                    shouldSort:             false,
-                    allowHTML:              false,
+                    noResultsText: 'لا توجد نتائج',
+                    noChoicesText: 'اكتب للبحث...',
+                    itemSelectText: '',
+                    shouldSort: false,
+                    allowHTML: false,
                 });
 
                 // Store the instance for later destroy
@@ -312,39 +384,45 @@
 
                 // Debounced AJAX search
                 let debounceTimer;
-                selectEl.addEventListener('search', function (e) {
+                selectEl.addEventListener('search', function(e) {
                     clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(function () {
+                    debounceTimer = setTimeout(function() {
                         const q = e.detail.value || '';
                         fetch('/products/search?q=' + encodeURIComponent(q))
-                            .then(function (r) { return r.json(); })
-                            .then(function (products) {
-                                const choices = products.map(function (p) {
+                            .then(function(r) {
+                                return r.json();
+                            })
+                            .then(function(products) {
+                                const choices = products.map(function(p) {
                                     const oos = isProductOos(p);
                                     return {
-                                        value:             String(p.id),
-                                        label:             p.name + (oos ? ' (نفد المخزون)' : ''),
-                                        customProperties:  { price: p.price },
-                                        disabled:          oos,
+                                        value: String(p.id),
+                                        label: p.name + (oos ? ' (نفد المخزون)' : ''),
+                                        customProperties: {
+                                            price: p.price
+                                        },
+                                        disabled: oos,
                                     };
                                 });
                                 instance.clearChoices();
                                 instance.setChoices(choices, 'value', 'label', true);
                             })
-                            .catch(function () { /* silently ignore network errors */ });
+                            .catch(function() {
+                                /* silently ignore network errors */
+                            });
                     }, 300);
                 });
 
                 // Auto-fill unit price on selection
-                selectEl.addEventListener('change', function () {
+                selectEl.addEventListener('change', function() {
                     const val = this.value;
                     if (!val) return;
 
                     // Get price directly from the selected choice in the instance
                     const selectedChoice = instance.getValue();
-                    const price = selectedChoice && selectedChoice.customProperties
-                        ? selectedChoice.customProperties.price
-                        : 0;
+                    const price = selectedChoice && selectedChoice.customProperties ?
+                        selectedChoice.customProperties.price :
+                        0;
 
                     const priceInput = document.querySelector(
                         '[name="additional_items[' + idx + '][unit_price]"]'
@@ -400,7 +478,7 @@
             }
 
             function recalcRow(idx) {
-                const qty   = parseFloat(document.querySelector(`[name="additional_items[${idx}][quantity]"]`).value) || 0;
+                const qty = parseFloat(document.querySelector(`[name="additional_items[${idx}][quantity]"]`).value) || 0;
                 const price = parseFloat(document.querySelector(`[name="additional_items[${idx}][unit_price]"]`).value) || 0;
                 document.getElementById(`line-total-${idx}`).value = (qty * price).toFixed(2);
                 recalcTotal();
@@ -422,23 +500,42 @@
             function recalcTotal() {
                 let total = parseFloat(document.getElementById('consultation_price').value) || 0;
 
-                if (document.getElementById('has_vaccination').checked) {
-                    const qty   = parseFloat(document.getElementById('vaccine_quantity').value)   || 0;
-                    const price = parseFloat(document.getElementById('vaccine_unit_price').value) || 0;
-                    total += qty * price;
-                }
+                // جمع إجماليات التطعيمات من كل صف
+                document.querySelectorAll('.vacc-line-total').forEach(function(el) {
+                    total += parseFloat(el.value) || 0;
+                });
 
-                document.querySelectorAll('.line-total').forEach(function (el) {
+                // جمع إجماليات المنتجات/الخدمات الإضافية
+                document.querySelectorAll('.line-total').forEach(function(el) {
                     total += parseFloat(el.value) || 0;
                 });
 
                 document.getElementById('grand-total-cell').textContent = total.toFixed(2) + ' ج.م';
             }
 
-            /* ─── Global input listeners ─────────────────────────────── */
+            // ── إظهار/إخفاء قسم التطعيمات عند الضغط على الـ checkbox ──
+            window.toggleVaccinations = function(checkbox) {
+                const card = document.getElementById('vaccinations-card');
+                if (checkbox.checked) {
+                    // إظهار القسم وإضافة صف تلقائي لو الجدول فاضي
+                    card.style.display = 'block';
+                    if (document.getElementById('vaccinations-body').children.length === 0) {
+                        addVaccination();
+                    }
+                } else {
+                    // إخفاء القسم وحذف كل صفوف التطعيمات وإرجاع الإجمالي
+                    card.style.display = 'none';
+                    const body = document.getElementById('vaccinations-body');
+                    Array.from(body.querySelectorAll('tr')).forEach(row => {
+                        const idx = row.id.replace('vacc-row-', '');
+                        removeVaccination(parseInt(idx));
+                    });
+                }
+                recalcTotal();
+            };
+
+            /* ─── مستمعو الإدخال العام ─────────────────────────── */
             document.getElementById('consultation_price').addEventListener('input', recalcTotal);
-            document.getElementById('vaccine_quantity').addEventListener('input',   recalcTotal);
-            document.getElementById('vaccine_unit_price').addEventListener('input', recalcTotal);
         </script>
     @endpush
 

@@ -18,14 +18,18 @@ class Invoice extends Model
         'source',
         'total',
         'status',
+        'cancellation_reason',
+        'cancelled_at',
     ];
 
     protected function casts(): array
     {
         return [
             'total' => 'decimal:2',
+            'cancelled_at' => 'datetime',
         ];
     }
+    // ── Relationships ────────────────────────────────────────────────────
 
     public function customer(): BelongsTo
     {
@@ -41,5 +45,32 @@ class Invoice extends Model
     {
         return $this->hasMany(Vaccination::class);
     }
-}
 
+     
+    // ── Scopes ───────────────────────────────────────────────────────────
+ 
+    /** الفواتير المؤكدة فقط (تُستخدم في الإيرادات والإحصائيات) */
+    public function scopeConfirmed($query)
+    {
+        return $query->where('status', 'confirmed');
+    }
+ 
+    /** الفواتير الملغية فقط */
+    public function scopeCancelled($query)
+    {
+        return $query->where('status', 'cancelled');
+    }
+ 
+    // ── Helpers ──────────────────────────────────────────────────────────
+ 
+    public function isConfirmed(): bool
+    {
+        return $this->status === 'confirmed';
+    }
+ 
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+}
+ 
