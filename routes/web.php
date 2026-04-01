@@ -9,6 +9,22 @@ use App\Http\Controllers\VaccineBatchController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
+Route::get('/debug-admin', function () {
+    $user = User::where('email', 'admin@betscornar.com')->first();
+
+    if (!$user) {
+        return 'admin user not found';
+    }
+
+    return [
+        'email' => $user->email,
+        'has_password_match' => Hash::check('admin123', $user->password),
+    ];
+});
+
 // تم الإضافة: مسارات تسجيل الدخول للزوار فقط (المسجّل يتم تحويله للوحة التحكم)
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
