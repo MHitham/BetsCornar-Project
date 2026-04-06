@@ -21,9 +21,9 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        // تم الإضافة: لو الموظف يشوف فواتيره النهارده بس
-        if (auth()->user()->hasRole('employee')) {
-            // حساب نافذة يوم العمل (تبدأ الساعة 2 صباحاً)
+        $isEmployee = auth()->user()->hasRole('employee');
+
+        if ($isEmployee) {
             $now = \Carbon\Carbon::now();
             $businessDayStart = $now->copy()->startOfDay()->addHours(2);
 
@@ -36,46 +36,86 @@ class InvoiceController extends Controller
             }
 
             $invoices = Invoice::query()
-                ->with('customer')
+                // تم التعديل: إزالة eager loading غير المستخدم للعلاقة customer من فهرس الفواتير للموظف
                 ->where('created_by', auth()->id())
                 ->whereBetween('created_at', [$periodStart, $periodEnd])
+                // تم التعديل: تحديد أعمدة قائمة الفواتير المطلوبة فقط في فهرس الموظف
+                ->select(['id', 'invoice_number', 'customer_name', 'source', 'total', 'status', 'created_at'])
                 ->latest()
                 ->paginate(25)
                 ->withQueryString();
 
-            // الموظف يشوف قائمة بسيطة بدون فلاتر
             return view('invoices.index', [
                 'invoices' => $invoices,
                 'q' => '',
                 'source' => '',
                 'status' => '',
+                'date' => null,
+                'period' => 'today',
+                'countToday' => 0,
+                'countMonth' => 0,
+                'countAll' => 0,
+                'hasFilters' => true,
                 'isEmployee' => true,
             ]);
         }
 
-        // لو الأدمن: المنطق الموجود كما هو
         $q = $request->input('q', '');
         $source = $request->input('source', '');
-        // فلتر الحالة — مؤكدة أو ملغية
         $status = $request->input('status', '');
+        $period = $request->input('period', 'today');
         $date = $request->input('date');
 
-        $invoices = Invoice::query()
-            ->with('customer')
+        $baseQuery = Invoice::query()
             ->when($q, function ($query) use ($q) {
-                $query->where('invoice_number', 'like', "%{$q}%")
-                    ->orWhere('customer_name', 'like', "%{$q}%");
+                $query->where(function ($subQuery) use ($q) {
+                    $subQuery->where('invoice_number', 'like', "%{$q}%")
+                        ->orWhere('customer_name', 'like', "%{$q}%");
+                });
             })
-            ->when($source, fn ($query) => $query->where('source', $source))
-            ->when($status, fn ($query) => $query->where('status', $status))
-            ->when($date, fn ($query) => $query->whereDate('created_at', $date))
+            ->when($source, fn ($query) => $query->where('source', $source));
+
+        $countToday = (clone $baseQuery)->whereDate('created_at', today())->count();
+        $countMonth = (clone $baseQuery)
+            ->whereMonth('created_at', today()->month)
+            ->whereYear('created_at', today()->year)
+            ->count();
+        $countAll = (clone $baseQuery)->count();
+
+        $query = clone $baseQuery;
+        if ($date) {
+            $query->whereDate('created_at', $date);
+        } elseif ($period === 'today') {
+            $query->whereDate('created_at', today());
+        } elseif ($period === 'month') {
+            $query->whereMonth('created_at', today()->month)
+                ->whereYear('created_at', today()->year);
+        }
+
+        $invoices = $query
+            // تم التعديل: إزالة eager loading غير المستخدم للعلاقة customer من فهرس الفواتير للأدمن
+            // تم التعديل: تحديد أعمدة قائمة الفواتير المطلوبة فقط في فهرس الأدمن
+            ->select(['id', 'invoice_number', 'customer_name', 'source', 'total', 'status', 'created_at', 'cancelled_at'])
             ->latest()
             ->paginate(25)
             ->withQueryString();
 
-        return view('invoices.index', compact('invoices', 'q', 'source', 'status', 'date'));
-    }
+        $hasFilters = $request->hasAny(['q', 'source', 'period', 'date', 'page']);
 
+        return view('invoices.index', compact(
+            'invoices',
+            'q',
+            'source',
+            'status',
+            'date',
+            'period',
+            'countToday',
+            'countMonth',
+            'countAll',
+            'hasFilters',
+            'isEmployee'
+        ));
+    }
     /**
      * Show the quick-sale form.
      */
@@ -112,13 +152,14 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load(['customer', 'items.product', 'vaccinations']);
+        // تم التعديل: تحميل منتجات البنود مع منتجات التطعيمات لتجنب N+1 داخل صفحة الفاتورة
+        $invoice->load(['items.product', 'vaccinations.product']);
 
         return view('invoices.show', compact('invoice'));
     }
 
     /**
-     * إلغاء فاتورة مع إرجاع الستوك — يستدعي InvoiceService::cancelInvoice()
+     * إلغاء فاتورة مع إرجاع الستوك - يستدعي InvoiceService::cancelInvoice()
      */
     public function cancel(Request $request, Invoice $invoice)
     {

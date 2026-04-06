@@ -4,79 +4,6 @@
 @section('page-title', __('vaccinations.title'))
 
 @section('content')
-
-    @php
-        // We override the $query here to implement the advanced filters
-        // without touching the controller, satisfying the "Do NOT touch any other file" rule.
-        $query = \App\Models\Vaccination::query()->with(['customer', 'product', 'invoice']);
-
-        // 1. Search text
-        if ($search = request('q')) {
-            $query->whereHas('customer', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%");
-            });
-        }
-
-        // 2. Default filter: show only is_completed = false
-        $isCompleted = request('is_completed', '0');
-        if ($isCompleted !== 'all') {
-            $query->where('is_completed', (bool) $isCompleted);
-        }
-
-        // 3. Sort logic
-        $sort = request('sort', 'latest');
-        if ($sort === 'oldest') {
-            $query->orderBy('vaccination_date', 'asc')->orderBy('id', 'asc');
-        } elseif ($sort === 'upcoming') {
-            // Order by upcoming valid dates first, null dates at the end
-            $query->orderByRaw('next_dose_date IS NULL, next_dose_date ASC');
-        } else {
-            $query->orderBy('vaccination_date', 'desc')->orderBy('id', 'desc');
-        }
-
-        $vaccinations = $query->paginate(15)->withQueryString();
-
-        // 4. 3 days upcoming list
-        $threeDaysUpcoming = \App\Models\Vaccination::with(['customer', 'product'])
-            ->where('is_completed', false)
-            ->whereNotNull('next_dose_date')
-            ->whereDate('next_dose_date', '>=', today())
-            ->whereDate('next_dose_date', '<=', today()->addDays(3))
-            ->orderBy('next_dose_date', 'asc')
-            ->get();
-    @endphp
-
-    {{-- نجمع كل التطعيمات الموجودة في الصفحة مجمعة بالعميل --}}
-    @php
-        $customerVaccinationsMap = [];
-        foreach ($vaccinations as $vacc) {
-            $cid = $vacc->customer->id;
-            if (!isset($customerVaccinationsMap[$cid])) {
-                $customerVaccinationsMap[$cid] = [
-                    'name' => $vacc->customer->name,
-                    'animal_type' => $vacc->customer->animal_type,
-                    'phone' => $vacc->customer->phone,
-                    'vaccinations' => [],
-                ];
-            }
-            $customerVaccinationsMap[$cid]['vaccinations'][] = [
-                'name' => $vacc->product->name ?? '—',
-                'vaccination_date' => $vacc->vaccination_date?->format('Y-m-d') ?? '—',
-                'next_dose_date' => $vacc->next_dose_date?->format('Y-m-d') ?? null,
-                'is_completed' => $vacc->is_completed,
-                'status' => $vacc->is_completed
-                    ? 'done'
-                    : ($vacc->next_dose_date
-                        ? ($vacc->next_dose_date->lt(today())
-                            ? 'late'
-                            : ($vacc->next_dose_date->lte(today()->addDays(7))
-                                ? 'soon'
-                                : 'ok'))
-                        : 'ok'),
-            ];
-        }
-    @endphp
-
     <div class="row mb-4 align-items-center">
         <div class="col">
             {{-- "مواعيد الـ 3 أيام 🔔" green button --}}
@@ -135,6 +62,36 @@
         <h5 class="fw-bold mb-0">{{ $vaccinations->total() }} سجل تطعيم</h5>
     </div>
 
+    {{-- تم الإضافة: شريط الإجراءات الجماعية لنسخ الأرقام وتصدير التطعيمات إلى Excel --}}
+    <div id="bulk-actions-toolbar" class="card mb-3 d-none">
+        <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div class="fw-semibold text-primary">
+                <span id="selected-count">0</span>
+                {{ __('vaccinations.bulk.selected_count') }}
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-success" id="copy-selected-phones">
+                    <i class="bi bi-clipboard me-1"></i>{{ __('vaccinations.bulk.copy_phones') }}
+                </button>
+                <button type="button" class="btn btn-success" id="export-selected-excel">
+                    <i class="bi bi-file-earmark-excel me-1"></i>{{ __('vaccinations.bulk.export_excel') }}
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="clear-selection">
+                    <i class="bi bi-x-circle me-1"></i>{{ __('vaccinations.bulk.clear_selection') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- تم الإضافة: بانر اختيار كل نتائج التطعيمات عبر جميع الصفحات --}}
+    <div id="selection-banner"
+        class="alert alert-info d-none d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+        <span id="selection-banner-text"></span>
+        <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none" id="select-all-results">
+            {{ __('vaccinations.bulk.select_all_results', ['count' => $vaccinations->total()]) }}
+        </button>
+    </div>
+
     {{-- Table --}}
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
@@ -149,6 +106,11 @@
                         <th>{{ __('vaccinations.fields.vaccination_date') }}</th>
                         <th>{{ __('vaccinations.fields.next_dose_date') }}</th>
                         <th class="text-center">{{ __('vaccinations.fields.whatsapp') }}</th>
+                        {{-- تم الإضافة: عمود مستقل لتحديد العناصر المخصصة للتصدير دون لمس checkbox التطعيم الحالي --}}
+                        <th class="text-center" style="width: 64px;">
+                            <input type="checkbox" class="form-check-input" id="select-page-vaccinations"
+                                title="{{ __('vaccinations.bulk.select_page') }}">
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -212,11 +174,16 @@
                                         </button>
                                     @endif
                                 </td>
+                                {{-- تم الإضافة: checkbox منفصل للتصدير الجماعي مع تخزين رقم الهاتف للنسخ السريع --}}
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input vaccination-export-checkbox"
+                                        value="{{ $vacc->id }}" data-phone="{{ $vacc->customer->phone ?? '' }}">
+                                </td>
                             </tr>
                         @endforeach
                     @else
                         <tr>
-                            <td colspan="7">
+                            <td colspan="8">
                                 <div class="text-center py-5 text-muted">
                                     <i class="bi bi-capsule-pill fs-1 d-block mb-3"></i>
                                     <p>{{ __('vaccinations.messages.no_vaccinations_found') }}</p>
@@ -233,14 +200,28 @@
         {{ $vaccinations->links() }}
     </div>
 
+    {{-- تم الإضافة: نموذج مخفي لإرسال عناصر التصدير إلى مسار Excel --}}
+    <form method="POST" action="{{ route('vaccinations.export-excel') }}" id="vaccinations-export-form"
+        class="d-none">
+        @csrf
+        <div id="vaccinations-export-inputs"></div>
+    </form>
+
     {{-- 1. Modal 3 Days Upcoming --}}
     <div class="modal fade" id="upcomingModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title"><i class="bi bi-bell me-2"></i> مواعيد التطعيم خلال الـ 3 أيام القادمة</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+                    {{-- تم الإضافة: زر نسخ كل الأرقام الظاهرة داخل مودال الثلاثة أيام --}}
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-light text-success fw-semibold"
+                            id="copy-upcoming-phones">
+                            <i class="bi bi-clipboard me-1"></i>{{ __('vaccinations.bulk.copy_modal_phones') }}
+                        </button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="modal-body p-0">
                     <div class="table-responsive">
@@ -257,7 +238,7 @@
                             <tbody>
                                 @if ($threeDaysUpcoming->isNotEmpty())
                                     @foreach ($threeDaysUpcoming as $item)
-                                        <tr>
+                                        <tr data-upcoming-phone="{{ $item->customer->phone ?? '' }}">
                                             <td>{{ $item->customer->name }}</td>
                                             <td>{{ $item->customer->animal_type }}</td>
                                             <td>{{ $item->product ? $item->product->name : '—' }}</td>
@@ -368,6 +349,230 @@
             </div>
         </div>
     </div>
+
+    {{-- تم الإضافة: منطق التحديد الجماعي ونسخ الأرقام والتصدير ومودال الثلاثة أيام باستخدام JavaScript فقط --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const selectPageCheckbox = document.getElementById('select-page-vaccinations');
+            const rowCheckboxes = Array.from(document.querySelectorAll('.vaccination-export-checkbox'));
+            const bulkToolbar = document.getElementById('bulk-actions-toolbar');
+            const selectionBanner = document.getElementById('selection-banner');
+            const selectionBannerText = document.getElementById('selection-banner-text');
+            const selectAllResultsButton = document.getElementById('select-all-results');
+            const selectedCount = document.getElementById('selected-count');
+            const copyPhonesButton = document.getElementById('copy-selected-phones');
+            const exportExcelButton = document.getElementById('export-selected-excel');
+            const clearSelectionButton = document.getElementById('clear-selection');
+            const exportForm = document.getElementById('vaccinations-export-form');
+            const exportInputs = document.getElementById('vaccinations-export-inputs');
+            const copyUpcomingPhonesButton = document.getElementById('copy-upcoming-phones');
+            const totalResults = {{ $vaccinations->total() }};
+            const currentSearch = @json(request('q', ''));
+            const currentIsCompleted = @json(request('is_completed', '0'));
+            const currentSort = @json(request('sort', 'latest'));
+            let selectAllAcrossPages = false;
+
+            function selectedIds() {
+                return rowCheckboxes.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+            }
+
+            function selectedPhones() {
+                return [...new Set(
+                    rowCheckboxes
+                        .filter((checkbox) => checkbox.checked)
+                        .map((checkbox) => (checkbox.dataset.phone || '').trim())
+                        .filter(Boolean)
+                )];
+            }
+
+            function syncPageCheckbox() {
+                const checkedCount = selectedIds().length;
+                const pageCount = rowCheckboxes.length;
+
+                if (!selectPageCheckbox) {
+                    return;
+                }
+
+                selectPageCheckbox.checked = checkedCount > 0 && checkedCount === pageCount;
+                selectPageCheckbox.indeterminate = checkedCount > 0 && checkedCount < pageCount;
+            }
+
+            function renderBanner() {
+                const checkedCount = selectedIds().length;
+                const pageCount = rowCheckboxes.length;
+
+                if (selectAllAcrossPages) {
+                    selectionBanner.classList.remove('d-none');
+                    selectionBannerText.textContent =
+                        `{{ __('vaccinations.bulk.all_results_selected_prefix') }} ${totalResults} {{ __('vaccinations.bulk.all_results_selected_suffix') }}`;
+                    selectAllResultsButton.classList.add('d-none');
+                    return;
+                }
+
+                if (pageCount > 0 && checkedCount === pageCount && totalResults > pageCount) {
+                    selectionBanner.classList.remove('d-none');
+                    selectionBannerText.textContent =
+                        `{{ __('vaccinations.bulk.page_selected_prefix') }} ${checkedCount} {{ __('vaccinations.bulk.page_selected_suffix') }}`;
+                    selectAllResultsButton.classList.remove('d-none');
+                    return;
+                }
+
+                selectionBanner.classList.add('d-none');
+            }
+
+            function renderToolbar() {
+                const count = selectAllAcrossPages ? totalResults : selectedIds().length;
+                selectedCount.textContent = count;
+                bulkToolbar.classList.toggle('d-none', count === 0);
+                renderBanner();
+                syncPageCheckbox();
+            }
+
+            function resetSelection() {
+                selectAllAcrossPages = false;
+                rowCheckboxes.forEach((checkbox) => {
+                    checkbox.checked = false;
+                });
+                renderToolbar();
+            }
+
+            function appendHiddenInput(name, value) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = value;
+                exportInputs.appendChild(input);
+            }
+
+            async function copySelectedPhones() {
+                if (!selectAllAcrossPages && selectedIds().length === 0) {
+                    window.alert(@json(__('vaccinations.bulk.no_selection')));
+                    return;
+                }
+
+                let phones = [];
+
+                if (selectAllAcrossPages) {
+                    const url = new URL(@json(route('vaccinations.export-phones')));
+                    url.searchParams.set('select_all_ids', '1');
+                    url.searchParams.set('q', currentSearch);
+                    url.searchParams.set('is_completed', currentIsCompleted);
+                    url.searchParams.set('sort', currentSort);
+
+                    const response = await fetch(url.toString(), {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch phones');
+                    }
+
+                    const data = await response.json();
+                    phones = Array.isArray(data.phones) ? data.phones : [];
+                } else {
+                    phones = selectedPhones();
+                }
+
+                const uniquePhones = [...new Set(phones.map((phone) => String(phone).trim()).filter(Boolean))];
+
+                if (uniquePhones.length === 0) {
+                    window.alert(@json(__('vaccinations.bulk.no_selection')));
+                    return;
+                }
+
+                await navigator.clipboard.writeText(uniquePhones.join('\n'));
+                window.alert(@json(__('vaccinations.bulk.copy_success')));
+            }
+
+            function exportSelectedExcel() {
+                if (!selectAllAcrossPages && selectedIds().length === 0) {
+                    window.alert(@json(__('vaccinations.bulk.no_selection')));
+                    return;
+                }
+
+                exportInputs.innerHTML = '';
+
+                if (selectAllAcrossPages) {
+                    appendHiddenInput('select_all_ids', '1');
+                    appendHiddenInput('q', currentSearch);
+                    appendHiddenInput('is_completed', currentIsCompleted);
+                    appendHiddenInput('sort', currentSort);
+                } else {
+                    selectedIds().forEach((id) => appendHiddenInput('ids[]', id));
+                }
+
+                exportForm.submit();
+            }
+
+            async function copyUpcomingPhones() {
+                const phones = [...new Set(
+                    Array.from(document.querySelectorAll('[data-upcoming-phone]'))
+                        .map((row) => (row.dataset.upcomingPhone || '').trim())
+                        .filter(Boolean)
+                )];
+
+                if (phones.length === 0) {
+                    window.alert(@json(__('vaccinations.bulk.no_modal_phones')));
+                    return;
+                }
+
+                await navigator.clipboard.writeText(phones.join('\n'));
+                window.alert(@json(__('vaccinations.bulk.copy_success')));
+            }
+
+            if (selectPageCheckbox) {
+                selectPageCheckbox.addEventListener('change', () => {
+                    selectAllAcrossPages = false;
+                    rowCheckboxes.forEach((checkbox) => {
+                        checkbox.checked = selectPageCheckbox.checked;
+                    });
+                    renderToolbar();
+                });
+            }
+
+            rowCheckboxes.forEach((checkbox) => {
+                checkbox.addEventListener('change', () => {
+                    if (!checkbox.checked) {
+                        selectAllAcrossPages = false;
+                    }
+                    renderToolbar();
+                });
+            });
+
+            selectAllResultsButton.addEventListener('click', () => {
+                rowCheckboxes.forEach((checkbox) => {
+                    checkbox.checked = true;
+                });
+                selectAllAcrossPages = true;
+                renderToolbar();
+            });
+
+            clearSelectionButton.addEventListener('click', resetSelection);
+            exportExcelButton.addEventListener('click', exportSelectedExcel);
+            copyPhonesButton.addEventListener('click', async () => {
+                try {
+                    await copySelectedPhones();
+                } catch (error) {
+                    window.alert(@json(__('vaccinations.bulk.copy_failed')));
+                }
+            });
+
+            if (copyUpcomingPhonesButton) {
+                copyUpcomingPhonesButton.addEventListener('click', async () => {
+                    try {
+                        await copyUpcomingPhones();
+                    } catch (error) {
+                        window.alert(@json(__('vaccinations.bulk.copy_failed')));
+                    }
+                });
+            }
+
+            renderToolbar();
+        });
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {

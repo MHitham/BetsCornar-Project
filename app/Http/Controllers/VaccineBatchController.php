@@ -9,6 +9,8 @@ use App\Models\VaccineBatch;
 use App\Services\StockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+// تم الإضافة: استخدام الكاش لمسح تنبيهات صلاحية التشغيلات بعد تعديلها
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 use RuntimeException;
 
@@ -71,6 +73,9 @@ class VaccineBatchController extends Controller
         try {
             $this->stockService->createVaccineBatch($request->validated());
 
+            // تم الإضافة: تحديث كاش تنبيهات صلاحية التشغيلات بعد إضافة تشغيله جديدة
+            Cache::forget(dashboardKey('batch_expiry'));
+
             return redirect()
                 ->route('vaccine-batches.index')
                 ->with('success', __('vaccine_batches.messages.created'));
@@ -102,6 +107,9 @@ class VaccineBatchController extends Controller
     {
         try {
             $this->stockService->updateVaccineBatch($vaccineBatch, $request->validated());
+
+            // تم الإضافة: تحديث كاش تنبيهات صلاحية التشغيلات بعد تعديل بيانات التشغيله
+            Cache::forget(dashboardKey('batch_expiry'));
 
             return redirect()
                 ->route('vaccine-batches.index')

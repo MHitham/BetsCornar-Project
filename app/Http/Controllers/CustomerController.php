@@ -2,14 +2,24 @@
 
 namespace App\Http\Controllers;
 
+// تم التعديل: استخدام FromQuery وWithMapping لتقليل استهلاك الذاكرة أثناء التصدير
+use Maatwebsite\Excel\Concerns\FromQuery;
+// تم التعديل: تحديد حجم الـ chunk أثناء التصدير الكبير
+use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+// تم التعديل: تجهيز الصفوف أثناء القراءة دون تحميلها كلها في الذاكرة
+use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Requests\StoreCustomerVisitRequest;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\VaccineBatch;
 use App\Services\CustomerVisitService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CustomerController extends Controller
 {
@@ -22,22 +32,35 @@ class CustomerController extends Controller
      */
     public function index(Request $request)
     {
-        $q = $request->input('q', '');
+        // تم التعديل: توحيد استعلام الفهرس مع استعلامات التصدير والجلب
+        $q = trim((string) $request->input('q', ''));
 
-        $customers = Customer::query()
-            ->when($q, function ($query) use ($q) {
-                $query->where('name', 'like', "%{$q}%")
-                    ->orWhere('phone', 'like', "%{$q}%");
-            })
+        $customers = $this->customersIndexQuery($request)
             ->withCount('vaccinations')
-            ->with(['vaccinations' => function ($q) {
-                $q->latest('vaccination_date')->limit(1);
-            }])
+            // تم الإضافة: استخدام latestVaccination بدل limit(1) داخل eager loading
+            ->with('latestVaccination')
             ->latest()
             ->paginate(20)
             ->withQueryString();
 
         return view('customers.index', compact('customers', 'q'));
+    }
+
+    /**
+     * تم الإضافة: عرض السجل الطبي الكامل للعميل (التايم لاين)
+     */
+    public function show(Customer $customer)
+    {
+        // تم الإضافة: تحميل كل فواتير العميل مع البنود والتطعيمات بترتيب الأحدث أولًا
+        $customer->load([
+            'invoices' => function ($query) {
+                $query->latest('created_at');
+            },
+            'invoices.items.product',
+            'invoices.vaccinations.product',
+        ]);
+
+        return view('customers.show', compact('customer'));
     }
 
     /**
@@ -116,5 +139,115 @@ class CustomerController extends Controller
                 ->withInput()
                 ->withErrors(['vaccine' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * تم الإضافة: تصدير العملاء المحددين أو كل نتائج البحث الحالية إلى ملف Excel.
+     */
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        // تم التعديل: بناء Query مباشر للتصدير بدل تحميل كل العملاء في الذاكرة دفعة واحدة
+        $exportQuery = $request->boolean('select_all_ids')
+            ? $this->customersIndexQuery($request)
+                // تم التعديل: تحديد الأعمدة المطلوبة فقط للتصدير
+                ->select(['id', 'name', 'phone', 'animal_type'])
+                // تم التعديل: استخدام ترتيب ثابت بـ id لضمان chunking آمن
+                ->orderBy('id')
+            : Customer::query()
+                // تم التعديل: قصر التصدير على المعرّفات المحددة فقط
+                ->whereKey($this->selectedIds($request))
+                // تم التعديل: تحديد الأعمدة المطلوبة فقط للتصدير
+                ->select(['id', 'name', 'phone', 'animal_type'])
+                // تم التعديل: استخدام ترتيب ثابت بـ id لضمان chunking آمن
+                ->orderBy('id');
+
+        // تم التعديل: إنشاء Export قائم على Query لتفادي استهلاك الذاكرة في الملفات الكبيرة
+        return Excel::download(
+            new class($exportQuery, $this->visitService) implements FromQuery, WithHeadings, WithMapping, WithCustomChunkSize {
+                public function __construct(
+                    private readonly \Illuminate\Database\Eloquent\Builder $query,
+                    private readonly CustomerVisitService $visitService,
+                ) {
+                }
+
+                // تم التعديل: إعادة الـ query مباشرة إلى Laravel Excel ليعالجها على دفعات
+                public function query(): \Illuminate\Database\Eloquent\Builder
+                {
+                    return $this->query;
+                }
+
+                // تم التعديل: تجهيز صف التصدير أثناء القراءة دون تجميع كل النتائج مسبقًا
+                public function map($customer): array
+                {
+                    return [
+                        $customer->name,
+                        $this->visitService->normalizePhone((string) $customer->phone),
+                        $customer->animal_type,
+                    ];
+                }
+
+                // تم التعديل: الإبقاء على نفس عناوين ملف Excel
+                public function headings(): array
+                {
+                    return ['الاسم', 'رقم الهاتف', 'نوع الحيوان'];
+                }
+
+                // تم التعديل: تحديد حجم الـ chunk لتقليل استهلاك الذاكرة أثناء التصدير
+                public function chunkSize(): int
+                {
+                    return 1000;
+                }
+            },
+            'customers-export-'.now()->format('Y-m-d_H-i-s').'.xlsx'
+        );
+    }
+
+    /**
+     * تم الإضافة: جلب أرقام العملاء المحددين أو كل نتائج البحث الحالية للنسخ إلى الحافظة.
+     */
+    public function getPhones(Request $request): JsonResponse
+    {
+        // تم الإضافة: إزالة التكرار من الأرقام قبل إرسالها للواجهة
+        $phones = ($request->boolean('select_all_ids')
+            ? $this->customersIndexQuery($request)->pluck('phone')
+            : Customer::query()->whereKey($this->selectedIds($request))->pluck('phone'))
+            ->filter()
+            ->map(fn ($phone) => $this->visitService->normalizePhone((string) $phone))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'phones' => $phones,
+        ]);
+    }
+
+    /**
+     * تم الإضافة: توحيد منطق البحث لاستخدامه في الفهرس والتصدير وجلب الأرقام.
+     */
+    private function customersIndexQuery(Request $request)
+    {
+        $q = trim((string) $request->input('q', ''));
+
+        return Customer::query()
+            ->when($q, function ($query) use ($q) {
+                $query->where(function ($innerQuery) use ($q) {
+                    $innerQuery->where('name', 'like', "%{$q}%")
+                        ->orWhere('phone', 'like', "%{$q}%");
+                });
+            });
+    }
+
+    /**
+     * تم الإضافة: قراءة المعرّفات المحددة من الطلب بصيغة آمنة وموحدة.
+     */
+    private function selectedIds(Request $request): array
+    {
+        return collect($request->input('ids', []))
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

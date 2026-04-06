@@ -7,6 +7,8 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Vaccination;
+// تم الإضافة: استخدام الكاش لمسح مؤشرات لوحة التحكم بعد حفظ الزيارة
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -158,6 +160,11 @@ class CustomerVisitService
 
             // 7. Update invoice total
             $invoice->update(['total' => round($lineTotal, 2)]);
+
+            // تم الإضافة: تحديث كاش إجمالي التطعيمات بعد إنشاء زيارة قد تحتوي على تطعيمات جديدة
+            Cache::forget('dashboard.total_vaccinations');
+            // تم الإضافة: تحديث كاش التطعيمات القادمة بعد إنشاء سجل تطعيم جديد أو تعديل مواعيده
+            Cache::forget(dashboardKey('upcoming_vaccinations'));
 
             return $invoice;
         });

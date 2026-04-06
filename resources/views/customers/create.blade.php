@@ -68,7 +68,7 @@
                 </div>
             </div>
 
-            {{-- === Visit Info === --}}
+            {{-- === Visit Info  تفاصيل الزيارة=== --}}
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header">
@@ -77,7 +77,7 @@
                     </div>
                     <div class="card-body row g-3">
 
-                        {{-- Consultation --}}
+                        {{-- Consultation  سعر الكشف--}}
                         <div class="col-12">
                             <label class="form-label">{{ __('customers.visit.consultation_price') }} <span
                                     class="text-danger">*</span></label>
@@ -85,7 +85,7 @@
                                 <input type="number" name="consultation_price" id="consultation_price"
                                     class="form-control @error('consultation_price') is-invalid @enderror"
                                     value="{{ old('consultation_price', $consultationProduct?->price ?? 0) }}"
-                                    step="0.01" min="0" required>
+                                    step="1" min="0" required>
                                 <span class="input-group-text">{{ __('messages.currency') }}</span>
                             </div>
                             @error('consultation_price')
@@ -125,11 +125,11 @@
                             <thead>
                                 <tr>
                                     <th style="width:30%">{{ __('customers.visit.vaccine_product') }}</th>
-                                    <th style="width:10%">{{ __('customers.visit.vaccine_quantity') }}</th>
+                                    <th style="width:13%">{{ __('customers.visit.vaccine_quantity') }}</th>
                                     <th style="width:15%">{{ __('customers.visit.unit_price') }}</th>
-                                    <th style="width:15%">{{ __('customers.visit.vaccination_date') }}</th>
-                                    <th style="width:15%">{{ __('customers.visit.next_dose_date') }}</th>
-                                    <th style="width:10%">{{ __('customers.visit.line_total') }}</th>
+                                    <th style="width:13%">{{ __('customers.visit.vaccination_date') }}</th>
+                                    <th style="width:13%">{{ __('customers.visit.next_dose_date') }}</th>
+                                    <th style="width:25%">{{ __('customers.visit.line_total') }}</th>
                                     <th style="width:5%" class="text-center">حذف</th>
                                 </tr>
                             </thead>
@@ -178,7 +178,7 @@
                             <tfoot>
                                 <tr class="table-light fw-bold">
                                     <td colspan="3" class="text-start">{{ __('customers.visit.grand_total') }}</td>
-                                    <td id="grand-total-cell" class="text-primary fw-bold">0.00
+                                    <td id="grand-total-cell" class="text-primary fw-bold">0
                                         {{ __('messages.currency') }}</td>
                                     <td></td>
                                 </tr>
@@ -264,16 +264,18 @@
                             </select>
                         </td>
                         <td>
+                            <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
                             <input type="number" name="vaccinations[${idx}][vaccine_quantity]"
                                    class="form-control form-control-sm vacc-qty-input"
-                                   data-idx="${idx}" value="1" min="0.01" step="0.01"
+                                   data-idx="${idx}" value="1" min="0" step="1"
                                    oninput="recalcVaccRow(${idx})" required>
                         </td>
                         <td>
                             <div class="input-group input-group-sm">
+                                <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
                                 <input type="number" name="vaccinations[${idx}][vaccine_unit_price]"
                                        class="form-control form-control-sm vacc-price-input"
-                                       data-idx="${idx}" value="0.00" min="0" step="0.01"
+                                       data-idx="${idx}" placeholder="0" min="0" step="0.01"
                                        oninput="recalcVaccRow(${idx})" required>
                                 <span class="input-group-text">ج.م</span>
                             </div>
@@ -288,8 +290,9 @@
                                    class="form-control form-control-sm" required>
                         </td>
                         <td>
+                            <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
                             <input type="text" class="form-control form-control-sm bg-light vacc-line-total"
-                                   id="vacc-line-total-${idx}" value="0.00" readonly>
+                                   id="vacc-line-total-${idx}" placeholder="0" readonly>
                         </td>
                         <td class="text-center">
                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeVaccination(${idx})">
@@ -440,23 +443,26 @@
                 </select>
             </td>
             <td>
+                <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
                 <input type="number" name="additional_items[${idx}][quantity]"
                        class="form-control form-control-sm qty-input"
-                       data-idx="${idx}" value="1" min="0.01" step="0.01"
+                       data-idx="${idx}" value="1" min="0" step="1"
                        oninput="recalcRow(${idx})" required>
             </td>
             <td>
                 <div class="input-group input-group-sm">
+                    <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
                     <input type="number" name="additional_items[${idx}][unit_price]"
                            class="form-control form-control-sm price-input"
-                           data-idx="${idx}" value="0.00" min="0" step="0.01"
+                           data-idx="${idx}" placeholder="0" min="0" step="0.01"
                            oninput="recalcRow(${idx})" required>
                     <span class="input-group-text">ج.م</span>
                 </div>
             </td>
             <td>
+                <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
                 <input type="text" class="form-control form-control-sm bg-light line-total"
-                       id="line-total-${idx}" value="0.00" readonly>
+                       id="line-total-${idx}" placeholder="0" readonly>
             </td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})">

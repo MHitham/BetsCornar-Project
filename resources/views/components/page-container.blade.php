@@ -1,2 +1,3 @@
-{{-- Simple passthrough wrapper - no more Tailwind classes --}}
-{{ $slot }}
+<div class="page-container-shell">
+    {{ $slot }}
+</div>

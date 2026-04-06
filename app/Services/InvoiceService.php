@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Product;
+// تم الإضافة: استخدام الكاش لمسح مؤشرات لوحة التحكم بعد إلغاء الفاتورة
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -150,6 +152,13 @@ class InvoiceService
                 'cancellation_reason' => $reason,
                 'cancelled_at'        => now(),
             ]);
+
+            // تم الإضافة: تحديث كاش إجمالي التطعيمات لأن إلغاء الفاتورة قد يعيد عناصر تطعيم للمخزون
+            Cache::forget('dashboard.total_vaccinations');
+            // تم الإضافة: تحديث كاش التطعيمات القادمة بعد أي إلغاء قد يؤثر على مؤشرات اللوحة
+            Cache::forget(dashboardKey('upcoming_vaccinations'));
+            // تم الإضافة: تحديث كاش صلاحية التشغيلات لأن الإلغاء قد يعيد كميات إلى التشغيلات
+            Cache::forget(dashboardKey('batch_expiry'));
 
             return $invoice->fresh();
         });

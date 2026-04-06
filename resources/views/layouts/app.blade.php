@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __('messages.app_name'))</title>
@@ -22,7 +22,13 @@
     @vite(['resources/css/layout.css'])
 </head>
 
-<body>
+<body class="app-shell">
+
+    <div class="app-backdrop" aria-hidden="true">
+        <span class="app-orb app-orb--one"></span>
+        <span class="app-orb app-orb--two"></span>
+        <span class="app-orb app-orb--three"></span>
+    </div>
 
     {{-- Sidebar --}}
     <x-sidebar />
@@ -34,9 +40,15 @@
 
         {{-- Page content --}}
         <main id="page-content">
-            <x-alerts />
+            <div class="page-inner">
+                <div class="alerts-stack">
+                    <x-alerts />
+                </div>
 
-            @yield('content')
+                <div class="page-stack">
+                    @yield('content')
+                </div>
+            </div>
         </main>
     </div>
 

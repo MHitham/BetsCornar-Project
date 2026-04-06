@@ -1,9 +1,12 @@
-<aside id="sidebar">
+﻿<aside id="sidebar">
     <div class="sidebar-brand d-flex align-items-center gap-3">
-        <div class="brand-icon">🐾</div>
+        <div class="brand-icon">
+            <i class="bi bi-heart-pulse-fill"></i>
+        </div>
         <div>
+            <div class="brand-eyebrow">BetsCornar</div>
             <div class="brand-text">{{ __('messages.app_name') }}</div>
-            <div class="brand-sub">نظام متكامل للعيادة</div>
+            <div class="brand-sub">لوحة تشغيل العيادة البيطرية</div>
         </div>
     </div>
 
@@ -37,6 +40,16 @@
                class="sidebar-link {{ request()->routeIs('vaccinations.*') ? 'active' : '' }}">
                 <i class="bi bi-shield-plus"></i> {{ __('messages.nav_vaccinations') }}
             </a>
+            {{-- تم الإضافة: رابط المصروفات في القائمة الجانبية --}}
+            <a href="{{ route('expenses.index') }}"
+               class="sidebar-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                <i class="bi bi-wallet2"></i> {{ __('expenses.title') }}
+            </a>
+            {{-- تم الإضافة: رابط التقارير في القائمة الجانبية --}}
+            <a href="{{ route('reports.index') }}"
+               class="sidebar-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                <i class="bi bi-bar-chart-line-fill"></i> {{ __('reports.title') }}
+            </a>
             {{-- تم الإضافة: رابط إدارة المستخدمين (يظهر للأدمن فقط) --}}
             <a href="{{ route('users.index') }}"
                class="sidebar-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
@@ -63,7 +76,8 @@
     </nav>
 
     <div class="sidebar-footer">
-        نظام العيادة البيطرية &copy; {{ date('Y') }}
+        <div class="sidebar-footer__title">نظام العيادة البيطرية</div>
+        <div class="sidebar-footer__meta">&copy; {{ date('Y') }}</div>
     </div>
 </aside>
 

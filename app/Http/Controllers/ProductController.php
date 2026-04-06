@@ -9,6 +9,8 @@ use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+// تم الإضافة: استخدام الكاش لمسح عداد المنتجات في لوحة التحكم بعد التعديلات
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class ProductController extends Controller
@@ -91,6 +93,9 @@ class ProductController extends Controller
             $this->stockService->recalculateVaccineStock($product);
         }
 
+        // تم الإضافة: تحديث كاش إجمالي المنتجات بعد إنشاء منتج جديد
+        Cache::forget('dashboard.total_products');
+
         return redirect()
             ->route('products.index')
             ->with('success', __('products.messages.created'));
@@ -110,6 +115,9 @@ class ProductController extends Controller
         if ($product->type === 'vaccination') {
             $this->stockService->recalculateVaccineStock($product->fresh());
         }
+
+        // تم الإضافة: تحديث كاش إجمالي المنتجات بعد تعديل بيانات منتج قائم
+        Cache::forget('dashboard.total_products');
 
         return redirect()
             ->route('products.index')
@@ -138,6 +146,9 @@ class ProductController extends Controller
         $product->update([
             'is_active' => ! $product->is_active,
         ]);
+
+        // تم الإضافة: تحديث كاش إجمالي المنتجات بعد تغيير حالة التفعيل
+        Cache::forget('dashboard.total_products');
 
         return redirect()
             ->route('products.index')

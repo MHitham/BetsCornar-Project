@@ -69,7 +69,7 @@
                 <div class="card mt-3 border-success">
                     <div class="card-body text-center">
                         <div class="text-muted small mb-1">{{ __('invoices.fields.grand_total') }}</div>
-                        <div class="display-6 fw-bold text-success" id="grand-total-display">0.00</div>
+                        <div class="display-6 fw-bold text-success" id="grand-total-display">0</div>
                         <div class="text-muted">{{ __('messages.currency') }}</div>
                     </div>
                 </div>
@@ -99,12 +99,13 @@
                         <div class="table-responsive">
                             <table class="table mb-0" id="items-table">
                                 <thead>
-                                    <tr>
-                                        <th style="min-width:200px">{{ __('invoices.fields.product') }}</th>
-                                        <th style="width:90px">{{ __('invoices.fields.quantity') }}</th>
-                                        <th style="width:110px">{{ __('invoices.fields.unit_price') }}</th>
-                                        <th style="width:100px">{{ __('invoices.fields.line_total') }}</th>
-                                        <th style="width:50px" class="text-center">حذف</th>
+                                    {{-- تم التعديل: تحسين مساحات وأعراض أعمدة الجدول لسهولة القراءة --}}
+                                    <tr class="align-middle">
+                                        <th style="min-width:250px" class="py-3 px-2">{{ __('invoices.fields.product') }}</th>
+                                        <th style="width:130px" class="py-3 px-2 text-center">{{ __('invoices.fields.quantity') }}</th>
+                                        <th style="width:140px" class="py-3 px-2 text-center">{{ __('invoices.fields.unit_price') }}</th>
+                                        <th style="width:140px" class="py-3 px-2 text-center">{{ __('invoices.fields.line_total') }}</th>
+                                        <th style="width:70px" class="text-center py-3 px-2">حذف</th>
                                     </tr>
                                 </thead>
                                 <tbody id="items-body"></tbody>
@@ -186,22 +187,24 @@
 
         function addRow() {
             var idx = rowIdx++;
-            var row = '<tr id="row-' + idx + '">' +
-                '<td>' +
+            // تم التعديل: تكبير الحقول النصية وهوامش وعرض الخلايا
+            var row = '<tr id="row-' + idx + '" class="align-middle">' +
+                '<td class="p-2">' +
                 '<select name="items[' + idx + '][product_id]" ' +
-                'id="product-select-' + idx + '" class="form-select form-select-sm product-choices-select" ' +
+                'id="product-select-' + idx + '" class="form-select product-choices-select" ' +
                 'data-idx="' + idx + '" required>' +
                 '<option value=""></option></select>' +
                 '</td>' +
-                '<td><input type="number" name="items[' + idx +
-                '][quantity]" class="form-control form-control-sm" value="1" min="0.01" step="0.01" oninput="recalcRow(' +
+                // تم التعديل: تحديث القيم الافتراضية للحقل الرقمي
+                '<td class="p-2"><input type="number" name="items[' + idx +
+                '][quantity]" class="form-control text-center" value="1" min="0" step="1" oninput="recalcRow(' +
                 idx + ')" required></td>' +
-                '<td><input type="number" name="items[' + idx +
-                '][unit_price]" class="form-control form-control-sm" id="price-' + idx +
-                '" value="0.00" min="0" step="0.01" oninput="recalcRow(' + idx + ')" required></td>' +
-                '<td><input type="text" class="form-control form-control-sm bg-light" id="total-' + idx +
-                '" value="0.00" readonly></td>' +
-                '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(' +
+                '<td class="p-2"><input type="number" name="items[' + idx +
+                '][unit_price]" class="form-control text-center" id="price-' + idx +
+                '" placeholder="0" min="0" step="1" oninput="recalcRow(' + idx + ')" required></td>' +
+                '<td class="p-2"><input type="text" class="form-control text-center bg-light text-primary fw-bold" id="total-' + idx +
+                '" placeholder="0" readonly></td>' +
+                '<td class="text-center p-2"><button type="button" class="btn btn-outline-danger" onclick="removeRow(' +
                 idx + ')"><i class="bi bi-trash"></i></button></td>' +
                 '</tr>';
 

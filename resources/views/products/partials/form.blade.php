@@ -42,9 +42,10 @@
                 <label class="form-label" for="price">{{ __('products.fields.price') }} <span
                         class="text-danger">*</span></label>
                 <div class="input-group">
+                    {{-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي --}}
                     <input type="number" step="0.01" min="0" id="price" name="price"
                         class="form-control @error('price') is-invalid @enderror"
-                        value="{{ old('price', $product->price) }}" placeholder="0.00" required>
+                        value="{{ old('price', $product->price) }}" placeholder="0" required>
                     <span class="input-group-text">{{ __('messages.currency') }}</span>
                 </div>
                 @error('price')

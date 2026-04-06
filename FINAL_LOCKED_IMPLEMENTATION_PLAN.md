@@ -677,6 +677,12 @@ This section records **additive behavior and schema** that were implemented afte
 - **Vaccinations index:** **`$customerVaccinationsMap`**, customer **modal**, **status** color semantics (**late / soon / ok / done**), **3-day upcoming** modal, **batch WhatsApp** message for all upcoming doses per customer; extended filters/sort and completion/reschedule flows.
 - **Arabic localization:** strings under project **`lang/ar/invoices.php`**, **`lang/ar/customers.php`** (paths may appear as `resources/lang/...` in some Laravel layouts) extended for cancellation, vaccinations, and UI labels.
 - **Seeders:** **`DatabaseSeeder`** rewritten as comprehensive transactional demo including **`vaccinations[]`** scenarios and a **cancelled invoice**; **`TestDataSeeder`** documents multi-vaccination-per-visit generation and random cancelled invoices.
+- **Authentication & Roles:** Added `LoginController` for guest/auth flow, a User management module for admins, and `role` middleware (`admin`, `employee`).
+- **Employee Workflow:** Employees are seamlessly redirected to `invoices.index` where they view only their own invoices (`created_by`) for the current business day, skipping the analytics dashboard.
+- **AJAX Live Search:** Implemented `/products/search` and `/customers/search` endpoints for dynamic frontend dropdowns (Choices.js / vanilla JS) in creation forms to improve performance.
+- **Invoice PDF Export:** Integrated native `mPDF` to generate Arabic-supported PDF invoices via `invoices/{invoice}/pdf`.
+- **Advanced Filters:** Added a specific `date` filter to the admin's invoice list.
+- **Railway Deployment Config:** Added `nixpacks.toml` and enforced HTTPS in production environments via `AppServiceProvider`.
 
 ---
 

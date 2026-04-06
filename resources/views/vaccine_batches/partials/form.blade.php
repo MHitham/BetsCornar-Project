@@ -56,20 +56,22 @@
             {{-- Quantity Received --}}
             <div class="col-md-6">
                 <label class="form-label" for="quantity_received">{{ __('vaccine_batches.fields.quantity_received') }} <span class="text-danger">*</span></label>
-                <input type="number" step="0.01" min="0.01" id="quantity_received" name="quantity_received"
+                {{-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي --}}
+                <input type="number" step="1" min="0" id="quantity_received" name="quantity_received"
                        class="form-control @error('quantity_received') is-invalid @enderror"
                        value="{{ old('quantity_received', $batch->quantity_received) }}"
-                       placeholder="0.00" required>
+                       placeholder="0" required>
                 @error('quantity_received')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
             {{-- Quantity Remaining --}}
             <div class="col-md-6">
                 <label class="form-label" for="quantity_remaining">{{ __('vaccine_batches.fields.quantity_remaining') }}</label>
-                <input type="number" step="0.01" min="0" id="quantity_remaining" name="quantity_remaining"
+                {{-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي --}}
+                <input type="number" step="1" min="0" id="quantity_remaining" name="quantity_remaining"
                        class="form-control @error('quantity_remaining') is-invalid @enderror"
                        value="{{ old('quantity_remaining', $batch->quantity_remaining) }}"
-                       placeholder="0.00" @required($method !== 'POST')>
+                       placeholder="0" @required($method !== 'POST')>
                 @if($showRemainingHint ?? false)
                     <div class="form-text text-primary">
                         <i class="bi bi-info-circle me-1"></i>{{ __('vaccine_batches.messages.remaining_hint') }}

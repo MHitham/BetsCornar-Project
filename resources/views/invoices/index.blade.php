@@ -4,56 +4,6 @@
 @section('page-title', __('invoices.title'))
 
 @section('content')
-
-    @php
-        $isEmployee = auth()->user()->hasRole('employee');
-        $hasFilters = false;
-
-        if (!$isEmployee) {
-            // Overriding the controller's query to apply the requested logic entirely within the view for admins
-            $q = request('q', '');
-            $source = request('source', '');
-            $period = request('period', 'today'); // Default period
-            $date = request('date');
-
-            // 1. Build Base Query for Counting without the period filter
-            $baseQuery = \App\Models\Invoice::query()
-                ->when($q, function ($query) use ($q) {
-                    $query->where(function ($subQuery) use ($q) {
-                        $subQuery->where('invoice_number', 'like', "%{$q}%")->orWhere('customer_name', 'like', "%{$q}%");
-                    });
-                })
-                ->when($source, function ($query) use ($source) {
-                    $query->where('source', $source);
-                });
-
-            // 2. Compute Tab Counts based on the current search text and source filters
-            $countToday = (clone $baseQuery)->whereDate('created_at', today())->count();
-            $countMonth = (clone $baseQuery)
-                ->whereMonth('created_at', today()->month)
-                ->whereYear('created_at', today()->year)
-                ->count();
-            $countAll = (clone $baseQuery)->count();
-
-            // 3. Apply the period filter for the actual list
-            $query = clone $baseQuery;
-            if ($date) {
-                // Ignore tab logic completely
-                $query->whereDate('created_at', $date);
-            } else {
-                if ($period === 'today') {
-                    $query->whereDate('created_at', today());
-                } elseif ($period === 'month') {
-                    $query->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year);
-                } // 'all' requires no extra filter
-            }
-
-            $invoices = $query->with('customer')->latest()->paginate(25)->withQueryString();
-
-            $hasFilters = request()->hasAny(['q', 'source', 'period', 'date', 'page']);
-        }
-    @endphp
-
     @role('admin')
         @if (!$hasFilters)
             <script>
