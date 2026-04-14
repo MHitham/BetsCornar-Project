@@ -106,7 +106,7 @@
                                 <td class="fw-semibold">{{ $customer->name }}</td>
                                 <td>
                                     <a href="https://wa.me/{{ $customer->phone }}" target="_blank"
-                                        class="text-success text-decoration-none" title="ÙˆØ§ØªØ³Ø§Ø¨">
+                                        class="text-success text-decoration-none" title="{{ __('customers.bulk.whatsapp') }}">
                                         <i class="bi bi-whatsapp me-1"></i>{{ $customer->phone }}
                                     </a>
                                 </td>
@@ -158,13 +158,10 @@
         {{ $customers->links() }}
     </div>
 
-    {{-- ØªÙ… Ø§Ù„Ø¥Ø¶Ø§ÙØ©: Ù†Ù…ÙˆØ°Ø¬ Ù…Ø®ÙÙŠ Ù„Ø¥Ø±Ø³Ø§Ù„ Ø¹Ù†Ø§ØµØ± Ø§Ù„ØªØµØ¯ÙŠØ± Ø¥Ù„Ù‰ Ù…Ø³Ø§Ø± Excel --}}
     <form method="POST" action="{{ route('customers.export-excel') }}" id="customers-export-form" class="d-none">
         @csrf
         <div id="customers-export-inputs"></div>
     </form>
-
-    {{-- ØªÙ… Ø§Ù„Ø¥Ø¶Ø§ÙØ©: Ù…Ù†Ø·Ù‚ Ø§Ù„ØªØ­Ø¯ÙŠØ¯ Ø§Ù„Ø¬Ù…Ø§Ø¹ÙŠ ÙˆÙ†Ø³Ø® Ø§Ù„Ø£Ø±Ù‚Ø§Ù… ÙˆØ§Ù„ØªØµØ¯ÙŠØ± Ø¨Ø§Ø³ØªØ®Ø¯Ø§Ù… JavaScript ÙÙ‚Ø· --}}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const selectPageCheckbox = document.getElementById('select-page-customers');

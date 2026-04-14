@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,24 +16,18 @@ class LoginController extends Controller
     }
 
     // تم الإضافة: تنفيذ تسجيل الدخول مع إعادة توجيه للوحة التحكم
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-            'remember' => ['nullable', 'boolean'],
-        ], [
-            'email.required' => 'البريد الإلكتروني مطلوب',
-            'email.email' => 'البريد الإلكتروني غير صحيح',
-            'password.required' => 'كلمة المرور مطلوبة',
-        ]);
-
+        $validated = $request->validated();
+        $credentials = $validated;
         $remember = (bool) ($credentials['remember'] ?? false);
         unset($credentials['remember']);
 
-        if (!Auth::attempt($credentials, $remember)) {
+        if (! Auth::attempt($credentials, $remember)) {
             return back()
-                ->withInput($request->only('email'))
+                ->withInput([
+                    'email' => $validated['email'] ?? null,
+                ])
                 ->withErrors([
                     'email' => 'بيانات الدخول غير صحيحة',
                 ]);
@@ -54,4 +49,3 @@ class LoginController extends Controller
         return redirect('/login');
     }
 }
-

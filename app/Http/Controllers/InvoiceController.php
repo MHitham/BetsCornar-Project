@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CancelInvoiceRequest;
 use App\Http\Requests\StoreQuickSaleRequest;
 use App\Models\Invoice;
 use App\Models\Product;
@@ -116,6 +117,7 @@ class InvoiceController extends Controller
             'isEmployee'
         ));
     }
+
     /**
      * Show the quick-sale form.
      */
@@ -161,13 +163,15 @@ class InvoiceController extends Controller
     /**
      * إلغاء فاتورة مع إرجاع الستوك - يستدعي InvoiceService::cancelInvoice()
      */
-    public function cancel(Request $request, Invoice $invoice)
+    public function cancel(CancelInvoiceRequest $request, Invoice $invoice)
     {
+        $validated = $request->validated();
+
         try {
             // تمرير سبب الإلغاء إن وُجد
             $this->invoiceService->cancelInvoice(
                 $invoice,
-                $request->input('cancellation_reason')
+                $validated['cancellation_reason'] ?? null
             );
 
             return redirect()

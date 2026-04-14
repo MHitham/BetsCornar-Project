@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -15,9 +16,11 @@ class UserController extends Controller
      */
     public function index()
     {
-        // تم الإضافة: جلب جميع المستخدمين مع أدوارهم
-        $users = User::with('roles')->latest()->paginate(15);
-        
+        // تخزين قائمة المستخدمين في الكاش لمدة ساعة لتخفيف الضغط على قاعدة البيانات
+        $users = Cache::remember('users_list', 3600, function () {
+            return User::with('roles')->latest()->paginate(15);
+        });
+
         return view('users.index', compact('users'));
     }
 
@@ -28,27 +31,16 @@ class UserController extends Controller
     {
         // تم الإضافة: جلب الأدوار المتاحة لعرضها في القائمة
         $roles = Role::pluck('name', 'name')->all();
-        
+
         return view('users.create', compact('roles'));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        // تم الإضافة: التحقق من البيانات المدخلة بتنسيق عربي
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'string', 'exists:roles,name'],
-        ], [], [
-            'name' => 'الاسم',
-            'email' => 'البريد الإلكتروني',
-            'password' => 'كلمة المرور',
-            'role' => 'الدور',
-        ]);
+        $validated = $request->validated();
 
         // تم الإضافة: إنشاء الموظف وتعيين دوره
         $user = User::create([
@@ -58,6 +50,9 @@ class UserController extends Controller
         ]);
 
         $user->assignRole($validated['role']);
+
+        // مسح كاش قائمة المستخدمين بعد الإضافة
+        Cache::forget('users_list');
 
         return redirect()->route('users.index')
             ->with('success', 'تم إضافة الموظف بنجاح.');
@@ -71,40 +66,33 @@ class UserController extends Controller
         // تم الإضافة: جلب الدور الحالي للمستخدم للتعديل
         $roles = Role::pluck('name', 'name')->all();
         $userRole = $user->roles->pluck('name')->first();
-        
+
         return view('users.edit', compact('user', 'roles', 'userRole'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user)
     {
-        // تم الإضافة: تحديث بيانات الموظف والصلاحية
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'password' => ['nullable', 'string', 'min:8'],
-            'role' => ['required', 'string', 'exists:roles,name'],
-        ], [], [
-            'name' => 'الاسم',
-            'email' => 'البريد الإلكتروني',
-            'password' => 'كلمة المرور',
-            'role' => 'الدور',
-        ]);
+        $validated = $request->validated();
 
+        // تم الإضافة: تحديث بيانات الموظف والصلاحية
         $data = [
             'name' => $validated['name'],
             'email' => $validated['email'],
         ];
 
         // تحديث كلمة المرور فقط إذا تم إدخالها
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $data['password'] = Hash::make($validated['password']);
         }
 
         $user->update($data);
         $user->syncRoles([$validated['role']]);
+
+        // مسح كاش قائمة المستخدمين بعد التعديل
+        Cache::forget('users_list');
 
         return redirect()->route('users.index')
             ->with('success', 'تم تحديث بيانات الموظف بنجاح.');
@@ -122,6 +110,9 @@ class UserController extends Controller
         }
 
         $user->delete();
+
+        // مسح كاش قائمة المستخدمين بعد الحذف
+        Cache::forget('users_list');
 
         return redirect()->route('users.index')
             ->with('success', 'تم حذف الموظف بنجاح.');

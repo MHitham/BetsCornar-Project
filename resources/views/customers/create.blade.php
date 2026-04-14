@@ -127,8 +127,8 @@
                                     <th style="width:30%">{{ __('customers.visit.vaccine_product') }}</th>
                                     <th style="width:13%">{{ __('customers.visit.vaccine_quantity') }}</th>
                                     <th style="width:15%">{{ __('customers.visit.unit_price') }}</th>
-                                    <th style="width:13%">{{ __('customers.visit.vaccination_date') }}</th>
-                                    <th style="width:13%">{{ __('customers.visit.next_dose_date') }}</th>
+                                    <th style="width:15%">{{ __('customers.visit.vaccination_date') }}</th>
+                                    <th style="width:15%">{{ __('customers.visit.next_dose_date') }}</th>
                                     <th style="width:25%">{{ __('customers.visit.line_total') }}</th>
                                     <th style="width:5%" class="text-center">حذف</th>
                                 </tr>
