@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-// طلب تعديل دفعة لقاح
+// طلب تعديل تطعيم
 class UpdateVaccineBatchRequest extends FormRequest
 {
     public function authorize(): bool
@@ -40,7 +40,7 @@ class UpdateVaccineBatchRequest extends FormRequest
     {
         return [
             'product_id' => 'المنتج',
-            'batch_code' => 'كود الدفعة',
+            'batch_code' => 'كود التطعيم',
             'received_date' => 'تاريخ الاستلام',
             'expiry_date' => 'تاريخ الانتهاء',
             'quantity_received' => 'الكمية المستلمة',

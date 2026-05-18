@@ -141,7 +141,7 @@ a:hover {
     display: flex;
     flex-direction: column;
     z-index: 1040;
-    transition: transform 0.3s ease;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     border-left: 1px solid var(--sidebar-border);
     box-shadow: var(--shadow-lg);
     backdrop-filter: blur(18px);
@@ -275,6 +275,7 @@ a:hover {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    transition: margin-right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #topbar {
@@ -325,7 +326,9 @@ a:hover {
 }
 
 #topbar .toggle-btn {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 44px;
     height: 44px;
     background: var(--surface-solid);
@@ -1228,6 +1231,16 @@ textarea:focus {
     background: rgba(8, 24, 36, 0.45);
     backdrop-filter: blur(4px);
     z-index: 1039;
+}
+
+@media (min-width: 992px) {
+    body.sidebar-collapsed #sidebar {
+        transform: translateX(100%);
+    }
+
+    body.sidebar-collapsed #main-wrapper {
+        margin-right: 0;
+    }
 }
 
 @media (max-width: 1199.98px) {

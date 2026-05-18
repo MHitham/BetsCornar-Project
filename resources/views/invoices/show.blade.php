@@ -7,9 +7,14 @@
 
     <style>
         @media print {
-            .sidebar, .navbar, .btn, .no-print {
+
+            .sidebar,
+            .navbar,
+            .btn,
+            .no-print {
                 display: none !important;
             }
+
             body {
                 background: white !important;
             }
@@ -52,15 +57,9 @@
                             <td class="fw-semibold">{{ $invoice->customer_name }}</td>
                         </tr>
                         <tr>
-                            <td class="text-muted">المصدر</td>
-                            <td>
-                                @if ($invoice->source === 'customer')
-                                    <span class="badge bg-primary text-white">زيارة عميل</span>
-                                @else
-                                    <span class="badge bg-success text-white">بيع سريع</span>
-                                @endif
-                            </td>
-                        </tr>
+    <td class="text-muted">تم الإنشاء بواسطة</td>
+    <td>{{ $invoice->creator->name ?? '—' }}</td>
+</tr>
                         {{-- حالة الفاتورة: مؤكدة أو ملغية --}}
                         <tr>
                             <td class="text-muted">الحالة</td>
@@ -74,20 +73,20 @@
                         </tr>
                         <tr>
                             <td class="text-muted">التاريخ</td>
-                            <td>{{ $invoice->created_at->format('Y-m-d H:i') }}</td>
+                            <td>{{ $invoice->created_at->format('(Y-m-d) - H:i') }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">الإجمالي</td>
                             {{-- الإجمالي يظهر مشطوباً إذا كانت الفاتورة ملغية --}}
                             <td
                                 class="fw-bold fs-5 {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-success' }}">
-                                {{ number_format($invoice->total, 2) }} {{ __('messages.currency') }}
+                                {{ number_format($invoice->total) }} {{ __('messages.currency') }}
                             </td>
                         </tr>
                     </table>
                 </div>
             </div>
-            <div class="mt-3 no-print">
+            <div class="mt-3 no-print d-flex gap-2 flex-wrap">
                 <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-right me-1"></i>{{ __('messages.back') }}
                 </a>
@@ -99,8 +98,7 @@
                 </a>
                 {{-- زرار الإلغاء يظهر فقط للفواتير المؤكدة --}}
                 @if ($invoice->isConfirmed())
-                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                        data-bs-target="#cancelModal">
+                    <button type="button" class="btn btn-outline-danger ms-2" data-bs-toggle="modal" data-bs-target="#cancelModal">
                         <i class="bi bi-x-circle me-1"></i>إلغاء الفاتورة
                     </button>
                 @endif
@@ -133,10 +131,10 @@
                                             {{ ['product' => 'منتج', 'service' => 'خدمة', 'vaccination' => 'تطعيم'][$item->product->type] ?? $item->product->type }}
                                         </div>
                                     </td>
-                                    <td class="text-center">{{ number_format($item->quantity, 2) }}</td>
-                                    <td class="text-center">{{ number_format($item->unit_price, 2) }}</td>
+                                    <td class="text-center">{{ number_format($item->quantity) }}</td>
+                                    <td class="text-center">{{ number_format($item->unit_price, 1) }}</td>
                                     <td class="text-center fw-bold text-success">
-                                        {{ number_format($item->line_total, 2) }} {{ __('messages.currency') }}
+                                        {{ number_format($item->line_total) }} {{ __('messages.currency') }}
                                     </td>
                                 </tr>
                             @endforeach
@@ -145,7 +143,7 @@
                             <tr class="table-light fw-bold">
                                 <td colspan="3" class="text-start">الإجمالي الكلي</td>
                                 <td class="text-center text-success fs-6">
-                                    {{ number_format($invoice->total, 2) }} {{ __('messages.currency') }}
+                                    {{ number_format($invoice->total) }} {{ __('messages.currency') }}
                                 </td>
                             </tr>
                         </tfoot>
@@ -173,8 +171,10 @@
                                 @foreach ($invoice->vaccinations as $vacc)
                                     <tr>
                                         <td>{{ $vacc->product->name ?? '—' }}</td>
-                                        <td>{{ $vacc->vaccination_date }}</td>
-                                        <td>{{ $vacc->next_dose_date ?? '—' }}</td>
+                                        <td>{{ $vacc->vaccination_date ? \Carbon\Carbon::parse($vacc->vaccination_date)->format('Y-m-d') : '—' }}
+                                        </td>
+                                        <td>{{ $vacc->next_dose_date ? \Carbon\Carbon::parse($vacc->next_dose_date)->format('Y-m-d') : '—' }}
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -214,8 +214,8 @@
                                 <label for="cancellation_reason" class="form-label">
                                     سبب الإلغاء <span class="text-muted">(اختياري)</span>
                                 </label>
-                                <input type="text" class="form-control" id="cancellation_reason"
-                                    name="cancellation_reason" placeholder="مثال: طلب العميل إرجاع المنتج">
+                                <input type="text" class="form-control" id="cancellation_reason" name="cancellation_reason"
+                                    placeholder="مثال: طلب العميل إرجاع المنتج">
                             </div>
                         </div>
                         <div class="modal-footer">

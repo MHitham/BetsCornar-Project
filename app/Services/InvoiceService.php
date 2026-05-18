@@ -9,6 +9,7 @@ use App\Models\Product;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use App\Helpers\PhoneHelper;
 
 class InvoiceService
 {
@@ -64,7 +65,8 @@ class InvoiceService
                 }
             } elseif (! empty($data['customer_phone'])) {
                 // fallback قديم: ربط عن طريق رقم الهاتف
-                $normalizedPhone = $this->normalizePhone($data['customer_phone']);
+                // استخدام PhoneHelper المركزي لتوحيد أرقام الهاتف
+                $normalizedPhone = PhoneHelper::normalize($data['customer_phone']);
                 $customer = Customer::where('phone', '=', $normalizedPhone)->first(['*']);
                 if ($customer) {
                     $customerId = $customer->id;
@@ -146,6 +148,9 @@ class InvoiceService
                 }
             }
 
+            // حذف سجلات التطعيمات المرتبطة بالفاتورة الملغية
+            $invoice->vaccinations()->delete();
+
             // تحديث حالة الفاتورة إلى ملغية مع تسجيل السبب والوقت
             $invoice->update([
                 'status'              => 'cancelled',
@@ -164,14 +169,5 @@ class InvoiceService
         });
     }
 
-    private function normalizePhone(string $phone): string
-    {
-        $digits = preg_replace('/\D/', '', $phone);
-        $digits = ltrim($digits, '0');
-        if (! str_starts_with($digits, '20')) {
-            $digits = '20'.$digits;
-        }
 
-        return $digits;
-    }
 }

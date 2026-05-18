@@ -43,7 +43,7 @@
             <div class="stat-card bg-white h-100 border">
                 <div class="stat-icon" style="background:#ede9fe; color:#6d28d9;">💉</div>
                 <div>
-                    <div class="stat-value" style="color:#6d28d9;">{{ $totalVaccinations }}</div>
+                    <div class="stat-value" style="color:#6d28d9;">{{ number_format($totalVaccinations, 0) }}</div>
                     <div class="stat-label text-secondary">{{ __('messages.total_vaccinations') }}</div>
                 </div>
             </div>
@@ -69,7 +69,7 @@
                         <i class="bi bi-box-seam me-1"></i> إضافة منتج
                     </a>
                     <a href="{{ route('vaccine-batches.create') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-capsule-pill me-1"></i> إضافة دُفعة لقاح
+                        <i class="bi bi-capsule-pill me-1"></i> إضافة دُفعة تطعيمات
                     </a>
                 </div>
             </div>
@@ -86,7 +86,7 @@
                             class="bi bi-exclamation-triangle-fill text-warning me-1"></i>{{ __('messages.low_stock_items') }}</span>
                     <span class="badge bg-warning text-dark">{{ $lowStockProducts->count() }}</span>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0" style="max-height:450px;overflow-y:auto;">
                     @if($lowStockProducts->isNotEmpty())
                         @foreach($lowStockProducts as $product)
                             <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
@@ -94,7 +94,7 @@
                                 <span
                                     class="badge {{ $product->stock_status === 'out_of_stock' ? 'bg-danger text-white' : 'bg-warning text-dark' }}">
                                     {{ $product->stock_status === 'out_of_stock' ? 'نفذ المخزون' : 'منخفض' }}
-                                    — {{ number_format($product->quantity, 1) }}
+                                    — {{ number_format($product->quantity) }}
                                 </span>
                             </div>
                         @endforeach
@@ -113,11 +113,11 @@
             <div class="card h-100">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <span class="fw-bold"><i class="bi bi-clock-history text-danger me-1"></i>تنبيهات انتهاء صلاحية
-                        اللقاحات</span>
+                       التطعيمات</span>
                     <span
                         class="badge bg-danger text-white">{{ $expiredBatches->count() + $expiringSoonBatches->count() }}</span>
                 </div>
-                <div class="card-body p-0" style="max-height:240px;overflow-y:auto;">
+                <div class="card-body p-0" style="max-height:450px;overflow-y:auto;">
                     @foreach ($expiredBatches as $batch)
                         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
                             <span class="fw-semibold">{{ $batch->product->name }}</span>

@@ -15,6 +15,7 @@ class Product extends Model
         'name',
         'type',
         'price',
+        'average_cost',
         'quantity',
         'track_stock',
         'stock_status',
@@ -42,6 +43,12 @@ class Product extends Model
     public function vaccineBatches(): HasMany
     {
         return $this->hasMany(VaccineBatch::class);
+    }
+
+    // علاقة: المنتج موجود في بنود فواتير الشراء
+    public function purchaseOrderItems(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
     }
 
     public function vaccinations(): HasMany

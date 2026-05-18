@@ -15,7 +15,7 @@ class UsersSeeder extends Seeder
         $employeeRole = Role::firstOrCreate(['name' => 'employee']);
 
         $admin = User::updateOrCreate(
-            ['email' => 'admin@betscornar.com'],
+            ['email' => 'admin@bets.com'],
             [
                 'name' => 'الدكتور',
                 'password' => Hash::make('admin123'),

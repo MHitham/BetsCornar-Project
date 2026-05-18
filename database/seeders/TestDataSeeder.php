@@ -2,264 +2,320 @@
 
 namespace Database\Seeders;
 
-use App\Models\Customer;
-use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use App\Models\Product;
-use App\Models\Vaccination;
-use App\Models\VaccineBatch;
+use App\Models\Invoice;
+use App\Models\Expense;
+use App\Services\CustomerVisitService;
+use App\Services\InvoiceService;
+use App\Services\StockService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Faker\Factory as FakerFactory;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 
 class TestDataSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
+    private int $uniqueNumber = 10000;
+
+    private function getWord(): string
+    {
+        $words = ['أساسي', 'متقدم', 'ممتاز', 'عادي', 'خاص', 'إضافي', 'مستورد', 'محلي', 'جديد', 'سريع', 'شامل', 'مؤقت', 'عالي الجودة', 'طبي', 'بيطري'];
+        return Arr::random($words);
+    }
+
+    private function getName(): string
+    {
+        $first = ['أحمد', 'محمد', 'محمود', 'علي', 'عمر', 'سارة', 'فاطمة', 'مريم', 'نورهان', 'حسين', 'حسن', 'عبدالله', 'يوسف', 'إسلام', 'ياسين', 'هبة', 'دينا', 'منى', 'خديجة', 'عائشة', 'يحيى', 'طارق', 'زياد', 'نادية', 'رانيا', 'سامي', 'كريم', 'مصطفى', 'أميرة', 'لمياء'];
+        $last  = ['السيد', 'إبراهيم', 'حسن', 'عبدالرحمن', 'فهمي', 'سالم', 'علي', 'سعد', 'توفيق', 'مصطفى', 'يونس', 'خالد', 'عادل', 'كمال', 'منصور', 'شوقي', 'رضا', 'جمال', 'نصر', 'زكي'];
+        return Arr::random($first) . ' ' . Arr::random($last);
+    }
+
+    private function getAddress(): string
+    {
+        $cities = ['القاهرة', 'الجيزة', 'الإسكندرية', 'المنصورة', 'طنطا', 'أسيوط', 'الزقازيق', 'الإسماعيلية', 'شرم الشيخ', 'الغردقة', 'بورسعيد'];
+        return Arr::random($cities) . '، شارع ' . rand(1, 100);
+    }
+
+    private function getAnimalType(): string
+    {
+        $animals = ['قط', 'كلب', 'طائر', 'سلحفاة', 'أرنب', 'هامستر'];
+        return Arr::random($animals);
+    }
+
+    private function getDiagnosis(): string
+    {
+        $diagnoses = [
+            'الحيوان بصحة جيدة وتم إجراء الفحص الدوري بنجاح.',
+            'يعاني من ارتفاع في درجة الحرارة (39.5) وفقدان للشهية. تم إعطاء مضاد حيوي وخافض حرارة.',
+            'وجود التهاب في الأذن الوسطى مع إفرازات. تم تنظيف الأذن وصرف قطرة مضادة للالتهاب.',
+            'اشتباه في حساسية طعام تسبب حكة شديدة وتساقط للشعر. تم تغيير النظام الغذائي.',
+            'إصابة بجرح سطحي في القدم الأمامية. تم تعقيم الجرح ووضع ضمادة طبية.',
+            'يعاني من ضعف عام ونقص في الفيتامينات. تم حقن فيتامينات متعددة.',
+            'التهاب في الجهاز التنفسي العلوي، سعال وعطس متكرر. تم وصف كورس علاج.',
+            'مشاكل في الهضم وإسهال خفيف. تم إعطاء أدوية مهضمة ومضاد للتشنجات.',
+            'تم إزالة جير الأسنان وتلميعها. اللثة بها التهاب طفيف.',
+            'حالة متابعة روتينية بعد العملية السابقة. الحيوان يتعافى بشكل طبيعي.',
+        ];
+        return Arr::random($diagnoses);
+    }
+
+    // توليد تاريخ عشوائي في آخر 3 شهور بس
+    private function randomDateInLast3Months(): Carbon
+    {
+        return Carbon::now()->subDays(rand(0, 90));
+    }
+
     public function run(): void
     {
-        $faker = FakerFactory::create('ar_SA'); // Use Arabic Faker
+        $visitService   = app(CustomerVisitService::class);
+        $stockService   = app(StockService::class);
+        $invoiceService = app(InvoiceService::class);
 
-        DB::transaction(function () use ($faker) {
-            $this->command->info('Creating Products, Services, and Vaccines...');
+        DB::transaction(function () use ($visitService, $stockService, $invoiceService) {
 
+            // ==========================================
+            // 1. إنشاء 200 منتج وخدمة
+            // ==========================================
+            $this->command->info('Creating 200 Products & Services...');
             $products = [];
+
+            for ($i = 0; $i < 200; $i++) {
+                $type       = Arr::random(['product', 'service']);
+                $trackStock = $type === 'product';
+                $name       = ($type === 'service' ? 'خدمة ' : 'منتج ') . $this->getWord() . ' ' . rand(1, 999999);
+                $isOutOfStock = $trackStock && rand(1, 100) <= 20;
+
+                $products[] = Product::updateOrCreate(
+                    ['name' => $name],
+                    [
+                        'type'               => $type,
+                        'price'              => rand(50, 800),
+                        'quantity'           => $trackStock ? ($isOutOfStock ? 0 : rand(100, 1000)) : 0,
+                        'track_stock'        => $trackStock,
+                        'stock_status'       => $trackStock ? ($isOutOfStock ? 'out_of_stock' : 'available') : 'available',
+                        'low_stock_threshold'=> $trackStock ? 10 : 0,
+                        'is_active'          => true,
+                    ]
+                );
+            }
+
+            // ==========================================
+            // 2. إنشاء 80 لقاح مع باتشات
+            // ==========================================
+            $this->command->info('Creating 80 Vaccines with Batches...');
             $vaccines = [];
 
-            // 1. Generate 1000 products (mix of types)
-            for ($i = 0; $i < 1000; $i++) {
-                $type = $faker->randomElement(['product', 'service', 'vaccination']);
-                $trackStock = $type !== 'service';
-                $name = $type === 'vaccination' ? 'تطعيم ' . $faker->word() : ($type === 'service' ? 'خدمة ' . $faker->word() : 'منتج ' . $faker->word());
-
-                $product = Product::updateOrCreate(
-                    ['name' => $name], // Avoid duplicates by name
+            for ($i = 0; $i < 80; $i++) {
+                $vaccine = Product::updateOrCreate(
+                    ['name' => 'تطعيم ' . $this->getWord() . ' ' . rand(1, 999999)],
                     [
-                        'type' => $type,
-                        'price' => $faker->randomFloat(2, 50, 2000),
-                        'quantity' => $trackStock ? $faker->randomFloat(2, 10, 500) : 0,
-                        'track_stock' => $trackStock,
-                        'stock_status' => $trackStock ? 'available' : 'available', // Assuming 'available' logic
-                        'low_stock_threshold' => $trackStock ? 10 : 0,
-                        'is_active' => true,
-                        'notes' => $faker->optional(0.3)->sentence(),
+                        'type'               => 'vaccination',
+                        'price'              => rand(150, 1000),
+                        'quantity'           => 0,
+                        'track_stock'        => true,
+                        'stock_status'       => 'available',
+                        'low_stock_threshold'=> 5,
+                        'is_active'          => true,
                     ]
                 );
+                $vaccines[] = $vaccine;
 
-                if ($type === 'vaccination') {
-                    $vaccines[] = $product;
-                } else {
-                    $products[] = $product;
+                $numBatches = rand(2, 5);
+                for ($b = 0; $b < $numBatches; $b++) {
+                    $this->uniqueNumber++;
+                    $isExpired     = rand(1, 100) <= 15;
+                    $qtyReceived   = rand(100, 500);
+                    $qtyRemaining  = rand(50, $qtyReceived);
+
+                    $expiryDate = $isExpired
+                        ? now()->subDays(rand(10, 60))->format('Y-m-d')
+                        : now()->addDays(rand(60, 365))->format('Y-m-d');
+
+                    $stockService->createVaccineBatch([
+                        'product_id'        => $vaccine->id,
+                        'batch_code'        => 'BAT-' . $this->uniqueNumber,
+                        'received_date'     => now()->subDays(rand(10, 90))->format('Y-m-d'),
+                        'expiry_date'       => $expiryDate,
+                        'quantity_received' => $qtyReceived,
+                        'quantity_remaining'=> $qtyRemaining,
+                    ]);
                 }
             }
 
-            $this->command->info('Products created: ' . count($products));
-            $this->command->info('Vaccines created: ' . count($vaccines));
+            // تحديث كميات اللقاحات بعد ما عملنا الباتشات
+            $vaccines = Product::where('name', 'LIKE', 'تطعيم %')->whereIn('id', collect($vaccines)->pluck('id'))->get()->all();
 
-            if (empty($vaccines)) {
-                $this->command->warn('No vaccines generated. Creating one manually to ensure batches can be made.');
-                $vaccines[] = Product::updateOrCreate(
-                    ['name' => 'تطعيم أساسي'],
-                    [
-                        'type' => 'vaccination',
-                        'price' => 150,
-                        'quantity' => 0,
-                        'track_stock' => true,
-                        'stock_status' => 'available',
-                        'low_stock_threshold' => 10,
-                        'is_active' => true,
-                    ]
-                );
+            // ==========================================
+            // 3. إنشاء 2000 عميل
+            // ==========================================
+            $this->command->info('Generating 2000 Customers...');
+            $customerPool = [];
+
+            for ($i = 0; $i < 2000; $i++) {
+                $prefixes  = ['010', '011', '012', '015'];
+                $rawPhone  = Arr::random($prefixes) . str_pad((string) rand(0, 99999999), 8, '0', STR_PAD_LEFT);
+                $formats   = [
+                    $rawPhone,
+                    '+20' . substr($rawPhone, 1),
+                    substr($rawPhone, 0, 3) . ' ' . substr($rawPhone, 3, 4) . ' ' . substr($rawPhone, 7),
+                ];
+                $animalType = $this->getAnimalType();
+
+                $customerPool[] = [
+                    'name'             => $this->getName(),
+                    'phone_variations' => $formats,
+                    'address'          => $this->getAddress(),
+                    'animal_type'      => $animalType,
+                    'new_animal'       => [
+                        'name'    => Arr::random(['بندق', 'سيمبا', 'بيلا', 'لوسي', 'ماكس', 'لونا', 'كوكي', 'مشمش', 'ليو', 'تومي', 'ميلو', 'روكي', 'زوي', 'كيتي']),
+                        'species' => $animalType,
+                        'breed'   => Arr::random(['شيرازي', 'بلدي', 'سيامي', 'جولدن', 'بيتبول', 'هاسكي', 'مختلط', 'فرعوني', 'روت وايلر']),
+                        'age'     => rand(1, 15) . ' أشهر',
+                        'gender'  => Arr::random(['ذكر', 'أنثى']),
+                        'weight'  => rand(1, 40) + (rand(0, 9) / 10),
+                        'color'   => Arr::random(['أبيض', 'أسود', 'بني', 'مشمشي', 'رمادي', 'أشقر', 'مختلط']),
+                    ],
+                    'real_animal_id'   => null,
+                ];
             }
 
-            // 2. 50 Vaccine batches
-            // ─── إنشاء وحدات التطعيم (Vaccine Batches) لدعم عمليات FEFO ────
-            // كل وحدة لقاح لها batch_code، تاريخ استقبال، صلاحية، وكمية متبقية
-            $this->command->info('Creating Vaccine Batches...');
-            for ($i = 0; $i < 50; $i++) {
-                $vaccine = $faker->randomElement($vaccines);
-                $qty = $faker->randomFloat(2, 10, 100);
-                
-                VaccineBatch::updateOrCreate(
-                    ['batch_code' => 'BAT-' . $faker->unique()->numerify('#####')],
-                    [
-                        'product_id' => $vaccine->id,
-                        'received_date' => Carbon::now()->subDays($faker->numberBetween(1, 60)),
-                        'expiry_date' => Carbon::now()->addDays($faker->numberBetween(30, 365)), // Realistic expiry dates
-                        'quantity_received' => $qty,
-                        'quantity_remaining' => $qty, // Simple assumption: none used yet directly from batches
-                    ]
-                );
-            }
+            // ==========================================
+            // 4. إنشاء 4000 زيارة موزعة على 3 شهور
+            // ==========================================
+            $this->command->info('Creating 4000 Visits spread over last 3 months...');
 
-            // ─── تحديث كميات التطعيمات بناءً على وحداتها ────────────────
-            // مجموع الكميات المتبقية في كل الوحدات = إجمالي مخزون اللقاح
-            foreach ($vaccines as $vaccine) {
-                $totalQty = VaccineBatch::where('product_id', $vaccine->id)->sum('quantity_remaining');
-                $vaccine->update(['quantity' => $totalQty]);
-            }
+            $availableProducts = array_filter($products, fn($p) => !$p->track_stock || $p->quantity > 0);
+            $availableVaccines = array_filter($vaccines, fn($v) => $v->quantity > 0);
 
-            // 3. 200 Customers with Egyptian numbers
-            $this->command->info('Creating Customers...');
-            $customers = [];
-            for ($i = 0; $i < 200; $i++) {
-                // Egyptian phone format 01[0,1,2,5] + 8 digits = 11 digits
-                $prefix = $faker->randomElement(['010', '011', '012', '015']);
-                $phone = $prefix . $faker->numerify('########');
-                
-                $customers[] = Customer::updateOrCreate(
-                    ['phone' => $phone],
-                    [
-                        'name' => $faker->name(),
-                        'address' => $faker->address(),
-                        'animal_type' => $faker->randomElement(['قط', 'كلب', 'طائر', 'سلحفاة', 'أرنب', 'هامستر']),
-                        'notes' => $faker->optional(0.2)->sentence(),
-                    ]
-                );
-            }
+            $newInvoices = [];
 
-            // ─── منتج الكشف (محنة استشارة) ─────────────────────────────
-            // منتج افتراضي لعمليات الكشف (الاستشارة)
-            $consultation = Product::updateOrCreate(
-                ['name' => 'كشف عيادة'],
-                [
-                    'type' => 'service',
-                    'price' => 100,
-                    'quantity' => 0,
-                    'track_stock' => false,
-                    'stock_status' => 'available',
-                    'is_active' => true,
-                ]
-            );
+            for ($i = 0; $i < 4000; $i++) {
+                $poolIndex    = array_rand($customerPool);
+                $customerData = &$customerPool[$poolIndex];
+                $phoneToUse   = Arr::random($customerData['phone_variations']);
 
+                // تاريخ عشوائي في آخر 3 شهور بس
+                $visitDate = $this->randomDateInLast3Months();
 
-            // 4. 500 Invoices (mix of customer / quick_sale)
-            // ─── إنشاء 500 فاتورة مع منتجاتها ───────────────────────────
-            // كل فاتورة قد تكون من نوع 'customer' (مرتبطة بعميل)
-            // أو 'quick_sale' (بيع سريع بدون عميل مسجل)
-            $this->command->info('Creating Invoices and Items...');
-            $invoices = [];
-            for ($i = 0; $i < 500; $i++) {
-                $source = $faker->randomElement(['customer', 'quick_sale']);
-                $customer = null;
-                $customerName = null;
+                $visitData = [
+                    'name'               => $customerData['name'],
+                    'phone'              => $phoneToUse,
+                    'animal_type'        => $customerData['animal_type'],
+                    'address'            => $customerData['address'],
+                    'diagnosis'          => rand(1, 100) <= 70 ? $this->getDiagnosis() : null,
+                    'consultation_price' => rand(1, 100) <= 80 ? rand(100, 300) : 0,
+                    'vaccinations'       => [],
+                    'additional_items'   => [],
+                ];
 
-                if ($source === 'customer') {
-                    $customer = $faker->randomElement($customers);
-                    $customerName = $customer->name;
+                if ($customerData['real_animal_id'] === null) {
+                    $visitData['animal_id'] = 'new_animal';
+                    $visitData['new_animal'] = $customerData['new_animal'];
                 } else {
-                    $customerName = $faker->name(); // Walk-in customer name
+                    $visitData['animal_id'] = $customerData['real_animal_id'];
                 }
 
-                $invoice = Invoice::updateOrCreate(
-                    ['invoice_number' => 'INV-' . $faker->unique()->numerify('######')],
-                    [
-                        'customer_id' => $customer ? $customer->id : null,
-                        'customer_name' => $customerName,
-                        'source' => $source,
-                        'total' => 0, // Will calculate below
-                        'status' => 'confirmed',
-                        'created_at' => Carbon::now()->subDays($faker->numberBetween(0, 180)),
-                    ]
-                );
-                
-                $invoices[] = $invoice;
+                // لقاحات (0 لـ 2)
+                $numVaccinations = rand(0, 2);
+                $usedVaccineIds  = [];
+                for ($v = 0; $v < $numVaccinations; $v++) {
+                    if (empty($availableVaccines)) break;
+                    $vaccine = Arr::random($availableVaccines);
+                    if (in_array($vaccine->id, $usedVaccineIds)) continue;
+                    $usedVaccineIds[] = $vaccine->id;
 
-                // ─── إنشاء بنود الفاتورة (منتجات/خدمات) ──────────────────
-                // كل فاتورة تحتوي على 1-5 بنود
-                $numItems = $faker->numberBetween(1, 5);
-                $invoiceTotal = 0;
+                    $dateType     = Arr::random(['past', 'near_future', 'far_future', 'none']);
+                    $nextDoseDate = match ($dateType) {
+                        'past'        => Carbon::now()->subDays(rand(1, 30))->format('Y-m-d'),
+                        'near_future' => Carbon::now()->addDays(rand(1, 5))->format('Y-m-d'),
+                        'far_future'  => Carbon::now()->addDays(rand(20, 180))->format('Y-m-d'),
+                        'none'        => null,
+                    };
 
+                    $visitData['vaccinations'][] = [
+                        'vaccine_product_id' => $vaccine->id,
+                        'vaccine_quantity'   => 1,
+                        'vaccine_unit_price' => $vaccine->price,
+                        'vaccination_date'   => $visitDate->format('Y-m-d'),
+                        'next_dose_date'     => $nextDoseDate,
+                    ];
+                }
+
+                // منتجات إضافية (0 لـ 3)
+                $numItems    = rand(0, 3);
+                $usedItemIds = [];
                 for ($j = 0; $j < $numItems; $j++) {
-                    $itemProduct = current($products) ? $faker->randomElement($products) : $consultation; // Fallback to service
-                    $qty = $faker->numberBetween(1, 3);
-                    $lineTotal = $qty * $itemProduct->price;
+                    if (empty($availableProducts)) break;
+                    $item = Arr::random($availableProducts);
+                    if (in_array($item->id, $usedItemIds)) continue;
+                    $usedItemIds[] = $item->id;
 
-                    InvoiceItem::create([
-                        'invoice_id' => $invoice->id,
-                        'product_id' => $itemProduct->id,
-                        'quantity' => $qty,
-                        'unit_price' => $itemProduct->price,
-                        'line_total' => $lineTotal,
-                    ]);
-
-                    $invoiceTotal += $lineTotal;
+                    $visitData['additional_items'][] = [
+                        'product_id' => $item->id,
+                        'quantity'   => rand(1, 2),
+                        'unit_price' => $item->price,
+                    ];
                 }
 
-                $invoice->update(['total' => $invoiceTotal]);
+                try {
+                    $invoice = $visitService->saveVisit($visitData);
 
-                // ─── 10% من الفواتير تكون ملغية (اختبار نظام الإلغاء) ─────
-                // فرصة 10% لإلغاء الفاتورة المُنشأة للتو
-                // عند الإلغاء: تحديث status إلى 'cancelled' + إضافة سبب + تاريخ إلغاء
-                if ($faker->boolean(10)) {
-                    $invoice->update([
-                        // ─── تعيين حالة الفاتورة إلى ملغاة ────────────
-                        'status' => 'cancelled',
-                        // ─── اختيار سبب عشوائي من الأسباب الشائعة ──
-                        'cancellation_reason' => $faker->randomElement([
-                            'طلب العميل إلغاء الطلب',
-                            'خطأ في البيانات',
-                            'تم الإرجاع',
-                        ]),
-                        // ─── تاريخ الإلغاء: في الماضي (1-30 يوم سابق) ─
-                        'cancelled_at' => Carbon::now()->subDays($faker->numberBetween(1, 30)),
-                    ]);
-                }
-            }
+                    // تعديل التاريخ بعد الحفظ عشان يبقى موزع على 3 شهور
+                    $invoice->created_at = $visitDate;
+                    $invoice->saveQuietly();
 
-            // 5. Vaccinations (Multiple per Invoice)
-            // ─── إنشاء سجلات التطعيمات (300 سجل تطعيم) ────────────────
-            // كل فاتورة عميل قد تحتوي على 1-3 تطعيمات
-            // يُختار عشوائياً: is_completed (completed/not yet/overdue)
-            $this->command->info('Creating Vaccinations...');
-            $customerInvoices = array_filter($invoices, fn($inv) => $inv->source === 'customer');
-            
-            if (empty($customerInvoices)) {
-                $this->command->warn('No customer invoices to attach vaccinations to. Skipping vaccinations.');
-            } else {
-                 for ($i = 0; $i < 300; $i++) {
-                    $invoice = $faker->randomElement($customerInvoices);
-                    
-                    // ─── عدد التطعيمات لكل فاتورة: 1-3 تطعيمات ──────────
-                    // هذا يدعم الميزة الجديدة: تطعيمات متعددة في نفس الزيارة
-                    $numVaccinations = $faker->numberBetween(1, 3);
-                    for ($k = 0; $k < $numVaccinations; $k++) {
-                        $vaccine = $faker->randomElement($vaccines);
-                        
-                        // ─── تاريخ التطعيم: تاريخ إنشاء الفاتورة ─────────
-                        $vaccinationDate = clone $invoice->created_at;
-                        
-                        // ─── تاريخ الجرعة القادمة: past/present/future ──
-                        // past: جرعة فائتة (1-60 يوم سابق) [متأخر]
-                        // present: جرعة قريبة (0-7 أيام قادمة) [مستحق قريباً]
-                        // future: جرعة بعيدة (8-365 يوم قادم) [قريب]
-                        $dateType = $faker->randomElement(['past', 'present', 'future']);
-                        $nextDoseDate = match($dateType) {
-                            'past' => Carbon::now()->subDays($faker->numberBetween(1, 60)),
-                            'present' => Carbon::now()->addDays($faker->numberBetween(0, 7)),
-                            'future' => Carbon::now()->addDays($faker->numberBetween(8, 365)),
-                        };
+                    \App\Models\Vaccination::where('invoice_id', $invoice->id)
+                        ->update(['created_at' => $visitDate]);
 
-                        // ─── إنشاء سجل التطعيم ────────────────────────
-                        // مع حقل is_completed: 20% احتمالية أن يكون التطعيم مكتمل
-                        Vaccination::create([
-                            'customer_id' => $invoice->customer_id,
-                            'product_id' => $vaccine->id,
-                            'invoice_id' => $invoice->id,
-                            'vaccination_date' => $vaccinationDate,
-                            // ─── 80% احتمالية وجود جرعة قادمة ──────────
-                            'next_dose_date' => $faker->boolean(80) ? $nextDoseDate : null,
-                            // ─── 20% احتمالية أن يكون التطعيم مكتمل ────
-                            'is_completed' => $faker->boolean(20),
-                        ]);
+                    $newInvoices[] = $invoice;
+
+                    if ($customerData['real_animal_id'] === null && $invoice->animal_id) {
+                        $customerData['real_animal_id'] = $invoice->animal_id;
                     }
+                } catch (\Exception $e) {
+                    continue;
                 }
             }
-            
-            $this->command->info('Test data generation completed successfully!');
+
+            // ==========================================
+            // 5. إلغاء 150 فاتورة عشوائية
+            // ==========================================
+            $this->command->info('Cancelling 150 random invoices...');
+            $reasons = ['طلب العميل الإلغاء', 'خطأ في إدخال البيانات', 'تم تسجيل الزيارة بالخطأ', 'إرجاع العلاج'];
+
+            collect($newInvoices)
+                ->filter(fn($inv) => $inv->status === 'confirmed')
+                ->random(min(150, count($newInvoices)))
+                ->each(function ($invoice) use ($invoiceService, $reasons) {
+                    try {
+                        $invoiceService->cancelInvoice($invoice, Arr::random($reasons));
+                    } catch (\Exception $e) {
+                        // تجاوز لو الفاتورة اتلغت قبل كده
+                    }
+                });
+
+            // ==========================================
+            // 6. إنشاء 600 مصروف موزعة على 3 شهور
+            // ==========================================
+            $this->command->info('Creating 600 Expenses over last 3 months...');
+            $expenseTitles = [
+                'إيجار العيادة', 'فاتورة كهرباء', 'فاتورة مياه', 'مستلزمات نظافة',
+                'صيانة أجهزة', 'رواتب عاملين', 'تسويق وإعلانات', 'أدوات مكتبية',
+                'ضيافة للعملاء', 'مستلزمات طبية', 'شراء قطن وشاش', 'صيانة تكييف',
+                'فاتورة إنترنت', 'بنزين سيارة العيادة', 'شراء أكل للحيوانات',
+            ];
+
+            for ($i = 0; $i < 600; $i++) {
+                Expense::create([
+                    'title'        => Arr::random($expenseTitles),
+                    'amount'       => rand(50, 5000),
+                    'expense_date' => $this->randomDateInLast3Months()->format('Y-m-d'),
+                    'notes'        => rand(1, 10) > 7 ? 'مصروف تم إضافته للفترة الحالية.' : null,
+                    'created_by'   => 1,
+                ]);
+            }
+
+            $this->command->info('✅ TestDataSeeder completed successfully!');
         });
     }
 }
-

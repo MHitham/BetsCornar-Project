@@ -24,7 +24,8 @@ class ProductController extends Controller
         $query = Product::query();
 
         if ($search = trim((string) $request->string('q'))) {
-            $query->where('name', '=', '%'.$search.'%');
+            // تصحيح عملية البحث — استخدام like بدلاً من = للبحث الجزئي
+            $query->where('name', 'like', '%'.$search.'%');
         }
 
         $type = $request->string('type')->toString();

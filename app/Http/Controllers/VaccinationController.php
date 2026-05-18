@@ -3,21 +3,22 @@
 namespace App\Http\Controllers;
 
 // تم التعديل: استخدام FromQuery وWithMapping لتقليل استهلاك الذاكرة أثناء تصدير التطعيمات
-use Maatwebsite\Excel\Concerns\FromQuery;
-// تم التعديل: تحديد حجم الـ chunk أثناء التصدير الكبير
-use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-// تم التعديل: تجهيز الصفوف أثناء القراءة دون تحميل النتيجة كاملة في الذاكرة
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Vaccination;
+// تم التعديل: تحديد حجم الـ chunk أثناء التصدير الكبير
 use App\Services\CustomerVisitService;
 use Illuminate\Http\JsonResponse;
+// تم التعديل: تجهيز الصفوف أثناء القراءة دون تحميل النتيجة كاملة في الذاكرة
 use Illuminate\Http\Request;
-// تم الإضافة: استخدام الكاش لمسح مؤشرات التطعيمات في لوحة التحكم بعد التحديث
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
+use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
+// تم الإضافة: استخدام الكاش لمسح مؤشرات التطعيمات في لوحة التحكم بعد التحديث
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VaccinationController extends Controller
@@ -45,8 +46,8 @@ class VaccinationController extends Controller
             'next_dose_date' => ['required', 'date', 'after:today'],
         ], [
             'next_dose_date.required' => 'تاريخ الموعد القادم مطلوب.',
-            'next_dose_date.date'     => 'تاريخ الموعد القادم غير صالح.',
-            'next_dose_date.after'    => 'يجب أن يكون تاريخ الموعد القادم بعد اليوم.',
+            'next_dose_date.date' => 'تاريخ الموعد القادم غير صالح.',
+            'next_dose_date.after' => 'يجب أن يكون تاريخ الموعد القادم بعد اليوم.',
         ]);
 
         if ($validator->fails()) {
@@ -63,12 +64,12 @@ class VaccinationController extends Controller
 
         // 2. Create a new pending vaccination record for the upcoming dose
         Vaccination::create([
-            'customer_id'      => $vaccination->customer_id,
-            'product_id'       => $vaccination->product_id,
-            'invoice_id'       => $vaccination->invoice_id,
+            'customer_id' => $vaccination->customer_id,
+            'product_id' => $vaccination->product_id,
+            'invoice_id' => $vaccination->invoice_id,
             'vaccination_date' => today(),
-            'next_dose_date'   => $validated['next_dose_date'],
-            'is_completed'     => false,
+            'next_dose_date' => $validated['next_dose_date'],
+            'is_completed' => false,
         ]);
 
         // تم الإضافة: تحديث كاش التطعيمات القادمة بعد إعادة الجدولة وإنشاء موعد جديد
@@ -191,14 +192,13 @@ class VaccinationController extends Controller
                 // تم التعديل: استخدام ترتيب ثابت بـ id لضمان chunking آمن
                 ->orderBy('id');
 
-        // تم التعديل: إنشاء Export قائم على Query لتفادي استهلاك الذاكرة في الملفات الكبيرة
         return Excel::download(
-            new class($exportQuery, $this->visitService) implements FromQuery, WithHeadings, WithMapping, WithCustomChunkSize {
+            new class($exportQuery, $this->visitService) implements FromQuery, WithCustomChunkSize, WithCustomCsvSettings, WithHeadings, WithMapping
+            {
                 public function __construct(
                     private readonly \Illuminate\Database\Eloquent\Builder $query,
                     private readonly CustomerVisitService $visitService,
-                ) {
-                }
+                ) {}
 
                 // تم التعديل: إعادة الـ query مباشرة إلى Laravel Excel ليعالجها على دفعات
                 public function query(): \Illuminate\Database\Eloquent\Builder
@@ -211,7 +211,7 @@ class VaccinationController extends Controller
                 {
                     return [
                         $vaccination->customer?->name ?? '',
-                        $this->visitService->normalizePhone((string) ($vaccination->customer?->phone ?? '')),
+                        '="'.$this->visitService->normalizePhone((string) ($vaccination->customer?->phone ?? '')).'"',
                         $vaccination->customer?->animal_type ?? '',
                         $vaccination->product?->name ?? '',
                         $vaccination->next_dose_date?->format('Y-m-d') ?? '',
@@ -229,8 +229,17 @@ class VaccinationController extends Controller
                 {
                     return 1000;
                 }
+
+                public function getCsvSettings(): array
+                {
+                    return [
+                        'use_bom' => true,
+                        'output_encoding' => 'UTF-8',
+                    ];
+                }
             },
-            'vaccinations-export-'.now()->format('Y-m-d_H-i-s').'.xlsx'
+            'vaccinations-export-'.now()->format('Y-m-d_H-i-s').'.csv',
+            \Maatwebsite\Excel\Excel::CSV
         );
     }
 

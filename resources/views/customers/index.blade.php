@@ -57,7 +57,7 @@
                     <i class="bi bi-clipboard me-1"></i>{{ __('customers.bulk.copy_phones') }}
                 </button>
                 <button type="button" class="btn btn-success" id="export-selected-excel">
-                    <i class="bi bi-file-earmark-excel me-1"></i>{{ __('customers.bulk.export_excel') }}
+                    <i class="bi bi-filetype-csv me-1"></i>{{ __('customers.bulk.export_excel') }}
                 </button>
                 <button type="button" class="btn btn-outline-secondary" id="clear-selection">
                     <i class="bi bi-x-circle me-1"></i>{{ __('customers.bulk.clear_selection') }}

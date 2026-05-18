@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 
 <head>
@@ -33,9 +33,11 @@
                                 <div>
                                     <span class="auth-brand-badge">
                                         <i class="bi bi-heart-pulse-fill"></i>
-                                        BetsCornar
+                                        {{-- اسم العيادة الديناميكي من الإعدادات --}}
+                                        {{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}
                                     </span>
-                                    <h1 class="auth-brand-title">عيادة بيتس كورنار البيطرية</h1>
+                                    <h1 class="auth-brand-title">{{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}
+                                    </h1>
                                     <p class="auth-brand-text">
                                         واجهة تشغيل واضحة وآمنة لإدارة الزيارات، التطعيمات، المخزون، والفواتير داخل العيادة اليومية.
                                     </p>

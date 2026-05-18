@@ -19,7 +19,7 @@ return [
     'nav_customers' => 'العملاء',
     'nav_invoices' => 'الفواتير',
     'nav_products' => 'المنتجات والخدمات',
-    'nav_vaccine_batches' => 'دُفعات اللقاحات',
+    'nav_vaccine_batches' => 'دُفعات التطعيمات',
     'nav_vaccinations' => 'سجل التطعيمات',
 
     // Common actions

@@ -29,6 +29,11 @@ class Customer extends Model
         return $this->hasMany(Vaccination::class);
     }
 
+    public function animals(): HasMany
+    {
+        return $this->hasMany(Animal::class)->latest('created_at');
+    }
+
     // تم الإضافة: جلب آخر تطعيم للعميل بشكل آمن دون limit داخل eager loading
     public function latestVaccination(): HasOne
     {

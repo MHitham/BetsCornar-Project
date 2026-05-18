@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Product;
+use App\Models\Setting;
 use App\Services\CustomerVisitService;
 use App\Services\InvoiceService;
 use App\Services\StockService;
@@ -13,11 +14,19 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // إعداد اسم العيادة الافتراضي
+        Setting::updateOrCreate(['key' => 'clinic_name'], ['value' => 'عيادة بيطرية']);
+
         // تم الإضافة: تهيئة أدوار النظام (admin/employee) والمستخدمين قبل باقي البيانات
         $this->call([
             RolesSeeder::class,
             UsersSeeder::class,
         ]);
+
+        // منع تكرار البيانات التجريبية عند إعادة تشغيل الـ Seeder
+        if (\App\Models\Invoice::count() > 0) {
+            return;
+        }
 
         DB::transaction(function () {
             // 1. Consultation Product (كشف)
@@ -262,7 +271,9 @@ class DatabaseSeeder extends Seeder
             // يتم إلغاء الفاتورة مما يؤدي إلى:
             //   1. تحديث status إلى 'cancelled'
             //   2. إرجاع الستوك (restore vaccine stock via FEFO)
-            $invoiceToCancel = \App\Models\Invoice::where('customer_name', 'أحمد محمد')->first();
+            $invoiceToCancel = \App\Models\Invoice::where('customer_name', 'أحمد محمد')
+            ->where('status', 'confirmed')
+            ->first();
             if ($invoiceToCancel) {
                 // ─── استخدام InvoiceService لإلغاء الفاتورة ────────────────
                 // المعاملات:

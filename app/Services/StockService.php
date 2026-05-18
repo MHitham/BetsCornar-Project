@@ -6,6 +6,7 @@ use App\Models\InvoiceItem;
 use App\Models\InvoiceItemVaccineBatch;
 use App\Models\Product;
 use App\Models\VaccineBatch;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -72,7 +73,7 @@ class StockService
         });
     }
 
-    public function decreaseStock(Product $product, float $quantity): void
+    public function decreaseStock(Product $product, float $quantity, ?InvoiceItem $invoiceItem = null): void
     {
         if ($quantity <= 0 || ! $product->track_stock) {
             return;
@@ -96,6 +97,13 @@ class StockService
             'quantity' => $newQuantity,
             'stock_status' => $this->resolveStockStatus($newQuantity, (float) $product->low_stock_threshold),
         ]);
+
+        // تسجيل تكلفة الوحدة وقت البيع للمنتجات العادية (من التكلفة المتوسطة المرجحة)
+        if ($invoiceItem && (float) $product->average_cost > 0) {
+            $invoiceItem->update([
+                'cost_price_at_sale' => (float) $product->average_cost,
+            ]);
+        }
     }
 
     public function createVaccineBatch(array $data): VaccineBatch
@@ -242,6 +250,25 @@ class StockService
                 $remainingToDeduct = $this->normalizeDecimal($remainingToDeduct - $usedQuantity);
             }
 
+            // تسجيل تكلفة الوحدة وقت البيع للقاحات (متوسط مرجح من الباتشات المستخدمة)
+            if ($invoiceItem && count($deductions) > 0) {
+                $totalQty  = array_sum(array_column($deductions, 'quantity'));
+                $totalCost = 0;
+
+                foreach ($deductions as $deduction) {
+                    $batchPrice = (float) VaccineBatch::find($deduction['vaccine_batch_id'])?->purchase_price ?? 0;
+                    $totalCost += $deduction['quantity'] * $batchPrice;
+                }
+
+                $weightedAvgCost = $totalQty > 0 ? round($totalCost / $totalQty, 2) : 0;
+
+                if ($weightedAvgCost > 0) {
+                    $invoiceItem->update([
+                        'cost_price_at_sale' => $weightedAvgCost,
+                    ]);
+                }
+            }
+
             $this->recalculateVaccineStock($vaccineProduct->fresh());
 
             return $deductions;
@@ -264,6 +291,10 @@ class StockService
             'quantity' => $usableQuantity,
             'stock_status' => $this->resolveStockStatus($usableQuantity, (float) $vaccineProduct->low_stock_threshold),
         ]);
+
+        // كسر الكاش المرتبط بلوحة التحكم عند تغيير ستوك التطعيم
+        Cache::forget(dashboardKey('batch_expiry'));
+        Cache::forget('dashboard.total_available_vaccinations_count');
     }
 
     private function resolveStockStatus(float $quantity, float $threshold): string

@@ -92,7 +92,7 @@
             <div class="col-12" id="service-note" style="display:none;">
                 <div class="alert alert-info py-2 mb-0">
                     <i class="bi bi-info-circle-fill me-1"></i>
-                    الخدمات لا تتتبع المخزون. كمية التطعيمات تُحسب تلقائيًا من الدفعات.
+                    الخدمات لا تتتبع المخزون. كمية التطعيمات تُحسب تلقائيًا.
                 </div>
             </div>
 

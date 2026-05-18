@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class VaccineBatch extends Model
 {
@@ -19,6 +20,8 @@ class VaccineBatch extends Model
         'expiry_date',
         'quantity_received',
         'quantity_remaining',
+        'purchase_price',
+        'selling_price',
     ];
 
     protected function casts(): array
@@ -28,6 +31,8 @@ class VaccineBatch extends Model
             'expiry_date' => 'date',
             'quantity_received' => 'decimal:2',
             'quantity_remaining' => 'decimal:2',
+            'purchase_price' => 'decimal:2',
+            'selling_price' => 'decimal:2',
         ];
     }
 
@@ -39,6 +44,12 @@ class VaccineBatch extends Model
     public function invoiceItemVaccineBatches(): HasMany
     {
         return $this->hasMany(InvoiceItemVaccineBatch::class);
+    }
+
+    // علاقة: الباتش ممكن يكون مرتبط ببند شراء
+    public function purchaseOrderItem(): HasOne
+    {
+        return $this->hasOne(PurchaseOrderItem::class, 'batch_id');
     }
 
     public function scopeUsable(Builder $query): Builder

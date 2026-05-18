@@ -95,9 +95,9 @@
                                 </span>
                             </td>
                             <td class="font-monospace fw-semibold">
-                                {{ number_format($product->price, 2) }} {{ __('messages.currency') }}
+                                {{ number_format($product->price) }} {{ __('messages.currency') }}
                             </td>
-                            <td class="font-monospace">{{ number_format($product->quantity, 2) }}</td>
+                            <td class="font-monospace">{{ number_format($product->quantity) }}</td>
                             <td>
                                 @if (!$product->track_stock)
                                     <span class="badge bg-secondary text-white border">—</span>

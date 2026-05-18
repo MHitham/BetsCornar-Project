@@ -1,4 +1,4 @@
-﻿<header id="topbar">
+<header id="topbar">
     <div class="topbar-leading">
         <button class="toggle-btn" onclick="toggleSidebar()">
             <i class="bi bi-list"></i>
@@ -7,9 +7,9 @@
         <div class="topbar-title-wrap">
             <span class="topbar-kicker">
                 <i class="bi bi-heart-pulse"></i>
-                {{ __('messages.app_name') }}
+                {{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}
             </span>
-            <h1 class="page-title">@yield('page-title', __('messages.app_name'))</h1>
+            <h1 class="page-title">@yield('page-title', \App\Models\Setting::get('clinic_name', 'عيادة بيطرية'))</h1>
         </div>
     </div>
 

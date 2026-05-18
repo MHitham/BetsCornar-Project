@@ -16,6 +16,7 @@ class InvoiceItem extends Model
         'product_id',
         'quantity',
         'unit_price',
+        'cost_price_at_sale',
         'line_total',
     ];
 
@@ -24,6 +25,7 @@ class InvoiceItem extends Model
         return [
             'quantity' => 'decimal:2',
             'unit_price' => 'decimal:2',
+            'cost_price_at_sale' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];
     }

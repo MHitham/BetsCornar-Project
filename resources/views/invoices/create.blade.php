@@ -105,7 +105,7 @@
                                         <th style="width:130px" class="py-3 px-2 text-center">{{ __('invoices.fields.quantity') }}</th>
                                         <th style="width:140px" class="py-3 px-2 text-center">{{ __('invoices.fields.unit_price') }}</th>
                                         <th style="width:140px" class="py-3 px-2 text-center">{{ __('invoices.fields.line_total') }}</th>
-                                        <th style="width:70px" class="text-center py-3 px-2">حذف</th>
+                                        <th class="text-center py-3 px-2 delete-col">حذف</th>
                                     </tr>
                                 </thead>
                                 <tbody id="items-body"></tbody>
@@ -119,10 +119,31 @@
     </form>
 
     <style>
-        #quickSaleForm .card-body.p-0,
-        #quickSaleForm .table-responsive { overflow: visible; }
-        #quickSaleForm #items-table { overflow: visible; }
-    </style>
+    #quickSaleForm .card-body.p-0,
+    #quickSaleForm .table-responsive { overflow: visible; }
+
+    #quickSaleForm #items-table { overflow: visible; }
+
+    #quickSaleForm .delete-col {
+        width: 72px;
+        min-width: 72px;
+    }
+
+    #quickSaleForm .delete-row-btn {
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+    }
+
+    #quickSaleForm .delete-row-btn i {
+        font-size: 1rem;
+        line-height: 1;
+    }
+</style>
 
 @endsection
 
@@ -179,7 +200,7 @@
 
                 const priceInput = document.querySelector('[name="items[' + idx + '][unit_price]"]');
                 if (priceInput) {
-                    priceInput.value = parseFloat(price || 0).toFixed(2);
+                    priceInput.value = parseFloat(price || 0);
                     recalcRow(idx);
                 }
             });
@@ -204,8 +225,8 @@
                 '" placeholder="0" min="0" step="1" oninput="recalcRow(' + idx + ')" required></td>' +
                 '<td class="p-2"><input type="text" class="form-control text-center bg-light text-primary fw-bold" id="total-' + idx +
                 '" placeholder="0" readonly></td>' +
-                '<td class="text-center p-2"><button type="button" class="btn btn-outline-danger" onclick="removeRow(' +
-                idx + ')"><i class="bi bi-trash"></i></button></td>' +
+                '<td class="text-center p-2 delete-col"><button type="button" class="btn btn-outline-danger btn-sm delete-row-btn" onclick="removeRow(' +
+idx + ')"><i class="bi bi-trash"></i></button></td>' +
                 '</tr>';
 
             document.getElementById('items-body').insertAdjacentHTML('beforeend', row);
@@ -216,7 +237,7 @@
         function recalcRow(idx) {
             var qty = parseFloat(document.querySelector('[name="items[' + idx + '][quantity]"]').value) || 0;
             var price = parseFloat(document.getElementById('price-' + idx).value) || 0;
-            document.getElementById('total-' + idx).value = (qty * price).toFixed(2);
+            document.getElementById('total-' + idx).value = (qty * price);
             recalcGrandTotal();
         }
 

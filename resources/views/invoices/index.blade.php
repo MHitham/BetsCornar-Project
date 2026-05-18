@@ -156,10 +156,8 @@
                                     @endif
                                 </td>
 
-                                {{-- الإجمالي — مشطوب ورمادي لو الفاتورة ملغية --}}
-                                <td
-                                    class="fw-bold {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-success' }}">
-                                    {{ number_format($invoice->total, 2) }} {{ __('messages.currency') }}
+                                <td class="fw-bold fs-6 font-monospace {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-success' }}">
+                                    {{ number_format($invoice->total) }} {{ __('messages.currency') }}
                                 </td>
 
                                 <td class="text-muted small">{{ $invoice->created_at->format('Y-m-d H:i') }}</td>

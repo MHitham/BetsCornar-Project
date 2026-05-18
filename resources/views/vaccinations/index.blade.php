@@ -74,7 +74,7 @@
                     <i class="bi bi-clipboard me-1"></i>{{ __('vaccinations.bulk.copy_phones') }}
                 </button>
                 <button type="button" class="btn btn-success" id="export-selected-excel">
-                    <i class="bi bi-file-earmark-excel me-1"></i>{{ __('vaccinations.bulk.export_excel') }}
+                    <i class="bi bi-filetype-csv me-1"></i>{{ __('vaccinations.bulk.export_excel') }}
                 </button>
                 <button type="button" class="btn btn-outline-secondary" id="clear-selection">
                     <i class="bi bi-x-circle me-1"></i>{{ __('vaccinations.bulk.clear_selection') }}
@@ -218,6 +218,11 @@
                         <button type="button" class="btn btn-sm btn-light text-success fw-semibold"
                             id="copy-upcoming-phones">
                             <i class="bi bi-clipboard me-1"></i>{{ __('vaccinations.bulk.copy_modal_phones') }}
+                        </button>
+                        {{-- زر إرسال واتساب لكل عملاء مواعيد الـ 3 أيام --}}
+                        <button type="button" class="btn btn-sm btn-success fw-semibold"
+                            id="send-all-whatsapp">
+                            <i class="bi bi-whatsapp me-1"></i> إرسال للكل
                         </button>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                             aria-label="Close"></button>
@@ -559,6 +564,30 @@
                     window.alert(@json(__('vaccinations.bulk.copy_failed')));
                 }
             });
+
+            // إرسال واتساب لكل عملاء مواعيد الـ 3 أيام واحد ورا التاني
+            const sendAllWhatsappBtn = document.getElementById('send-all-whatsapp');
+            if (sendAllWhatsappBtn) {
+                sendAllWhatsappBtn.addEventListener('click', () => {
+                    const waLinks = document.querySelectorAll('#upcomingModal tbody a[href*="wa.me"]');
+
+                    if (waLinks.length === 0) {
+                        alert('لا توجد أرقام لإرسال الرسائل');
+                        return;
+                    }
+
+                    if (!confirm(`سيتم فتح ${waLinks.length} محادثة واتساب. تأكد من السماح بالـ popups. متابعة؟`)) {
+                        return;
+                    }
+
+                    // فتح كل رابط بفارق 800ms عشان المتصفح ميبلوكهمش
+                    waLinks.forEach((link, index) => {
+                        setTimeout(() => {
+                            window.open(link.href, '_blank');
+                        }, index * 800);
+                    });
+                });
+            }
 
             if (copyUpcomingPhonesButton) {
                 copyUpcomingPhonesButton.addEventListener('click', async () => {

@@ -187,7 +187,7 @@ class InvoiceController extends Controller
      */
     public function pdf(Invoice $invoice)
     {
-        $invoice->load(['items.product', 'customer']);
+        $invoice->load(['items.product', 'customer', 'vaccinations.product']);
 
         // Render the view to HTML string
         $html = view('invoices.pdf', compact('invoice'))->render();

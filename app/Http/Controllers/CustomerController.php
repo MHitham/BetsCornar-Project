@@ -3,21 +3,23 @@
 namespace App\Http\Controllers;
 
 // تم التعديل: استخدام FromQuery وWithMapping لتقليل استهلاك الذاكرة أثناء التصدير
-use Maatwebsite\Excel\Concerns\FromQuery;
-// تم التعديل: تحديد حجم الـ chunk أثناء التصدير الكبير
-use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-// تم التعديل: تجهيز الصفوف أثناء القراءة دون تحميلها كلها في الذاكرة
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Requests\StoreCustomerVisitRequest;
+// تم التعديل: تحديد حجم الـ chunk أثناء التصدير الكبير
 use App\Models\Customer;
 use App\Models\Product;
+// تم التعديل: تجهيز الصفوف أثناء القراءة دون تحميلها كلها في الذاكرة
 use App\Models\VaccineBatch;
 use App\Services\CustomerVisitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
+use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Facades\Excel;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -79,9 +81,41 @@ class CustomerController extends Controller
             ->orWhere('phone', 'like', "%{$q}%")
             ->orderBy('name')
             ->limit(10)
-            ->get(['id', 'name', 'phone']);
+            ->get(['id', 'name', 'phone', 'address', 'animal_type']);
 
         return response()->json($results);
+    }
+
+    /**
+     * Dedicated lightweight AJAX lookup for visit form (exact match only).
+     */
+    public function lookupForVisit(Request $request): JsonResponse
+    {
+        $phone = trim($request->input('phone', ''));
+        if (empty($phone)) {
+            return response()->json(null);
+        }
+
+        $normalizedPhone = $this->visitService->normalizePhone($phone);
+        // Only get the exact matched customer
+        $customer = Customer::query()
+            ->where('phone', $normalizedPhone)
+            ->with(['animals' => function ($q) {
+                // Return id, customer_id, name, species to populate select options
+                $q->select('id', 'customer_id', 'name', 'species');
+            }])
+            ->first();
+
+        if (!$customer) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'id' => $customer->id,
+            'name' => $customer->name,
+            'phone' => $customer->phone,
+            'animals' => $customer->animals,
+        ]);
     }
 
     /**
@@ -163,12 +197,12 @@ class CustomerController extends Controller
 
         // تم التعديل: إنشاء Export قائم على Query لتفادي استهلاك الذاكرة في الملفات الكبيرة
         return Excel::download(
-            new class($exportQuery, $this->visitService) implements FromQuery, WithHeadings, WithMapping, WithCustomChunkSize {
+            new class($exportQuery, $this->visitService) implements FromQuery, WithCustomChunkSize, WithCustomCsvSettings, WithHeadings, WithMapping
+            {
                 public function __construct(
                     private readonly \Illuminate\Database\Eloquent\Builder $query,
                     private readonly CustomerVisitService $visitService,
-                ) {
-                }
+                ) {}
 
                 // تم التعديل: إعادة الـ query مباشرة إلى Laravel Excel ليعالجها على دفعات
                 public function query(): \Illuminate\Database\Eloquent\Builder
@@ -181,7 +215,7 @@ class CustomerController extends Controller
                 {
                     return [
                         $customer->name,
-                        $this->visitService->normalizePhone((string) $customer->phone),
+                        '="'.$this->visitService->normalizePhone((string) $customer->phone).'"',
                         $customer->animal_type,
                     ];
                 }
@@ -197,8 +231,17 @@ class CustomerController extends Controller
                 {
                     return 1000;
                 }
+
+                public function getCsvSettings(): array
+                {
+                    return [
+                        'use_bom' => true,
+                        'output_encoding' => 'UTF-8',
+                    ];
+                }
             },
-            'customers-export-'.now()->format('Y-m-d_H-i-s').'.xlsx'
+            'customers-export-'.now()->format('Y-m-d_H-i-s').'.csv',
+            \Maatwebsite\Excel\Excel::CSV
         );
     }
 

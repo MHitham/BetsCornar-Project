@@ -17,7 +17,7 @@
                 <div class="col-md-4">
                     <div class="border rounded-4 p-3 bg-light h-100 d-flex flex-column justify-content-center">
                         <span class="text-muted small mb-1">{{ __('expenses.filters.total_monthly') }}</span>
-                        <span class="fw-bold fs-5">{{ number_format($totalMonthly, 2) }} {{ __('messages.currency') }}</span>
+                        <span class="fw-bold fs-5">{{ number_format($totalMonthly) }} {{ __('messages.currency') }}</span>
                     </div>
                 </div>
                 <div class="col-md-4 d-flex gap-2 justify-content-md-end">
@@ -50,7 +50,7 @@
                     @forelse ($expenses as $expense)
                         <tr>
                             <td class="fw-semibold">{{ $expense->title }}</td>
-                            <td class="font-monospace fw-bold">{{ number_format($expense->amount, 2) }} {{ __('messages.currency') }}</td>
+                            <td class="font-monospace fw-bold">{{ number_format($expense->amount) }} {{ __('messages.currency') }}</td>
                             <td>{{ $expense->expense_date->format('Y-m-d') }}</td>
                             <td>{{ $expense->notes ?: '—' }}</td>
                             <td>{{ $expense->creator?->name ?? '—' }}</td>

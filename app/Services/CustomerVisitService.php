@@ -11,6 +11,7 @@ use App\Models\Vaccination;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use App\Helpers\PhoneHelper;
 
 class CustomerVisitService
 {
@@ -19,23 +20,7 @@ class CustomerVisitService
         private readonly InvoiceService $invoiceService,
     ) {}
 
-    /**
-     * Normalize a phone number: keep digits only, strip leading 0, prepend country code 20 if needed.
-     */
-    public function normalizePhone(string $phone): string
-    {
-        $digits = preg_replace('/\D/', '', $phone);
 
-        // Remove leading zeros
-        $digits = ltrim($digits, '0');
-
-        // Prepend Egyptian country code if not already present
-        if (!str_starts_with($digits, '20')) {
-            $digits = '20' . $digits;
-        }
-
-        return $digits;
-    }
 
     /**
      * Finds an existing customer by normalized phone or creates a new one.
@@ -61,7 +46,8 @@ class CustomerVisitService
     {
         return DB::transaction(function () use ($data) {
             // 1. Normalize phone and find/create customer
-            $normalizedPhone = $this->normalizePhone($data['phone'] ?? '');
+            // استخدام PhoneHelper المركزي لتوحيد أرقام الهاتف
+            $normalizedPhone = PhoneHelper::normalize($data['phone'] ?? '');
             $customer = $this->findOrCreateCustomer($normalizedPhone, [
                 'name'        => $data['name'],
                 'address'     => $data['address'] ?? null,
@@ -69,12 +55,31 @@ class CustomerVisitService
                 'notes'       => $data['notes'] ?? null,
             ]);
 
+            // Validate animal ownership or create a new animal inline
+            $animalId = null;
+            if (!empty($data['animal_id'])) {
+                if ($data['animal_id'] === 'new_animal' && !empty($data['new_animal'])) {
+                    $animal = $customer->animals()->create($data['new_animal']);
+                    $animalId = $animal->id;
+                } else {
+                    $animal = \App\Models\Animal::find($data['animal_id']);
+                    if (!$animal || $animal->customer_id !== $customer->id) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'animal_id' => ['الحيوان المحدد غير مسجل لهذا العميل.'],
+                        ]);
+                    }
+                    $animalId = $animal->id;
+                }
+            }
+
             // 2. Create invoice
             $invoice = Invoice::create([
                 'invoice_number' => $this->invoiceService->generateInvoiceNumber(),
                 'customer_id'    => $customer->id,
+                'animal_id'      => $animalId,
                 'customer_name'  => $customer->name,
                 'source'         => 'customer',
+                'diagnosis'      => $data['diagnosis'] ?? null,
                 'total'          => 0,
                 'status'         => 'confirmed',
                 // تم الإضافة: تتبع المستخدم الذي أنشأ الفاتورة
@@ -126,6 +131,7 @@ class CustomerVisitService
                 // إنشاء سجل التطعيم
                 Vaccination::create([
                     'customer_id'      => $customer->id,
+                    'animal_id'        => $animalId,
                     'product_id'       => $vaccineProduct->id,
                     'invoice_id'       => $invoice->id,
                     'vaccination_date' => $vaccinationData['vaccination_date'] ?? now()->toDateString(),

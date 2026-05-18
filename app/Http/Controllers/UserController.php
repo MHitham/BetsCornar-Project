@@ -16,10 +16,8 @@ class UserController extends Controller
      */
     public function index()
     {
-        // تخزين قائمة المستخدمين في الكاش لمدة ساعة لتخفيف الضغط على قاعدة البيانات
-        $users = Cache::remember('users_list', 3600, function () {
-            return User::with('roles')->latest()->paginate(15);
-        });
+        // إزالة الكاش من الاستعلامات المرقمة — الكاش يكسر ترقيم الصفحات
+        $users = User::with('roles')->latest()->paginate(15);
 
         return view('users.index', compact('users'));
     }

@@ -67,7 +67,7 @@ return [
     'bulk' => [
         'selected_count' => 'عنصر محدد',
         'copy_phones' => 'نسخ الأرقام',
-        'export_excel' => 'تصدير Excel',
+        'export_excel' => 'تصدير CSV',
         'clear_selection' => 'إلغاء التحديد',
         'select_page' => 'تحديد كل عناصر الصفحة',
         'select_all_results' => 'اختيار كل النتائج (:count عميل)',

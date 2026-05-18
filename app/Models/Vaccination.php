@@ -12,6 +12,7 @@ class Vaccination extends Model
 
     protected $fillable = [
         'customer_id',
+        'animal_id',
         'product_id',
         'invoice_id',
         'vaccination_date',
@@ -33,6 +34,11 @@ class Vaccination extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function animal(): BelongsTo
+    {
+        return $this->belongsTo(Animal::class);
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
@@ -43,4 +49,3 @@ class Vaccination extends Model
         return $this->belongsTo(Invoice::class);
     }
 }
-

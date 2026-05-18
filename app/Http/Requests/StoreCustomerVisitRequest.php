@@ -21,6 +21,24 @@ class StoreCustomerVisitRequest extends FormRequest
             'address'                           => ['nullable', 'string', 'max:500'],
             'animal_type'                       => ['required', 'string', 'max:100'],
             'notes'                             => ['nullable', 'string', 'max:1000'],
+            'animal_id'                         => [
+                'nullable',
+                function ($attribute, $value, $fail) {
+                    if ($value !== 'new_animal' && ! \App\Models\Animal::where('id', $value)->exists()) {
+                        $fail('The selected animal is invalid.');
+                    }
+                },
+            ],
+            'new_animal'                        => ['nullable', 'array'],
+            'new_animal.name'                   => ['required_if:animal_id,new_animal', 'string', 'max:255'],
+            'new_animal.species'                => ['required_if:animal_id,new_animal', 'string', 'max:255'],
+            'new_animal.breed'                  => ['nullable', 'string', 'max:255'],
+            'new_animal.age'                    => ['nullable', 'string', 'max:50'],
+            'new_animal.gender'                 => ['nullable', 'string', 'in:male,female'],
+            'new_animal.weight'                 => ['nullable', 'numeric', 'min:0'],
+            'new_animal.color'                  => ['nullable', 'string', 'max:255'],
+            'new_animal.notes'                  => ['nullable', 'string', 'max:1000'],
+            'diagnosis'                         => ['nullable', 'string'],
 
             // ─── سعر الكشف ──────────────────────────────────────────
             'consultation_price'                => ['required', 'numeric', 'min:0'],

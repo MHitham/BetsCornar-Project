@@ -82,8 +82,8 @@
                             <td class="font-monospace text-muted">{{ $batch->batch_code ?: '—' }}</td>
                             <td>{{ $batch->received_date->format('Y-m-d') }}</td>
                             <td class="font-monospace fw-semibold">{{ $batch->expiry_date->format('Y-m-d') }}</td>
-                            <td class="font-monospace">{{ number_format($batch->quantity_received, 2) }}</td>
-                            <td class="font-monospace fw-bold">{{ number_format($batch->quantity_remaining, 2) }}</td>
+                            <td class="font-monospace">{{ number_format($batch->quantity_received) }}</td>
+                            <td class="font-monospace fw-bold">{{ number_format($batch->quantity_remaining) }}</td>
                             <td>
                                 @if ($isExpired)
                                     <span class="badge bg-danger text-white">

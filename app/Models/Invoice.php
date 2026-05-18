@@ -15,6 +15,7 @@ class Invoice extends Model
     protected $fillable = [
         'invoice_number',
         'customer_id',
+        'animal_id',
         'customer_name',
         'source',
         'total',
@@ -23,6 +24,7 @@ class Invoice extends Model
         'created_by',
         'cancellation_reason',
         'cancelled_at',
+        'diagnosis',
     ];
 
     protected function casts(): array
@@ -37,6 +39,11 @@ class Invoice extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function animal(): BelongsTo
+    {
+        return $this->belongsTo(Animal::class);
     }
 
     // تم الإضافة: علاقة المستخدم الذي أنشأ الفاتورة

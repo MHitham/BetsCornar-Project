@@ -1,10 +1,11 @@
-﻿<aside id="sidebar">
+<aside id="sidebar">
     <div class="sidebar-brand d-flex align-items-center gap-3">
         <div class="brand-icon">
             <i class="bi bi-heart-pulse-fill"></i>
         </div>
         <div>
-            <div class="brand-eyebrow">BetsCornar</div>
+            {{-- اسم العيادة الديناميكي من الإعدادات --}}
+            <div class="brand-eyebrow">{{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}</div>
             <div class="brand-text">{{ __('messages.app_name') }}</div>
             <div class="brand-sub">لوحة تشغيل العيادة البيطرية</div>
         </div>
@@ -50,10 +51,31 @@
                class="sidebar-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                 <i class="bi bi-bar-chart-line-fill"></i> {{ __('reports.title') }}
             </a>
+
+            {{-- تم الإضافة: قسم المشتريات والموردين --}}
+            <div class="nav-label mt-2">المشتريات</div>
+            <a href="{{ route('suppliers.index') }}"
+               class="sidebar-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
+                <i class="bi bi-truck"></i> الموردين
+            </a>
+            <a href="{{ route('purchases.index') }}"
+               class="sidebar-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
+                <i class="bi bi-cart-check-fill"></i> فواتير الشراء
+            </a>
             {{-- تم الإضافة: رابط إدارة المستخدمين (يظهر للأدمن فقط) --}}
             <a href="{{ route('users.index') }}"
                class="sidebar-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
                 <i class="bi bi-person-badge-fill"></i> المستخدمين
+            </a>
+            {{-- رابط إعدادات النظام للأدمن فقط --}}
+            <a href="{{ route('settings.index') }}"
+               class="sidebar-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                <i class="bi bi-sliders"></i> إعدادات النظام
+            </a>
+            {{-- رابط النسخ الاحتياطي --}}
+            <a href="{{ route('backup.index') }}"
+               class="sidebar-link {{ request()->is('settings/backup*') ? 'active' : '' }}">
+                <i class="bi bi-gear"></i> النسخ الاحتياطي
             </a>
         @endrole
 
@@ -76,7 +98,7 @@
     </nav>
 
     <div class="sidebar-footer">
-        <div class="sidebar-footer__title">نظام العيادة البيطرية</div>
+        <div class="sidebar-footer__title">نظام {{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}</div>
         <div class="sidebar-footer__meta">&copy; {{ date('Y') }}</div>
     </div>
 </aside>
