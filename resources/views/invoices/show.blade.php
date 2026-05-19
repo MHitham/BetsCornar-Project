@@ -79,8 +79,24 @@
                             <td class="text-muted">الإجمالي</td>
                             {{-- الإجمالي يظهر مشطوباً إذا كانت الفاتورة ملغية --}}
                             <td
-                                class="fw-bold fs-5 {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-success' }}">
-                                {{ number_format($invoice->total) }} {{ __('messages.currency') }}
+                                class="fw-bold fs-5 {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-dark' }}">
+                                {{ number_format($invoice->total, 2) }} {{ __('messages.currency') }}
+                            </td>
+                        </tr>
+                        @php 
+                            $totalPaid = $invoice->payments->sum('amount'); 
+                            $remaining = max(0, $invoice->total - $totalPaid);
+                        @endphp
+                        <tr>
+                            <td class="text-muted">المدفوع</td>
+                            <td class="fw-bold text-success">
+                                {{ number_format($totalPaid, 2) }} {{ __('messages.currency') }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">المتبقي</td>
+                            <td class="fw-bold {{ $remaining > 0 ? 'text-danger' : 'text-success' }}">
+                                {{ number_format($remaining, 2) }} {{ __('messages.currency') }}
                             </td>
                         </tr>
                     </table>
@@ -98,8 +114,16 @@
                 </a>
                 {{-- زرار الإلغاء يظهر فقط للفواتير المؤكدة --}}
                 @if ($invoice->isConfirmed())
-                    <button type="button" class="btn btn-outline-danger ms-2" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                    <button type="button" class="btn btn-outline-danger ms-2 mb-2" data-bs-toggle="modal" data-bs-target="#cancelModal">
                         <i class="bi bi-x-circle me-1"></i>إلغاء الفاتورة
+                    </button>
+                @endif
+                <button type="button" class="btn btn-outline-primary ms-2 mb-2" data-bs-toggle="modal" data-bs-target="#paymentsModal">
+                    <i class="bi bi-clock-history"></i> سجل الدفعات
+                </button>
+                @if ($remaining > 0 && !$invoice->isCancelled())
+                    <button type="button" class="btn btn-success ms-2 mb-2" data-bs-toggle="modal" data-bs-target="#paymentsModal">
+                        <i class="bi bi-cash-coin me-1"></i> تسجيل دفعة
                     </button>
                 @endif
             </div>
@@ -231,5 +255,97 @@
             </div>
         </div>
     @endif
+
+    {{-- modal سجل الدفعات --}}
+    <div class="modal fade" id="paymentsModal" tabindex="-1" aria-labelledby="paymentsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paymentsModalLabel">
+                        <i class="bi bi-clock-history me-2 text-primary"></i>
+                        سجل دفعات الفاتورة #{{ $invoice->invoice_number }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {{-- قسم 1: جدول الدفعات السابقة --}}
+                    @if($invoice->payments->isEmpty())
+                        <p class="text-muted text-center py-3">لا توجد دفعات مسجلة</p>
+                    @else
+                        @php $totalPaid = $invoice->payments->sum('amount'); @endphp
+                        <table class="table table-sm align-middle mb-3">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>المبلغ</th>
+                                    <th>ملاحظات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($invoice->payments as $payment)
+                                    <tr>
+                                        <td class="font-monospace small">{{ $payment->paid_at->format('Y-m-d H:i') }}</td>
+                                        <td class="fw-semibold text-success">{{ number_format($payment->amount, 2) }} ج.م</td>
+                                        <td class="text-muted">{{ $payment->notes ?: '-' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="table-light fw-bold">
+                                <tr>
+                                    <td>إجمالي المدفوع</td>
+                                    <td class="text-success">{{ number_format($totalPaid, 2) }} ج.م</td>
+                                    <td>-</td>
+                                </tr>
+                                @php $rem = $invoice->total - $totalPaid; @endphp
+                                <tr>
+                                    <td>المتبقي</td>
+                                    <td class="{{ $rem > 0 ? 'text-danger' : 'text-success' }}">
+                                        {{ number_format($rem, 2) }} ج.م
+                                    </td>
+                                    <td>-</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    @endif
+
+                    {{-- قسم 2: إضافة دفعة جديدة --}}
+                    @php $remaining = $invoice->total - $invoice->payments->sum('amount'); @endphp
+                    @if($remaining > 0 && $invoice->status !== 'cancelled')
+                        <hr>
+                        <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1 text-success"></i>تسجيل دفعة جديدة</h6>
+                        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST">
+                            @csrf
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">المبلغ المدفوع <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="number" name="amount" class="form-control"
+                                               min="0.01" step="0.01" max="{{ $remaining }}"
+                                               placeholder="المبلغ المدفوع" required>
+                                        <span class="input-group-text">ج.م</span>
+                                    </div>
+                                    <div class="form-text text-muted">الحد الأقصى: {{ number_format($remaining, 2) }} ج.م</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">ملاحظات</label>
+                                    <input type="text" name="notes" class="form-control" placeholder="ملاحظات (اختياري)">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">تاريخ الدفع</label>
+                                    <input type="datetime-local" name="paid_at" class="form-control"
+                                           value="{{ now()->format('Y-m-d\TH:i') }}">
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-check-lg me-1"></i>تسجيل دفعة
+                                </button>
+                            </div>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
 
 @endsection

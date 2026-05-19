@@ -154,8 +154,8 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        // تم التعديل: تحميل منتجات البنود مع منتجات التطعيمات لتجنب N+1 داخل صفحة الفاتورة
-        $invoice->load(['items.product', 'vaccinations.product']);
+        // تم التعديل: تحميل منتجات البنود مع منتجات التطعيمات وسجل الدفعات لتجنب N+1 داخل صفحة الفاتورة
+        $invoice->load(['items.product', 'vaccinations.product', 'payments']);
 
         return view('invoices.show', compact('invoice'));
     }

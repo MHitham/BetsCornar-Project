@@ -122,7 +122,7 @@ Route::middleware('auth')->group(function () {
         Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
         // تم الإضافة: بحث AJAX عن العملاء (يُستخدم في البيع السريع)
         Route::get('customers/search', [CustomerController::class, 'search'])->name('customers.search');
-        
+
         // Dedicated lightweight AJAX lookup for visit form (exact match only)
         Route::get('customers/lookup-for-visit', [CustomerController::class, 'lookupForVisit'])->name('customers.lookup-for-visit');
 
@@ -170,6 +170,14 @@ Route::middleware('auth')->group(function () {
         // إلغاء الفواتير — للأدمن فقط
         Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
 
+        // تسجيل دفعة على فاتورة عميل
+        Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoicePaymentController::class, 'pay'])
+            ->name('invoices.pay');
+
+        // سجل دفعات الفاتورة (Payment History)
+        Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\InvoicePaymentController::class, 'store'])
+            ->name('invoice.payments.store');
+
         // وحدة التطعيمات
         Route::get('vaccinations', [VaccinationController::class, 'index'])->name('vaccinations.index');
         // تم الإضافة: مسارات تصدير التطعيمات إلى Excel وجلب أرقام الهواتف للواتساب
@@ -195,9 +203,9 @@ Route::middleware('auth')->group(function () {
 
         // وحدة إدارة المستخدمين — بدون صفحة عرض منفردة
         Route::resource('users', UserController::class)->except(['show']);
-// إعدادات النظام - الأدمن فقط
-Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
-Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
+        // إعدادات النظام - الأدمن فقط
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
         // موردين
         Route::resource('suppliers', SupplierController::class)

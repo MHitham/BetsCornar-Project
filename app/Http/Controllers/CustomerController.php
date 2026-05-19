@@ -53,13 +53,14 @@ class CustomerController extends Controller
      */
     public function show(Customer $customer)
     {
-        // تم الإضافة: تحميل كل فواتير العميل مع البنود والتطعيمات بترتيب الأحدث أولًا
+        // تم الإضافة: تحميل كل فواتير العميل مع البنود والتطعيمات وسجل الدفعات بترتيب الأحدث أولًا
         $customer->load([
             'invoices' => function ($query) {
                 $query->latest('created_at');
             },
             'invoices.items.product',
             'invoices.vaccinations.product',
+            'invoices.payments',
         ]);
 
         return view('customers.show', compact('customer'));

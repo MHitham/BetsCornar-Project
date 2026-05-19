@@ -36,6 +36,98 @@
             </div>
         </div>
     </div>
+
+    {{-- بطاقة الديون المتبقية على العميل --}}
+    @php
+        $unpaidInvoices = $customer->invoices->filter(fn($inv) =>
+            !$inv->isCancelled() && (float)$inv->remaining_amount > 0
+        );
+        $totalOutstanding = $unpaidInvoices->sum('remaining_amount');
+    @endphp
+
+    @if($totalOutstanding > 0)
+    <div class="card mb-4 border-danger">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+            <span class="fw-bold">
+                <i class="bi bi-exclamation-circle me-2"></i>
+                متبقي على العميل
+            </span>
+            <span class="fs-5 fw-bold">{{ number_format($totalOutstanding, 2) }} ج</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>رقم الفاتورة</th>
+                        <th>تاريخ الفاتورة</th>
+                        <th>إجمالي الفاتورة</th>
+                        <th>المدفوع</th>
+                        <th>المتبقي</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($unpaidInvoices as $unpaidInv)
+                    <tr>
+                        <td>
+                            <a href="{{ route('invoices.show', $unpaidInv) }}" class="fw-semibold text-decoration-none">
+                                {{ $unpaidInv->invoice_number }}
+                            </a>
+                        </td>
+                        <td>{{ $unpaidInv->created_at->format('Y/m/d') }}</td>
+                        <td>{{ number_format($unpaidInv->total, 2) }} ج</td>
+                        <td class="text-success">{{ number_format($unpaidInv->amount_paid, 2) }} ج</td>
+                        <td class="text-danger fw-bold">{{ number_format($unpaidInv->remaining_amount, 2) }} ج</td>
+                        <td>
+                            <button class="btn btn-sm btn-success"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#payModal{{ $unpaidInv->id }}">
+                                <i class="bi bi-cash-coin me-1"></i> تسجيل دفعة
+                            </button>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Modals الدفع — واحد لكل فاتورة --}}
+    @foreach($unpaidInvoices as $unpaidInv)
+    <div class="modal fade" id="payModal{{ $unpaidInv->id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تسجيل دفعة — {{ $unpaidInv->invoice_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ route('invoice.payments.store', $unpaidInv) }}" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            المتبقي على هذه الفاتورة:
+                            <strong>{{ number_format($unpaidInv->remaining_amount, 1) }} ج</strong>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">المبلغ المدفوع <span class="text-danger">*</span></label>
+                            <input type="number" name="amount" class="form-control"
+                                   min="1" step="1"
+                                   max="{{ $unpaidInv->remaining_amount }}">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i> تسجيل الدفعة
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endforeach
+    @endif
+
 {{-- تم الإضافة: عرض ملاحظات العميل بشكل منظم وواضح --}}
 @if(filled($customer->notes))
     <div class="card border-0 shadow-sm mb-4">
@@ -61,6 +153,10 @@
 @endif
     {{-- تم الإضافة: التايم لاين الكامل لزيارات العميل من الأحدث إلى الأقدم --}}
     @forelse ($customer->invoices as $invoice)
+        @php
+            $paid = $invoice->amount_paid ?? 0;
+            $remaining = $invoice->total - $paid;
+        @endphp
         <div @class(['card mb-4','border-secondary bg-light-subtle' => $invoice->isCancelled(),])>
             <div class="card-header d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2">
                 <div class="d-flex flex-wrap align-items-center gap-2">
@@ -76,9 +172,25 @@
                     <span class="badge bg-light text-dark border">
                         {{ $invoice->source === 'customer' ? 'زيارة عميل' : 'بيع سريع' }}
                     </span>
+                    @if ($paid >= $invoice->total)
+                        <span class="badge bg-success">مدفوعة</span>
+                    @elseif ($paid > 0 && $paid < $invoice->total)
+                        <span class="badge bg-warning text-dark">جزئي</span>
+                    @else
+                        <span class="badge bg-danger">غير مدفوعة</span>
+                    @endif
+                    <button class="btn btn-xs btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#paymentsModal{{ $invoice->id }}">
+                        <i class="bi bi-cash"></i>
+                    </button>
                 </div>
-                <div class="fw-bold {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-success' }}">
-                    {{ __('customers.timeline.total') }}: {{ number_format($invoice->total) }} {{ __('messages.currency') }}
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="fw-bold {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-success' }}">
+                        {{ __('customers.timeline.total') }}: {{ number_format($invoice->total) }} {{ __('messages.currency') }}
+                    </div>
+                    <div class="text-muted small border-start ps-3">
+                        <span class="d-block">المدفوع: {{ number_format($invoice->amount_paid ?? 0, 2) }} ج.م</span>
+                        <span class="d-block">المتبقي: {{ number_format(($invoice->total - ($invoice->amount_paid ?? 0)), 2) }} ج.م</span>
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -174,5 +286,99 @@
             </div>
         </div>
     @endforelse
+
+    {{-- Modals سجل الدفعات لكل فاتورة --}}
+    @foreach($customer->invoices as $invoice)
+    <div class="modal fade" id="paymentsModal{{ $invoice->id }}" tabindex="-1" aria-labelledby="paymentsModalLabel{{ $invoice->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paymentsModalLabel{{ $invoice->id }}">
+                        <i class="bi bi-clock-history me-2 text-primary"></i>
+                        سجل دفعات الفاتورة #{{ $invoice->invoice_number }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {{-- قسم 1: جدول الدفعات السابقة --}}
+                    @if($invoice->payments->isEmpty())
+                        <p class="text-muted text-center py-3">لا توجد دفعات مسجلة</p>
+                    @else
+                        @php $totalPaid = $invoice->payments->sum('amount'); @endphp
+                        <table class="table table-sm align-middle mb-3">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>المبلغ</th>
+                                    <th>ملاحظات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($invoice->payments as $payment)
+                                    <tr>
+                                        <td class="font-monospace small">{{ $payment->paid_at->format('Y-m-d H:i') }}</td>
+                                        <td class="fw-semibold text-success">{{ number_format($payment->amount, 2) }} ج.م</td>
+                                        <td class="text-muted">{{ $payment->notes ?: '-' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="table-light fw-bold">
+                                <tr>
+                                    <td>إجمالي المدفوع</td>
+                                    <td class="text-success">{{ number_format($totalPaid, 2) }} ج.م</td>
+                                    <td>-</td>
+                                </tr>
+                                @php $rem = $invoice->total - $totalPaid; @endphp
+                                <tr>
+                                    <td>المتبقي</td>
+                                    <td class="{{ $rem > 0 ? 'text-danger' : 'text-success' }}">
+                                        {{ number_format($rem, 2) }} ج.م
+                                    </td>
+                                    <td>-</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    @endif
+
+                    {{-- قسم 2: إضافة دفعة جديدة --}}
+                    @php $remaining = $invoice->total - $invoice->payments->sum('amount'); @endphp
+                    @if($remaining > 0 && $invoice->status !== 'cancelled')
+                        <hr>
+                        <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1 text-success"></i>تسجيل دفعة جديدة</h6>
+                        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST">
+                            @csrf
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">المبلغ المدفوع <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="number" name="amount" class="form-control"
+                                               min="0.01" step="0.01" max="{{ $remaining }}"
+                                               placeholder="المبلغ المدفوع" required>
+                                        <span class="input-group-text">ج.م</span>
+                                    </div>
+                                    <div class="form-text text-muted">الحد الأقصى: {{ number_format($remaining, 2) }} ج.م</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">ملاحظات</label>
+                                    <input type="text" name="notes" class="form-control" placeholder="ملاحظات (اختياري)">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">تاريخ الدفع</label>
+                                    <input type="datetime-local" name="paid_at" class="form-control"
+                                           value="{{ now()->format('Y-m-d\TH:i') }}">
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-check-lg me-1"></i>تسجيل دفعة
+                                </button>
+                            </div>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endforeach
 
 @endsection

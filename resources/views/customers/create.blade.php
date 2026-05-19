@@ -222,6 +222,56 @@
                 </div>
             </div>
 
+            {{-- === الدفع الجزئي (اختياري) === --}}
+            <div class="col-12">
+                <div class="card border-0 bg-light">
+                    <div class="card-body py-3">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="partial_payment_toggle"
+                                   onchange="togglePartialPayment(this)">
+                            <label class="form-check-label fw-semibold" for="partial_payment_toggle"
+                                   style="margin-right: 0.5rem;">
+                                <i class="bi bi-cash-coin me-1 text-warning"></i>
+                                دفع جزئي؟ (اتركه بدون تفعيل لو العميل سدّد كامل الفاتورة)
+                            </label>
+                        </div>
+
+                        {{-- حقول الدفع الجزئي — مخفية بالافتراضي --}}
+                        <div id="partial-payment-section" style="display:none;" class="mt-3">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">إجمالي الفاتورة</label>
+                                    <input type="text" id="pp_total_display"
+                                           class="form-control bg-white" readonly placeholder="0 ج">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">
+                                        المدفوع الآن <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" name="amount_paid" id="amount_paid_input"
+                                               class="form-control" min="0" step="0.01"
+                                               placeholder="0"
+                                               oninput="updateRemaining()">
+                                        <span class="input-group-text">ج</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">المتبقي على العميل</label>
+                                    <div class="input-group">
+                                        <input type="text" id="pp_remaining_display"
+                                               class="form-control text-danger fw-bold bg-white"
+                                               readonly placeholder="0 ج">
+                                        <span class="input-group-text">ج</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- === Submit === --}}
             <div class="col-12 d-flex gap-3">
                 <button type="submit" class="btn btn-primary btn-lg px-5">
@@ -868,6 +918,58 @@
                     }
                 });
             })();
+
+            // ── الدفع الجزئي ────────────────────────────────────────
+            window.togglePartialPayment = function(checkbox) {
+                const section = document.getElementById('partial-payment-section');
+                const input   = document.getElementById('amount_paid_input');
+                if (checkbox.checked) {
+                    section.style.display = 'block';
+                    updateRemaining();
+                } else {
+                    section.style.display = 'none';
+                    // لما الدفع الجزئي مش مفعل، المبلغ المدفوع = الإجمالي كاملاً
+                    const totalText = document.getElementById('grand-total-cell').textContent;
+                    const total = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
+                    if (input) input.value = total.toFixed(2);
+                }
+            };
+
+            window.updateRemaining = function() {
+                const totalText = document.getElementById('grand-total-cell').textContent;
+                const total     = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
+                const paid      = parseFloat(document.getElementById('amount_paid_input').value) || 0;
+                const remaining = Math.max(0, total - paid);
+
+                document.getElementById('pp_total_display').value    = total.toFixed(2) + ' ج';
+                document.getElementById('pp_remaining_display').value = remaining.toFixed(2);
+            };
+
+            // تحديث عرض الإجمالي في سيكشن الدفع لما الإجمالي يتغير
+            const origRecalcTotal = recalcTotal;
+            recalcTotal = function() {
+                origRecalcTotal();
+                const toggle = document.getElementById('partial_payment_toggle');
+                if (toggle && toggle.checked) {
+                    updateRemaining();
+                } else {
+                    const totalText = document.getElementById('grand-total-cell').textContent;
+                    const total = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
+                    const input = document.getElementById('amount_paid_input');
+                    if (input) input.value = total.toFixed(2);
+                }
+            };
+
+            document.getElementById('visitForm').addEventListener('submit', function(e) {
+                const toggle = document.getElementById('partial_payment_toggle');
+                if (toggle && !toggle.checked) {
+                    const totalText = document.getElementById('grand-total-cell').textContent;
+                    const total = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
+                    const input = document.getElementById('amount_paid_input');
+                    if (input) input.value = total.toFixed(2);
+                }
+            });
+
         </script>
     @endpush
 
