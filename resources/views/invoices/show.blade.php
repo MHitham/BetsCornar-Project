@@ -40,7 +40,7 @@
     <div class="row g-4">
 
         {{-- Invoice Header --}}
-        <div class="col-md-5">
+        <div class="col-12 col-lg-5">
             <div class="card">
                 <div class="card-header">
                     <i class="bi bi-receipt text-primary me-1"></i>
@@ -102,10 +102,15 @@
                     </table>
                 </div>
             </div>
-            <div class="mt-3 no-print d-flex gap-2 flex-wrap">
+            <div class="mt-3 no-print d-flex gap-2 flex-wrap action-toolbar">
                 <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-right me-1"></i>{{ __('messages.back') }}
                 </a>
+                @if(!empty($showRevenueBar))
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#revenueModal">
+                        <i class="bi bi-cash-stack me-1"></i>الإيرادات
+                    </button>
+                @endif
                 <button type="button" class="btn btn-info ms-2 text-white" onclick="window.print()">
                     🖨️ طباعة
                 </button>
@@ -116,6 +121,11 @@
                 @if ($invoice->isConfirmed())
                     <button type="button" class="btn btn-outline-danger ms-2 mb-2" data-bs-toggle="modal" data-bs-target="#cancelModal">
                         <i class="bi bi-x-circle me-1"></i>إلغاء الفاتورة
+                    </button>
+                    {{-- زرار إرجاع أصناف - يظهر للفواتير المؤكدة فقط --}}
+                    <button type="button" class="btn btn-outline-warning ms-2 mb-2"
+                            data-bs-toggle="modal" data-bs-target="#returnModal">
+                        <i class="bi bi-arrow-return-right me-1"></i>إرجاع أصناف
                     </button>
                 @endif
                 <button type="button" class="btn btn-outline-primary ms-2 mb-2" data-bs-toggle="modal" data-bs-target="#paymentsModal">
@@ -130,7 +140,7 @@
         </div>
 
         {{-- Invoice Items --}}
-        <div class="col-md-7">
+        <div class="col-12 col-lg-7">
             <div class="card">
                 <div class="card-header">
                     <i class="bi bi-list-ul text-success me-1"></i>
@@ -148,6 +158,7 @@
                         </thead>
                         <tbody>
                             @foreach ($invoice->items as $item)
+                                @if($item->quantity > 0)
                                 <tr>
                                     <td>
                                         <div class="fw-semibold">{{ $item->product->name }}</div>
@@ -161,6 +172,7 @@
                                         {{ number_format($item->line_total) }} {{ __('messages.currency') }}
                                     </td>
                                 </tr>
+                                @endif
                             @endforeach
                         </tbody>
                         <tfoot>
@@ -206,6 +218,51 @@
                     </div>
                 </div>
             @endif
+
+            {{-- قسم المرتجعات - يظهر إذا وجدت مرتجعات --}}
+            @if ($invoice->returns->isNotEmpty())
+                <div class="card mt-3 border-warning">
+                    <div class="card-header bg-warning bg-opacity-10">
+                        <i class="bi bi-arrow-return-right text-warning me-1"></i>
+                        <span class="fw-bold">المرتجعات المسجلة</span>
+                    </div>
+                    @foreach ($invoice->returns as $ret)
+                        <div class="card-body border-bottom py-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">
+                                    {{ $ret->created_at->format('Y-m-d H:i') }}
+                                    @if($ret->reason) — {{ $ret->reason }} @endif
+                                </small>
+                                <span class="badge bg-warning text-dark">
+                                    إجمالي المرتجع: {{ number_format($ret->total_refund, 2) }} {{ __('messages.currency') }}
+                                </span>
+                            </div>
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>المنتج</th>
+                                        <th class="text-center">الكمية المُرجعة</th>
+                                        <th class="text-center">سعر الوحدة</th>
+                                        <th class="text-center">الإجمالي</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($ret->items as $ri)
+                                        <tr>
+                                            <td>{{ $ri->product->name ?? '—' }}</td>
+                                            <td class="text-center">{{ number_format($ri->quantity_returned, 2) }}</td>
+                                            <td class="text-center">{{ number_format($ri->unit_price, 2) }}</td>
+                                            <td class="text-center text-warning fw-bold">
+                                                {{ number_format($ri->line_total, 2) }} {{ __('messages.currency') }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
     </div>
@@ -213,7 +270,7 @@
     {{-- modal تأكيد الإلغاء — يظهر فقط للفواتير المؤكدة --}}
     @if ($invoice->isConfirmed())
         <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
                 <div class="modal-content">
                     <form action="{{ route('invoices.cancel', $invoice) }}" method="POST">
                         @csrf
@@ -258,7 +315,7 @@
 
     {{-- modal سجل الدفعات --}}
     <div class="modal fade" id="paymentsModal" tabindex="-1" aria-labelledby="paymentsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="paymentsModalLabel">
@@ -347,5 +404,109 @@
             </div>
         </div>
     </div>
+
+{{-- Modal إرجاع أصناف --}}
+@if ($invoice->isConfirmed())
+@php
+    $alreadyReturnedQtys = $invoice->returns
+        ->flatMap->items
+        ->groupBy('invoice_item_id')
+        ->map(fn($g) => $g->sum('quantity_returned'));
+@endphp
+<div class="modal fade" id="returnModal" tabindex="-1"
+     aria-labelledby="returnModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <form action="{{ route('invoice-returns.store', $invoice) }}" method="POST">
+                @csrf
+                <div class="modal-header border-warning">
+                    <h5 class="modal-title text-warning" id="returnModalLabel">
+                        <i class="bi bi-arrow-return-right me-1"></i>
+                        إرجاع أصناف من الفاتورة {{ $invoice->invoice_number }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @error('return')
+                        <div class="alert alert-danger">{{ $message }}</div>
+                    @enderror
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">سبب الإرجاع (اختياري)</label>
+                        <input type="text" name="reason" class="form-control"
+                               placeholder="مثال: منتج تالف، طلب العميل...">
+                    </div>
+                    <table class="table table-bordered align-middle text-center">
+                        <thead class="table-light">
+                            <tr>
+                                <th>المنتج</th>
+                                <th>الكمية الأصلية</th>
+                                <th>تم إرجاعه</th>
+                                <th>المتاح للإرجاع</th>
+                                <th>الكمية المُرجعة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($invoice->items as $item)
+                            @php
+                                $returned   = (float)($alreadyReturnedQtys[$item->id] ?? 0);
+                                $returnable = round((float)$item->quantity, 2);
+                                $originalQty = round($returnable + $returned, 2);
+                            @endphp
+                            <tr>
+                                <td class="text-start">
+                                    @if($returnable > 0)
+                                        <input type="hidden"
+                                               name="items[{{ $loop->index }}][invoice_item_id]"
+                                               value="{{ $item->id }}">
+                                    @endif
+                                    <div class="fw-semibold">{{ $item->product->name }}</div>
+                                    <small class="text-muted">
+                                        {{ number_format($item->unit_price, 2) }} {{ __('messages.currency') }}
+                                    </small>
+                                </td>
+                                <td>{{ number_format($originalQty, 2) }}</td>
+                                <td class="{{ $returned > 0 ? 'text-warning fw-bold' : 'text-muted' }}">
+                                    {{ number_format($returned, 2) }}
+                                </td>
+                                <td class="{{ $returnable <= 0 ? 'text-muted' : 'text-success fw-bold' }}">
+                                    {{ number_format($returnable, 2) }}
+                                </td>
+                                <td>
+                                    @if($returnable > 0)
+                                        <input type="number"
+                                               name="items[{{ $loop->index }}][quantity_returned]"
+                                               class="form-control form-control-sm text-center"
+                                               min="0" max="{{ $returnable }}"
+                                               step="0.01" value="0"
+                                               style="width: 90px; margin: auto;">
+                                    @else
+                                        <span class="badge bg-secondary">تم الإرجاع</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary"
+                            data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-warning text-dark">
+                        <i class="bi bi-arrow-return-right me-1"></i>تأكيد الإرجاع
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if(!empty($showRevenueBar) && !empty($revenueSummary))
+    @php
+        $revenueSummary['period_type'] = 'day';
+        $revenueSummary['label'] = $invoice->created_at->format('Y-m-d');
+    @endphp
+    @include('invoices.partials.revenue-modal')
+@endif
 
 @endsection

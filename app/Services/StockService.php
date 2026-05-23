@@ -73,6 +73,53 @@ class StockService
         });
     }
 
+    /**
+     * إرجاع ستوك جزئي للتطعيمات عند إنشاء مرتجع.
+     * بيرجع الكمية بشكل نسبي على الـ batches المستخدمة الأصلية.
+     */
+    public function restorePartialVaccineStock(InvoiceItem $invoiceItem, float $quantityToReturn): void
+    {
+        DB::transaction(function () use ($invoiceItem, $quantityToReturn) {
+            $originalQty = (float) $invoiceItem->quantity;
+
+            if ($originalQty <= 0) {
+                return;
+            }
+
+            // نسبة الإرجاع من الكمية الأصلية
+            $ratio = $quantityToReturn / $originalQty;
+
+            $batches = InvoiceItemVaccineBatch::query()
+                ->where('invoice_item_id', $invoiceItem->id)
+                ->with('vaccineBatch')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($batches as $link) {
+                $batch = $link->vaccineBatch;
+
+                if (! $batch) {
+                    continue;
+                }
+
+                // الكمية المُرجعة لهذا الـ batch بالنسبة
+                $toRestore = $this->normalizeDecimal((float) $link->quantity * $ratio);
+
+                $batch->update([
+                    'quantity_remaining' => $this->normalizeDecimal(
+                        (float) $batch->quantity_remaining + $toRestore
+                    ),
+                ]);
+            }
+
+            $product = $invoiceItem->product;
+
+            if ($product) {
+                $this->recalculateVaccineStock($product->fresh());
+            }
+        });
+    }
+
     public function decreaseStock(Product $product, float $quantity, ?InvoiceItem $invoiceItem = null): void
     {
         if ($quantity <= 0 || ! $product->track_stock) {
@@ -252,7 +299,7 @@ class StockService
 
             // تسجيل تكلفة الوحدة وقت البيع للقاحات (متوسط مرجح من الباتشات المستخدمة)
             if ($invoiceItem && count($deductions) > 0) {
-                $totalQty  = array_sum(array_column($deductions, 'quantity'));
+                $totalQty = array_sum(array_column($deductions, 'quantity'));
                 $totalCost = 0;
 
                 foreach ($deductions as $deduction) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Expense;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -85,8 +86,8 @@ class ReportController extends Controller
         abort_if($month < 1 || $month > 12, 404);
 
         $periodStart = \Carbon\Carbon::create($year, $month, 1)->startOfMonth();
-        $periodEnd   = $periodStart->copy()->endOfMonth();
-        $monthName   = self::arabicMonthName($month);
+        $periodEnd = $periodStart->copy()->endOfMonth();
+        $monthName = self::arabicMonthName($month);
 
         // ===== الفواتير المؤكدة =====
         $invoices = Invoice::confirmed()
@@ -96,11 +97,11 @@ class ReportController extends Controller
             ->get();
 
         $revenueSummary = [
-            'total'       => $invoices->sum('total'),
-            'count'       => $invoices->count(),
-            'avg'         => $invoices->avg('total') ?? 0,
+            'total' => $invoices->sum('total'),
+            'count' => $invoices->count(),
+            'avg' => $invoices->avg('total') ?? 0,
             'customer_visits' => $invoices->where('source', 'customer')->count(),
-            'quick_sales'     => $invoices->where('source', '!=', 'customer')->count(),
+            'quick_sales' => $invoices->where('source', '!=', 'customer')->count(),
         ];
 
         // ===== المصروفات =====
@@ -174,5 +175,110 @@ class ReportController extends Controller
             11 => 'نوفمبر',
             12 => 'ديسمبر',
         ][$month] ?? '';
+    }
+
+    // تقرير الربحية - إيرادات وتكاليف وأرباح وديون
+    public function profitability(Request $request)
+    {
+        $year = (int) $request->get('year', now()->year);
+
+        // السنوات المتاحة للفلتر
+        $availableYears = Invoice::confirmed()
+            ->selectRaw('YEAR(created_at) as year')
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year')
+            ->toArray();
+
+        if (! in_array(now()->year, $availableYears)) {
+            $availableYears[] = now()->year;
+            rsort($availableYears);
+        }
+
+        // ── KPIs السنوية ──────────────────────────────────────────
+
+        // إجمالي الإيرادات (فواتير مؤكدة فقط)
+        $revenue = Invoice::confirmed()
+            ->whereYear('created_at', $year)
+            ->sum('total');
+
+        // تكلفة البضاعة المباعة COGS
+        $cogs = InvoiceItem::whereHas('invoice', function ($q) use ($year) {
+            $q->confirmed()->whereYear('created_at', $year);
+        })
+            ->whereNotNull('cost_price_at_sale')
+            ->selectRaw('SUM(cost_price_at_sale * quantity) as total_cogs')
+            ->value('total_cogs') ?? 0;
+
+        // إجمالي المصروفات
+        $expenses = Expense::whereYear('created_at', $year)
+            ->whereNull('deleted_at')
+            ->sum('amount');
+
+        // الأرباح
+        $grossProfit = $revenue - $cogs;
+        $netProfit = $grossProfit - $expenses;
+        $margin = $revenue > 0 ? round(($netProfit / $revenue) * 100, 1) : 0;
+
+        // ── التفصيل الشهري ────────────────────────────────────────
+        $months = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $monthRevenue = Invoice::confirmed()
+                ->whereYear('created_at', $year)
+                ->whereMonth('created_at', $m)
+                ->sum('total');
+
+            $monthCogs = InvoiceItem::whereHas('invoice', function ($q) use ($year, $m) {
+                $q->confirmed()
+                    ->whereYear('created_at', $year)
+                    ->whereMonth('created_at', $m);
+            })
+                ->whereNotNull('cost_price_at_sale')
+                ->selectRaw('SUM(cost_price_at_sale * quantity) as total')
+                ->value('total') ?? 0;
+
+            $monthExpenses = Expense::whereYear('created_at', $year)
+                ->whereMonth('created_at', $m)
+                ->whereNull('deleted_at')
+                ->sum('amount');
+
+            $monthGross = $monthRevenue - $monthCogs;
+            $monthNet = $monthGross - $monthExpenses;
+            $monthMargin = $monthRevenue > 0
+                ? round(($monthNet / $monthRevenue) * 100, 1)
+                : 0;
+
+            $months[$m] = [
+                'revenue' => $monthRevenue,
+                'cogs' => $monthCogs,
+                'gross_profit' => $monthGross,
+                'expenses' => $monthExpenses,
+                'net_profit' => $monthNet,
+                'margin' => $monthMargin,
+            ];
+        }
+
+        // ── ديون الموردين ─────────────────────────────────────────
+        $supplierDebts = \App\Models\PurchaseOrder::with('supplier')
+            ->whereColumn('amount_paid', '<', 'total_cost')
+            ->orderByDesc('purchased_at')
+            ->get();
+
+        // ── ديون العملاء ──────────────────────────────────────────
+        $customerDebts = Invoice::confirmed()
+            ->with('customer')
+            ->whereColumn('amount_paid', '<', 'total')
+            ->where('amount_paid', '>=', 0)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('reports.profitability', compact(
+            'year', 'availableYears',
+            'revenue', 'cogs', 'expenses',
+            'grossProfit', 'netProfit', 'margin',
+            'months',
+            'supplierDebts',
+            'customerDebts'
+        ));
     }
 }

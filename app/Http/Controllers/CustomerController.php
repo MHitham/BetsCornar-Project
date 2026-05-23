@@ -12,7 +12,6 @@ use App\Models\VaccineBatch;
 use App\Services\CustomerVisitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
@@ -107,7 +106,7 @@ class CustomerController extends Controller
             }])
             ->first();
 
-        if (!$customer) {
+        if (! $customer) {
             return response()->json(null);
         }
 

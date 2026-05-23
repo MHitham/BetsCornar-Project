@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
@@ -170,6 +171,9 @@ Route::middleware('auth')->group(function () {
         // إلغاء الفواتير — للأدمن فقط
         Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
 
+        // مرتجعات الفواتير - الأدمن فقط
+        Route::post('invoices/{invoice}/returns', [\App\Http\Controllers\InvoiceReturnController::class, 'store'])->name('invoice-returns.store');
+
         // تسجيل دفعة على فاتورة عميل
         Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoicePaymentController::class, 'pay'])
             ->name('invoices.pay');
@@ -190,7 +194,9 @@ Route::middleware('auth')->group(function () {
         // تم الإضافة: وحدة المصروفات
         Route::resource('expenses', ExpenseController::class)->except('show');
 
-        // تم الإضافة: صفحة التقارير الشهرية
+        // تم الإضافة: صفحة التقارير
+        // تقرير الربحية
+        Route::get('reports/profitability', [ReportController::class, 'profitability'])->name('reports.profitability');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
 
         // وحدة المنتجات
@@ -218,10 +224,10 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/backup', [BackupController::class, 'store'])->name('backup.store');
         // استعادة نسخة احتياطية - يجب أن يكون قبل {filename} DELETE route
         Route::post('settings/backup/{filename}/restore', [BackupController::class, 'restoreBackup'])
-            ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sqlite$')
+            ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sql$')
             ->name('backup.restore');
         Route::delete('settings/backup/{filename}', [BackupController::class, 'destroy'])
-            ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sqlite$')
+            ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sql$')
             ->name('backup.destroy');
 
         // فواتير الشراء

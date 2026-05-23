@@ -68,6 +68,12 @@ class Invoice extends Model
         return $this->hasMany(InvoicePayment::class)->orderBy('paid_at');
     }
 
+    // علاقة: الفاتورة لها مرتجعات متعددة
+    public function returns(): HasMany
+    {
+        return $this->hasMany(InvoiceReturn::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────
 
     /** الفواتير المؤكدة فقط (تُستخدم في الإيرادات والإحصائيات) */

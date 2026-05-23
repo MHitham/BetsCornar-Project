@@ -2,14 +2,16 @@
 
 namespace App\Services;
 
+use App\Helpers\PhoneHelper;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Product;
+use App\Models\InvoiceReturn;
+use App\Models\InvoiceReturnItem;
 // تم الإضافة: استخدام الكاش لمسح مؤشرات لوحة التحكم بعد إلغاء الفاتورة
+use App\Models\Product;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
-use App\Helpers\PhoneHelper;
 
 class InvoiceService
 {
@@ -60,7 +62,7 @@ class InvoiceService
             if (! empty($data['customer_id'])) {
                 $customer = Customer::find((int) $data['customer_id']);
                 if ($customer) {
-                    $customerId   = $customer->id;
+                    $customerId = $customer->id;
                     $customerName = $customer->name;
                 }
             } elseif (! empty($data['customer_phone'])) {
@@ -153,9 +155,9 @@ class InvoiceService
 
             // تحديث حالة الفاتورة إلى ملغية مع تسجيل السبب والوقت
             $invoice->update([
-                'status'              => 'cancelled',
+                'status' => 'cancelled',
                 'cancellation_reason' => $reason,
-                'cancelled_at'        => now(),
+                'cancelled_at' => now(),
             ]);
 
             // تم الإضافة: تحديث كاش إجمالي التطعيمات لأن إلغاء الفاتورة قد يعيد عناصر تطعيم للمخزون
@@ -169,5 +171,159 @@ class InvoiceService
         });
     }
 
+    /**
+     * إنشاء مرتجع جزئي لفاتورة مؤكدة مع إرجاع الستوك.
+     * $items = [['invoice_item_id' => X, 'quantity_returned' => Y], ...]
+     */
+    public function createReturn(Invoice $invoice, array $items, ?string $reason = null): InvoiceReturn
+    {
+        if ($invoice->isCancelled()) {
+            throw new \RuntimeException('لا يمكن إنشاء مرتجع لفاتورة ملغية.');
+        }
 
+        return DB::transaction(function () use ($invoice, $items, $reason) {
+            $totalRefund = 0;
+
+            // لم يعد هناك حاجة لحساب المرتجعات السابقة لأننا سنقوم بتخفيض الكمية الأصلية في الفاتورة مباشرة
+
+            // إنشاء سجل المرتجع
+            $return = InvoiceReturn::create([
+                'invoice_id' => $invoice->id,
+                'reason' => $reason,
+                'total_refund' => 0,
+                'created_by' => auth()->id(),
+            ]);
+
+            foreach ($items as $row) {
+                $qtyToReturn = round((float) $row['quantity_returned'], 2);
+                if ($qtyToReturn <= 0) {
+                    continue;
+                }
+
+                $invoiceItem = \App\Models\InvoiceItem::with('product')
+                    ->lockForUpdate()
+                    ->findOrFail((int) $row['invoice_item_id']);
+
+                // التحقق: الكمية المُرجعة لا تتجاوز الكمية الحالية في الفاتورة
+                $maxReturnable = round((float) $invoiceItem->quantity, 2);
+
+                if ($qtyToReturn > $maxReturnable) {
+                    throw new \RuntimeException(
+                        "الكمية المُرجعة ({$qtyToReturn}) تتجاوز الحد المسموح ({$maxReturnable}) للمنتج: {$invoiceItem->product->name}"
+                    );
+                }
+
+                $lineTotal = round($qtyToReturn * (float) $invoiceItem->unit_price, 2);
+
+                // إنشاء بند المرتجع
+                InvoiceReturnItem::create([
+                    'invoice_return_id' => $return->id,
+                    'invoice_item_id' => $invoiceItem->id,
+                    'product_id' => $invoiceItem->product_id,
+                    'quantity_returned' => $qtyToReturn,
+                    'unit_price' => $invoiceItem->unit_price,
+                    'line_total' => $lineTotal,
+                ]);
+
+                $totalRefund += $lineTotal;
+
+                // إرجاع الستوك
+                $product = $invoiceItem->product;
+                if ($product && $product->track_stock) {
+                    if ($product->type === 'vaccination') {
+                        $this->stockService->restorePartialVaccineStock($invoiceItem, $qtyToReturn);
+                    } else {
+                        $this->stockService->increaseStock($product, $qtyToReturn);
+                    }
+                }
+
+                // خصم الكمية والقيمة من البند الأصلي في الفاتورة
+                $newQuantity = round((float) $invoiceItem->quantity - $qtyToReturn, 2);
+                $newLineTotal = round($newQuantity * (float) $invoiceItem->unit_price, 2);
+
+                $invoiceItem->update([
+                    'quantity' => $newQuantity,
+                    'line_total' => $newLineTotal,
+                ]);
+            }
+
+            // تحديث إجمالي المرتجع
+            $return->update(['total_refund' => round($totalRefund, 2)]);
+
+            // خصم قيمة المرتجع من إجمالي الفاتورة
+            $newInvoiceTotal = max(0, round((float) $invoice->total - $totalRefund, 2));
+            $invoice->update(['total' => $newInvoiceTotal]);
+
+            return $return;
+        });
+    }
+
+    /**
+     * @return array{
+     *     date: string,
+     *     label: string,
+     *     gross_revenue: float,
+     *     invoice_count: int,
+     *     cancelled_count: int,
+     *     customer_visits: int,
+     *     quick_sales: int,
+     * }
+     */
+    public function getDailyRevenueSummary(string $date, ?int $createdBy = null): array
+    {
+        $query = Invoice::query()->whereDate('created_at', $date);
+
+        if ($createdBy !== null) {
+            $query->where('created_by', $createdBy);
+        }
+
+        $confirmed = (clone $query)->confirmed()->get(['total', 'source']);
+
+        return [
+            'date' => $date,
+            'label' => $date,
+            'period_type' => 'day',
+            'gross_revenue' => (float) $confirmed->sum('total'),
+            'invoice_count' => $confirmed->count(),
+            'cancelled_count' => (int) (clone $query)->cancelled()->count(),
+            'customer_visits' => $confirmed->where('source', 'customer')->count(),
+            'quick_sales' => $confirmed->where('source', '!=', 'customer')->count(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     date: string,
+     *     label: string,
+     *     period_type: string,
+     *     gross_revenue: float,
+     *     invoice_count: int,
+     *     cancelled_count: int,
+     *     customer_visits: int,
+     *     quick_sales: int,
+     * }
+     */
+    public function getMonthlyRevenueSummary(int $year, int $month, ?int $createdBy = null): array
+    {
+        $query = Invoice::query()
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month);
+
+        if ($createdBy !== null) {
+            $query->where('created_by', $createdBy);
+        }
+
+        $confirmed = (clone $query)->confirmed()->get(['total', 'source']);
+
+        return [
+            'date' => sprintf('%04d-%02d', $year, $month),
+            'label' => sprintf('%04d-%02d', $year, $month),
+            'period_type' => 'month',
+            'gross_revenue' => (float) $confirmed->sum('total'),
+            'invoice_count' => $confirmed->count(),
+            'cancelled_count' => (int) (clone $query)->cancelled()->count(),
+            'customer_visits' => $confirmed->where('source', 'customer')->count(),
+            'quick_sales' => $confirmed->where('source', '!=', 'customer')->count(),
+        ];
+    }
 }

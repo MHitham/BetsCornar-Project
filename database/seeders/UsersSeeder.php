@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
 class UsersSeeder extends Seeder
@@ -18,7 +17,7 @@ class UsersSeeder extends Seeder
             ['email' => 'admin@bets.com'],
             [
                 'name' => 'الدكتور',
-                'password' => Hash::make('admin123'),
+                'password' => 'admin123',
             ]
         );
         $admin->syncRoles([$adminRole]);
@@ -27,7 +26,7 @@ class UsersSeeder extends Seeder
             ['email' => 'employee@betscornar.com'],
             [
                 'name' => 'الموظف',
-                'password' => Hash::make('employee123'),
+                'password' => 'employee123',
             ]
         );
         $employee->syncRoles([$employeeRole]);

@@ -12,11 +12,11 @@
         <p class="text-muted mb-0 small">إدارة نسخ قاعدة البيانات</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        {{-- زر فتح مجلد النسخ --}}
-        <button type="button" class="btn btn-outline-primary" onclick="openBackupFolder()">
-            <i class="bi bi-folder2-open me-1"></i>
-            فتح مجلد النسخ
-        </button>
+        {{-- مسار مجلد النسخ الاحتياطية --}}
+        <span class="text-muted small d-flex align-items-center gap-1">
+            <i class="bi bi-folder2"></i>
+            {{ config('backup.backup_path') }}
+        </span>
 
         {{-- زر إنشاء نسخة احتياطية الآن --}}
         <form method="POST" action="{{ route('backup.store') }}"
@@ -34,7 +34,7 @@
 <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
     <i class="bi bi-info-circle-fill fs-5"></i>
     <span>
-        يتم إنشاء نسخة احتياطية تلقائياً كل يوم الساعة 2 صباحاً &mdash; أقصى عدد للنسخ: <strong>15</strong>
+        يمكنك إنشاء نسخة احتياطية يدوياً في أي وقت &mdash; أقصى عدد للنسخ: <strong>15</strong>
     </span>
 </div>
 
@@ -103,20 +103,5 @@
         @endif
     </div>
 </div>
-
-@push('scripts')
-<script>
-    // فتح مجلد النسخ الاحتياطية عبر NativePHP Shell
-    function openBackupFolder() {
-        fetch('{{ route('backup.open-folder') }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-        });
-    }
-</script>
-@endpush
 
 @endsection

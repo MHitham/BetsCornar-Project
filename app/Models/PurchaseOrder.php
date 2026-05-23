@@ -15,8 +15,8 @@ class PurchaseOrder extends Model
 
     protected $casts = [
         'purchased_at' => 'date',
-        'total_cost'   => 'decimal:2',
-        'amount_paid'  => 'decimal:2',
+        'total_cost' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
     ];
 
     // علاقة: فاتورة الشراء تخص مورد (اختياري)
@@ -37,11 +37,16 @@ class PurchaseOrder extends Model
         return $this->hasMany(PurchasePayment::class);
     }
 
-    // حساب حالة الدفع ديناميكياً (accessor - مش مخزن في DB)
+    // حساب حالة الدفع ديناميكياً من amount_paid (لا يُخزن في DB)
     public function getPaymentStatusAttribute(): string
     {
-        if ($this->amount_paid <= 0) return 'unpaid';
-        if ($this->amount_paid >= $this->total_cost) return 'paid';
+        if ((float) $this->amount_paid <= 0) {
+            return 'unpaid';
+        }
+        if ((float) $this->amount_paid >= (float) $this->total_cost) {
+            return 'paid';
+        }
+
         return 'partial';
     }
 

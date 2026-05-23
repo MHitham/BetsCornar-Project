@@ -58,6 +58,7 @@ class InvoiceController extends Controller
                 'countAll' => 0,
                 'hasFilters' => true,
                 'isEmployee' => true,
+                'showRevenueBar' => false,
             ]);
         }
 
@@ -103,6 +104,10 @@ class InvoiceController extends Controller
 
         $hasFilters = $request->hasAny(['q', 'source', 'period', 'date', 'page']);
 
+        $isEmployee = false;
+        $showRevenueBar = true;
+        $revenueSummary = $this->resolveRevenueSummary($date, $period);
+
         return view('invoices.index', compact(
             'invoices',
             'q',
@@ -114,7 +119,9 @@ class InvoiceController extends Controller
             'countMonth',
             'countAll',
             'hasFilters',
-            'isEmployee'
+            'isEmployee',
+            'showRevenueBar',
+            'revenueSummary',
         ));
     }
 
@@ -155,9 +162,71 @@ class InvoiceController extends Controller
     public function show(Invoice $invoice)
     {
         // تم التعديل: تحميل منتجات البنود مع منتجات التطعيمات وسجل الدفعات لتجنب N+1 داخل صفحة الفاتورة
-        $invoice->load(['items.product', 'vaccinations.product', 'payments']);
+        $invoice->load([
+            'items.product',
+            'items.vaccineBatches',
+            'vaccinations.product',
+            'payments',
+            'returns.items.product', // إضافة: تحميل المرتجعات مع بنودها
+        ]);
 
-        return view('invoices.show', compact('invoice'));
+        $showRevenueBar = auth()->user()->hasRole('admin');
+        $revenueSummary = $showRevenueBar
+            ? $this->invoiceService->getDailyRevenueSummary($invoice->created_at->toDateString())
+            : null;
+
+        return view('invoices.show', compact('invoice', 'revenueSummary', 'showRevenueBar'));
+    }
+
+    /**
+     * @return array{
+     *     date: string,
+     *     label: string,
+     *     gross_revenue: float,
+     *     invoice_count: int,
+     *     cancelled_count: int,
+     *     customer_visits: int,
+     *     quick_sales: int,
+     *     period_type: string,
+     * }
+     */
+    private function resolveRevenueSummary(?string $date, string $period): array
+    {
+        if ($date) {
+            $summary = $this->invoiceService->getDailyRevenueSummary($date);
+            $summary['period_type'] = 'day';
+
+            return $summary;
+        }
+
+        if ($period === 'month') {
+            $summary = $this->invoiceService->getMonthlyRevenueSummary(
+                (int) today()->year,
+                (int) today()->month,
+            );
+            $summary['period_type'] = 'month';
+            $summary['label'] = ReportController::arabicMonthName((int) today()->month).' '.today()->year;
+
+            return $summary;
+        }
+
+        if ($period === 'all') {
+            return [
+                'date' => '',
+                'label' => 'الكل',
+                'gross_revenue' => (float) Invoice::confirmed()->sum('total'),
+                'invoice_count' => (int) Invoice::confirmed()->count(),
+                'cancelled_count' => (int) Invoice::cancelled()->count(),
+                'customer_visits' => (int) Invoice::confirmed()->where('source', 'customer')->count(),
+                'quick_sales' => (int) Invoice::confirmed()->where('source', '!=', 'customer')->count(),
+                'period_type' => 'all',
+            ];
+        }
+
+        $summary = $this->invoiceService->getDailyRevenueSummary(today()->toDateString());
+        $summary['period_type'] = 'day';
+
+        return $summary;
     }
 
     /**
