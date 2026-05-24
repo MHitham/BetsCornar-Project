@@ -28,6 +28,11 @@ class VerifyCloudflareLicense
             return $next($request);
         }
 
+        // ── فحص MAC Address للتحقق من أن البرنامج على نفس الجهاز ──
+        if (! $this->checkMacLock()) {
+            return $this->licenseErrorResponse('MAC_MISMATCH');
+        }
+
         // ── قراءة مفتاح الترخيص من ملف الإعدادات ──
         $licenseKey = config('app.license_key') ?: env('LICENSE_KEY');
 
@@ -161,6 +166,95 @@ class VerifyCloudflareLicense
         $combined = implode('|', [$uname, $hostname, $uuid, $processorId]);
 
         return hash('sha256', $combined);
+    }
+
+    /**
+     * استخراج هاش عناوين MAC الخاصة بالجهاز
+     */
+    protected function getMacHash(): string
+    {
+        try {
+            // ── تشغيل أمر Windows لاسترداد عناوين MAC بصيغة CSV ──
+            $output = [];
+            exec('getmac /fo csv /nh 2>NUL', $output);
+
+            if (empty($output)) {
+                return '';
+            }
+
+            // ── استخراج عناوين MAC ومعالجتها ──
+            $macs = [];
+            foreach ($output as $line) {
+                $line = trim($line);
+                if (empty($line)) {
+                    continue;
+                }
+
+                // تحليل سطر CSV لاستخراج عمود MAC الأول
+                $parts = str_getcsv($line);
+                if (! isset($parts[0])) {
+                    continue;
+                }
+
+                $mac = $parts[0];
+
+                // ── إزالة الشرطات والمسافات وتحويل إلى أحرف كبيرة ──
+                $mac = strtoupper(str_replace(['-', ' ', ':'], '', $mac));
+
+                if (! empty($mac) && $mac !== 'N/A') {
+                    $macs[] = $mac;
+                }
+            }
+
+            if (empty($macs)) {
+                return '';
+            }
+
+            // ── ترتيب العناوين أبجدياً لضمان الثبات عبر التشغيلات ──
+            sort($macs);
+
+            // ── دمج العناوين وتشفيرها بـ SHA256 ──
+            return hash('sha256', implode('|', $macs));
+
+        } catch (\Throwable $e) {
+            // فشل الأمر — إرجاع سلسلة فارغة للسماح بمرور الطلب
+            return '';
+        }
+    }
+
+    /**
+     * التحقق من قفل MAC Address ومطابقته مع الجهاز الحالي
+     */
+    protected function checkMacLock(): bool
+    {
+        $macLockPath = storage_path('app/.mac_lock');
+
+        // ── الملف غير موجود — أول تشغيل على هذا الجهاز ──
+        if (! file_exists($macLockPath)) {
+            $currentMacHash = $this->getMacHash();
+
+            // إذا فشل استرداد MAC — تخطّي الفحص والسماح بالطلب
+            if (empty($currentMacHash)) {
+                return true;
+            }
+
+            // ── حفظ هاش MAC الحالي في ملف القفل ──
+            file_put_contents($macLockPath, $currentMacHash);
+
+            return true;
+        }
+
+        // ── الملف موجود — قراءة الهاش المخزّن ومقارنته بالحالي ──
+        $storedMacHash = trim(file_get_contents($macLockPath));
+        $currentMacHash = $this->getMacHash();
+
+        // إذا فشل استرداد MAC — تخطّي الفحص والسماح بالطلب
+        if (empty($currentMacHash)) {
+            return true;
+        }
+
+        // ── مقارنة الهاشين: تطابق = نفس الجهاز، اختلاف = جهاز آخر ──
+        return $storedMacHash === $currentMacHash;
     }
 
     /**
