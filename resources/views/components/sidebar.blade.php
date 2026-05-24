@@ -47,11 +47,7 @@
                 <i class="bi bi-wallet2"></i> {{ __('expenses.title') }}
             </a>
             {{-- تم الإضافة: رابط التقارير في القائمة الجانبية --}}
-            {{-- رابط تقرير الربحية --}}
-            <a href="{{ route('reports.profitability') }}"
-               class="sidebar-link {{ request()->routeIs('reports.profitability') ? 'active' : '' }}">
-                <i class="bi bi-graph-up-arrow me-2"></i> تقرير الربحية
-            </a>
+
             <a href="{{ route('reports.index') }}"
                class="sidebar-link {{ request()->routeIs('reports.index') ? 'active' : '' }}">
                 <i class="bi bi-bar-chart-line-fill"></i> {{ __('reports.title') }}

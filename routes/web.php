@@ -117,6 +117,10 @@ Route::middleware('auth')->group(function () {
         return view('home', compact('todayVisits', 'todayRevenue', 'totalProducts', 'totalVaccinations', 'upcomingVaccinations', 'lowStockProducts', 'expiredBatches', 'expiringSoonBatches'));
     })->name('dashboard');
 
+    // مسار إشعارات النظام — متاح لجميع المستخدمين المسجلين
+    Route::get('/api/notifications', [App\Http\Controllers\NotificationController::class, 'index'])
+        ->name('notifications.index');
+
     // تم التعديل: مسارات مشتركة (admin + employee) — زيارة العميل + بحث العملاء + الفواتير
     Route::middleware('role:admin,employee')->group(function () {
         Route::get('customers/create', [CustomerController::class, 'create'])->name('customers.create');

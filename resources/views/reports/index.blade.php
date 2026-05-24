@@ -3,6 +3,34 @@
 @section('title', __('reports.title'))
 @section('page-title', __('reports.title'))
 
+{{-- كلاسات CSS مشتركة لصفحات التقارير --}}
+@push('styles')
+<style>
+    .report-card {
+        border-radius: 12px !important;
+        border: none !important;
+    }
+    .report-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    /* تمييز أفضل شهر في الجدول */
+    .best-month-row {
+        background: linear-gradient(90deg, rgba(255,193,7,0.07) 0%, transparent 100%) !important;
+        border-right: 3px solid #ffc107;
+    }
+    .best-month-row td:first-child::after {
+        content: " 🏆";
+        font-size: 12px;
+    }
+</style>
+@endpush
+
 @section('content')
 
 {{-- Year Filter + Header --}}
@@ -16,16 +44,23 @@
                 </h5>
                 <p class="text-muted small mb-0">نظرة شاملة على أداء العيادة خلال العام</p>
             </div>
-            <form method="GET" action="{{ route('reports.index') }}" class="d-flex align-items-center gap-2">
-                <label for="year" class="form-label mb-0 fw-semibold text-muted small text-nowrap">
-                    <i class="bi bi-calendar3 me-1"></i>السنة
-                </label>
-                <select name="year" id="year" class="form-select form-select-sm" style="width: 110px; border-radius: 8px;" onchange="this.form.submit()">
-                    @foreach (range(2026, now()->year) as $selectYear)
-                        <option value="{{ $selectYear }}" @selected($year === $selectYear)>{{ $selectYear }}</option>
-                    @endforeach
-                </select>
-            </form>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                {{-- زر الانتقال لتقرير الربحية --}}
+                <a href="{{ route('reports.profitability', ['year' => $year]) }}" class="btn btn-outline-primary btn-sm" style="border-radius: 8px;">
+                    <i class="bi bi-graph-up-arrow me-1"></i>
+                    تقرير الربحية ←
+                </a>
+                <form method="GET" action="{{ route('reports.index') }}" class="d-flex align-items-center gap-2">
+                    <label for="year" class="form-label mb-0 fw-semibold text-muted small text-nowrap">
+                        <i class="bi bi-calendar3 me-1"></i>السنة
+                    </label>
+                    <select name="year" id="year" class="form-select form-select-sm" style="width: 110px; border-radius: 8px;" onchange="this.form.submit()">
+                        @foreach (range(2026, now()->year) as $selectYear)
+                            <option value="{{ $selectYear }}" @selected($year === $selectYear)>{{ $selectYear }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -76,8 +111,7 @@
 
     {{-- Net Profit Card --}}
     <div class="col-6 col-xl-3">
-        @php $profitPositive = $yearlyTotals['net_profit'] >= 0; @endphp
-        <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden" style="border-radius: 12px;">
+        <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden report-card">
             <div class="card-body p-3">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: linear-gradient(135deg, {{ $profitPositive ? '#0d6efd, #6ea8fe' : '#ffc107, #ffcd39' }});">
@@ -189,14 +223,11 @@
             </thead>
             <tbody>
                 @foreach ($monthlyData as $row)
-                    @php
-                        $hasData = $row['revenue'] > 0 || $row['expenses'] > 0;
-                        $maxRevenue = $monthlyData->max('revenue') ?: 1;
-                        $revenuePercent = round(($row['revenue'] / $maxRevenue) * 100);
-                    @endphp
-                    <tr class="{{ !$hasData ? 'opacity-50' : '' }}" style="transition: all 0.2s;">
+                    {{-- استخدام متغيرات الكنترولر مباشرة بدل حسابها في الـ Blade --}}
+                    <tr class="{{ !$row['has_data'] ? 'opacity-50' : '' }} {{ $row['month'] === $bestMonth ? 'best-month-row' : '' }}" style="transition: all 0.2s;">
                         <td class="fw-semibold px-4">
-                            @if($hasData)
+                            {{-- استخدام $row['has_data'] من الكنترولر --}}
+                            @if($row['has_data'])
                                 <a href="{{ route('reports.month', [$year, $row['month']]) }}" class="text-decoration-none text-dark d-flex align-items-center gap-2">
                                     <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 28px; height: 28px; background: linear-gradient(135deg, #0d6efd, #6ea8fe); font-size: 11px; color: #fff; font-weight: 700;">
                                         {{ $row['month'] }}
@@ -233,9 +264,9 @@
                             </span>
                         </td>
                         <td>
-                            @if($hasData)
+                            @if($row['has_data'])
                                 <div class="progress" style="height: 6px; border-radius: 3px; background: rgba(0,0,0,0.06);">
-                                    <div class="progress-bar" style="width: {{ $revenuePercent }}%; background: linear-gradient(90deg, #198754, #20c997); border-radius: 3px;"></div>
+                                    <div class="progress-bar" style="width: {{ $row['revenue_percent'] }}%; background: linear-gradient(90deg, #198754, #20c997); border-radius: 3px;"></div>
                                 </div>
                             @else
                                 <span class="text-muted" style="font-size: 10px;">—</span>
@@ -316,7 +347,7 @@
                             </td>
                             <td class="fw-semibold">{{ $product->name }}</td>
                             <td>
-                                <span class="badge bg-{{ $typeColor }} bg-opacity-15 text-{{ $typeColor }} border border-{{ $typeColor }} border-opacity-25" style="font-size: 11px;">
+                                <span class="badge bg-{{ $typeColor }} bg-opacity-10 text-{{ $typeColor }} border border-{{ $typeColor }} border-opacity-25" style="font-size: 11px;">
                                     {{ $typeLabel }}
                                 </span>
                             </td>

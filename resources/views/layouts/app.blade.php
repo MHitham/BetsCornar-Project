@@ -80,6 +80,7 @@
     </script>
 
     @stack('scripts')
+    <script src="{{ asset('js/notifications.js') }}"></script>
 </body>
 
 </html>

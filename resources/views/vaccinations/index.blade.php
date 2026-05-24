@@ -18,7 +18,7 @@
     <div class="card mb-4 shadow-sm border-0">
         <div class="card-body">
             <form method="GET" action="{{ route('vaccinations.index') }}" class="row g-3 align-items-end" id="filterForm">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label text-muted">{{ __('vaccinations.actions.search') }}</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
@@ -27,13 +27,18 @@
                     </div>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label text-muted">الحالة</label>
                     <select name="is_completed" class="form-select" onchange="this.form.submit()">
                         <option value="0" @selected(request('is_completed', '0') === '0')>غير مكتملة (قادمة)</option>
                         <option value="1" @selected(request('is_completed') === '1')>مكتملة</option>
                         <option value="all" @selected(request('is_completed') === 'all')>الكل</option>
                     </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label text-muted">تاريخ التطعيم القادم</label>
+                    <input type="date" name="date" class="form-control" value="{{ request('date') }}" onchange="this.form.submit()">
                 </div>
 
                 <div class="col-md-3">

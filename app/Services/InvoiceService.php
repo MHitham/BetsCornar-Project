@@ -51,7 +51,7 @@ class InvoiceService
      */
     public function saveQuickSale(array $data): Invoice
     {
-        return DB::transaction(function () use ($data) {
+        $invoice = DB::transaction(function () use ($data) {
             $customerId = null;
             $customerName = trim((string) ($data['customer_name'] ?? ''));
             if ($customerName === '') {
@@ -113,10 +113,28 @@ class InvoiceService
                 }
             }
 
-            $invoice->update(['total' => round($lineTotal, 2)]);
+            $total = round($lineTotal, 2);
+            $invoice->update([
+                'total' => $total,
+                'amount_paid' => $total,
+            ]);
+
+            if ($total > 0) {
+                \App\Models\InvoicePayment::create([
+                    'invoice_id' => $invoice->id,
+                    'amount'     => $total,
+                    'notes'      => 'تسديد تلقائي - بيع سريع',
+                    'paid_at'    => now(),
+                ]);
+            }
 
             return $invoice;
         });
+
+        // مسح كاش الإشعارات بعد إنشاء فاتورة بيع سريع
+        Cache::forget('notifications.alerts');
+
+        return $invoice;
     }
 
     /**

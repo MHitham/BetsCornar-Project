@@ -106,11 +106,7 @@
                 <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-right me-1"></i>{{ __('messages.back') }}
                 </a>
-                @if(!empty($showRevenueBar))
-                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#revenueModal">
-                        <i class="bi bi-cash-stack me-1"></i>الإيرادات
-                    </button>
-                @endif
+
                 <button type="button" class="btn btn-info ms-2 text-white" onclick="window.print()">
                     🖨️ طباعة
                 </button>
@@ -501,12 +497,6 @@
 </div>
 @endif
 
-@if(!empty($showRevenueBar) && !empty($revenueSummary))
-    @php
-        $revenueSummary['period_type'] = 'day';
-        $revenueSummary['label'] = $invoice->created_at->format('Y-m-d');
-    @endphp
-    @include('invoices.partials.revenue-modal')
-@endif
+
 
 @endsection

@@ -14,6 +14,34 @@
     </div>
 
     <div class="topbar-actions">
+        {{-- جرس الإشعارات --}}
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary position-relative"
+                    id="notificationBell"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    title="الإشعارات">
+                <i class="bi bi-bell-fill"></i>
+                <span id="notification-bell-badge"
+                      class="position-absolute top-0 start-0 translate-middle
+                             badge rounded-pill bg-danger"
+                      style="display:none; font-size:0.65rem">
+                    0
+                </span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end shadow"
+                 style="width:320px; max-height:400px; overflow-y:auto">
+                <div class="dropdown-header fw-bold border-bottom pb-2">
+                    <i class="bi bi-bell me-1"></i> الإشعارات
+                </div>
+                <div id="notification-dropdown-list">
+                    <div class="dropdown-item text-muted text-center py-3">
+                        جاري التحميل...
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="topbar-user-chip">
             <span class="topbar-user-icon">
                 <i class="bi bi-person-circle"></i>

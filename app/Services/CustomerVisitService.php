@@ -170,9 +170,9 @@ class CustomerVisitService
             if ((float) $invoice->amount_paid > 0) {
                 \App\Models\InvoicePayment::create([
                     'invoice_id' => $invoice->id,
-                    'amount'     => (float) $invoice->amount_paid,
-                    'notes'      => 'دفعة مقدمة عند إنشاء الفاتورة',
-                    'paid_at'    => now(),
+                    'amount' => (float) $invoice->amount_paid,
+                    'notes' => 'دفعة مقدمة عند إنشاء الفاتورة',
+                    'paid_at' => now(),
                 ]);
             }
 
@@ -180,6 +180,8 @@ class CustomerVisitService
             Cache::forget('dashboard.total_vaccinations');
             // تم الإضافة: تحديث كاش التطعيمات القادمة بعد إنشاء سجل تطعيم جديد أو تعديل مواعيده
             Cache::forget(dashboardKey('upcoming_vaccinations'));
+            // مسح كاش الإشعارات بعد حفظ الزيارة لضمان تحديث التنبيهات فوراً
+            Cache::forget('notifications.alerts');
 
             return $invoice;
         });

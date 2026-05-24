@@ -85,7 +85,11 @@ class VaccinationController extends Controller
         $query = Vaccination::query()->with(['customer', 'product', 'invoice']);
         $search = trim((string) $request->input('q', ''));
         $filter = $request->string('filter')->toString();
-        $isCompleted = (string) $request->input('is_completed', '0');
+        $dateFilter = (string) $request->input('date', '');
+
+        // لو فيه فلتر تاريخ محدد، الافتراضي يبقي "الكل" عشان يظهر المكتمل وغير المكتمل
+        $defaultCompleted = $dateFilter !== '' ? 'all' : '0';
+        $isCompleted = (string) $request->input('is_completed', $defaultCompleted);
         $sort = (string) $request->input('sort', 'latest');
 
         // Move the Blade search logic into the controller without changing the UI inputs.
@@ -99,6 +103,10 @@ class VaccinationController extends Controller
         // Move the Blade completion filter into the controller using the same defaults.
         if ($isCompleted !== 'all') {
             $query->where('is_completed', $isCompleted === '1');
+        }
+
+        if ($dateFilter !== '') {
+            $query->whereDate('next_dose_date', $dateFilter);
         }
 
         // Move the Blade sort logic into the controller without changing the selected values.
@@ -167,6 +175,7 @@ class VaccinationController extends Controller
             'filter' => $filter,
             'isCompleted' => $isCompleted,
             'sort' => $sort,
+            'dateFilter' => $dateFilter,
             'threeDaysUpcoming' => $threeDaysUpcoming,
             'customerVaccinationsMap' => $customerVaccinationsMap,
         ]);
@@ -285,6 +294,11 @@ class VaccinationController extends Controller
         $isCompleted = (string) $request->input('is_completed', '0');
         if ($isCompleted !== 'all') {
             $query->where('is_completed', $isCompleted === '1');
+        }
+
+        $dateFilter = (string) $request->input('date', '');
+        if ($dateFilter !== '') {
+            $query->whereDate('next_dose_date', $dateFilter);
         }
 
         $sort = (string) $request->input('sort', 'latest');

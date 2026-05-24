@@ -89,7 +89,7 @@
                 <div class="card-body p-0" style="max-height:450px;overflow-y:auto;">
                     @if($lowStockProducts->isNotEmpty())
                         @foreach($lowStockProducts as $product)
-                            <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 border-bottom gap-2">
                                 <span class="fw-semibold">{{ $product->name }}</span>
                                 <span
                                     class="badge {{ $product->stock_status === 'out_of_stock' ? 'bg-danger text-white' : 'bg-warning text-dark' }}">
@@ -119,14 +119,14 @@
                 </div>
                 <div class="card-body p-0" style="max-height:450px;overflow-y:auto;">
                     @foreach ($expiredBatches as $batch)
-                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 border-bottom gap-2">
                             <span class="fw-semibold">{{ $batch->product->name }}</span>
                             <span class="badge bg-danger text-white">🚨 منتهي —
                                 {{ $batch->expiry_date->format('Y-m-d') }}</span>
                         </div>
                     @endforeach
                     @foreach ($expiringSoonBatches as $batch)
-                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 border-bottom gap-2">
                             <span class="fw-semibold">{{ $batch->product->name }}</span>
                             <span class="badge bg-warning text-dark">⚠️ قريب —
                                 {{ $batch->expiry_date->format('Y-m-d') }}</span>
@@ -154,7 +154,7 @@
         <div class="card-body p-0">
             @if($upcomingVaccinations->isNotEmpty())
                 @foreach($upcomingVaccinations as $vacc)
-                    <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 border-bottom gap-2">
                         <div>
                             <span class="fw-semibold">{{ $vacc->customer->name }}</span>
                             <span class="text-muted small me-2">{{ $vacc->customer->phone }}</span>
