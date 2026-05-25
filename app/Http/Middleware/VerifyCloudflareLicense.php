@@ -87,25 +87,30 @@ class VerifyCloudflareLicense
      */
     protected function handleOfflineGracePeriod(string $deviceHash, Closure $next, Request $request): Response
     {
-        // ── التحقق من وجود فترة السماح في الكاش ──
-        $offlineExpiry = cache()->get('license_offline_expiry');
+        // ── مسار ملف انتهاء صلاحية فترة السماح الدائم ──
+        $expiryFilePath = storage_path('app/.offline_expiry');
 
-        if ($offlineExpiry !== null) {
-            // فترة السماح موجودة — التحقق من انتهائها
-            if (now()->lessThanOrEqualTo($offlineExpiry)) {
-                // لا تزال فترة السماح سارية — السماح بالطلب
-                return $next($request);
-            }
+        // ── الملف غير موجود — أول انقطاع، إنشاء فترة سماح لمدة 7 أيام ──
+        if (! file_exists($expiryFilePath)) {
+            // حفظ تاريخ انتهاء الصلاحية في الملف
+            file_put_contents($expiryFilePath, now()->addDays(7)->toIso8601String());
 
-            // انتهت فترة السماح — عرض صفحة الخطأ
-            return $this->licenseErrorResponse($deviceHash);
+            return $next($request);
         }
 
-        // ── لا توجد فترة سماح مسجّلة — إنشاء فترة سماح لمدة 7 أيام ──
-        $expiry = now()->addDays(7);
-        cache()->put('license_offline_expiry', $expiry, $expiry);
+        // ── الملف موجود — قراءة التاريخ المخزّن ومقارنته بالوقت الحالي ──
+        $storedExpiry = trim(file_get_contents($expiryFilePath));
 
-        return $next($request);
+        // ── تحويل النص المخزّن إلى كائن Carbon للمقارنة ──
+        $expiryDate = \Carbon\Carbon::parse($storedExpiry);
+
+        if (now()->lessThanOrEqualTo($expiryDate)) {
+            // لا تزال فترة السماح سارية — السماح بالطلب
+            return $next($request);
+        }
+
+        // ── انتهت فترة السماح — عرض صفحة الخطأ دون إعادة إنشاء الملف ──
+        return $this->licenseErrorResponse($deviceHash);
     }
 
     /**

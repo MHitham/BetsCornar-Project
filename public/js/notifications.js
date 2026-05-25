@@ -5,7 +5,7 @@ const STORAGE_KEY = 'bets_shown_notifications';
 // ── مفتاح تخزين الإشعارات المُسكتة من الجرس ──
 const DISMISSED_KEY = 'bets_dismissed_notifications';
 // مدة إخفاء الإشعار بعد الضغط عليه (ساعتان)
-const DISMISS_DURATION = 2 * 60 * 60 * 1000;
+const DISMISS_DURATION = 4 * 60 * 60 * 1000;
 // AudioContext يُهيَّأ عند أول تفاعل من المستخدم
 let audioCtx = null;
 document.addEventListener('click', () => {
