@@ -11,7 +11,7 @@
         </div>
         <div class="card-body row g-3">
 
-            {{-- Name --}}
+            
             <div class="col-md-6">
                 <label class="form-label" for="name">{{ __('products.fields.name') }} <span
                         class="text-danger">*</span></label>
@@ -23,7 +23,7 @@
                 @enderror
             </div>
 
-            {{-- Type --}}
+            
             <div class="col-md-6">
                 <label class="form-label" for="type">{{ __('products.fields.type') }} <span
                         class="text-danger">*</span></label>
@@ -37,12 +37,12 @@
                 @enderror
             </div>
 
-            {{-- Price --}}
+            
             <div class="col-md-4">
                 <label class="form-label" for="price">{{ __('products.fields.price') }} <span
                         class="text-danger">*</span></label>
                 <div class="input-group">
-                    {{-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي --}}
+                    
                     <input type="number" step="0.01" min="0" id="price" name="price"
                         class="form-control @error('price') is-invalid @enderror"
                         value="{{ old('price', $product->price) }}" placeholder="0" required>
@@ -53,7 +53,7 @@
                 @enderror
             </div>
 
-            {{-- الكمية  --}}
+            
             <div class="col-md-4 stock-field quantity-field">
                 <label class="form-label" for="quantity">{{ __('products.fields.quantity') }} <span
                         class="text-danger">*</span></label>
@@ -65,7 +65,7 @@
                 @enderror
             </div>
 
-            {{-- حد المخزون المنخفض --}}
+            
             <div class="col-md-4 stock-field threshold-field">
                 <label class="form-label"
                     for="low_stock_threshold">{{ __('products.fields.low_stock_threshold') }}</label>
@@ -77,7 +77,7 @@
                 @enderror
             </div>
 
-            {{-- هل المنتج نشط --}}
+            
             <div class="col-12">
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" role="switch" id="is_active" name="is_active"
@@ -88,7 +88,7 @@
                 </div>
             </div>
 
-            {{-- Service/Vaccination note --}}
+            
             <div class="col-12" id="service-note" style="display:none;">
                 <div class="alert alert-info py-2 mb-0">
                     <i class="bi bi-info-circle-fill me-1"></i>
@@ -96,7 +96,7 @@
                 </div>
             </div>
 
-            {{-- Notes --}}
+            
             <div class="col-12">
                 <label class="form-label" for="notes">{{ __('products.fields.notes') }}</label>
                 <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="ملاحظات إضافية (اختياري)">{{ old('notes', $product->notes) }}</textarea>

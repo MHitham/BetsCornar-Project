@@ -18,19 +18,16 @@ class InvoiceReturnItem extends Model
         'line_total' => 'decimal:2',
     ];
 
-    // علاقة: بند المرتجع يخص سجل مرتجع
     public function invoiceReturn(): BelongsTo
     {
         return $this->belongsTo(InvoiceReturn::class);
     }
 
-    // علاقة: بند المرتجع مرتبط ببند الفاتورة الأصلية
     public function invoiceItem(): BelongsTo
     {
         return $this->belongsTo(InvoiceItem::class);
     }
 
-    // علاقة: بند المرتجع مرتبط بمنتج
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

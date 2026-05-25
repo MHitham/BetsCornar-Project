@@ -9,7 +9,6 @@ use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-// تم الإضافة: استخدام الكاش لمسح عداد المنتجات في لوحة التحكم بعد التعديلات
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
@@ -24,7 +23,7 @@ class ProductController extends Controller
         $query = Product::query();
 
         if ($search = trim((string) $request->string('q'))) {
-            // تصحيح عملية البحث — استخدام like بدلاً من = للبحث الجزئي
+
             $query->where('name', 'like', '%'.$search.'%');
         }
 
@@ -63,7 +62,7 @@ class ProductController extends Controller
         $products = Product::query()
             ->active()
             ->where('type', '!=', 'vaccination')
-            ->when($q, fn($query) => $query->where('name', 'like', '%' . $q . '%'))
+            ->when($q, fn ($query) => $query->where('name', 'like', '%'.$q.'%'))
             ->orderBy('name')
             ->limit(20)
             ->get(['id', 'name', 'price', 'stock_status', 'quantity', 'track_stock']);
@@ -94,7 +93,6 @@ class ProductController extends Controller
             $this->stockService->recalculateVaccineStock($product);
         }
 
-        // تم الإضافة: تحديث كاش إجمالي المنتجات بعد إنشاء منتج جديد
         Cache::forget('dashboard.total_products');
 
         return redirect()
@@ -117,7 +115,6 @@ class ProductController extends Controller
             $this->stockService->recalculateVaccineStock($product->fresh());
         }
 
-        // تم الإضافة: تحديث كاش إجمالي المنتجات بعد تعديل بيانات منتج قائم
         Cache::forget('dashboard.total_products');
 
         return redirect()
@@ -148,7 +145,6 @@ class ProductController extends Controller
             'is_active' => ! $product->is_active,
         ]);
 
-        // تم الإضافة: تحديث كاش إجمالي المنتجات بعد تغيير حالة التفعيل
         Cache::forget('dashboard.total_products');
 
         return redirect()
@@ -172,7 +168,7 @@ class ProductController extends Controller
         }
 
         if ($type === 'vaccination') {
-            // Authoritative vaccine stock is always derived from vaccine batches.
+
             $data['track_stock'] = true;
             $data['quantity'] = 0;
             $data['stock_status'] = 'out_of_stock';

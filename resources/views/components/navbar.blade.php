@@ -14,7 +14,8 @@
     </div>
 
     <div class="topbar-actions">
-        {{-- جرس الإشعارات --}}
+        
+        @role('admin')
         <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary position-relative"
                     id="notificationBell"
@@ -41,6 +42,7 @@
                 </div>
             </div>
         </div>
+        @endrole
 
         <div class="topbar-user-chip">
             <span class="topbar-user-icon">
@@ -60,7 +62,7 @@
                 <i class="bi bi-lightning-fill me-1"></i>{{ __('messages.quick_sale') }}
             </a>
 
-            {{-- تم الإضافة: زر تسجيل الخروج لجميع المستخدمين --}}
+            
             <form method="POST" action="{{ route('logout') }}" class="d-inline">
                 @csrf
                 <button type="submit" class="btn btn-outline-danger btn-sm" title="تسجيل خروج">

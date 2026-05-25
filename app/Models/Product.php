@@ -45,7 +45,6 @@ class Product extends Model
         return $this->hasMany(VaccineBatch::class);
     }
 
-    // علاقة: المنتج موجود في بنود فواتير الشراء
     public function purchaseOrderItems(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);

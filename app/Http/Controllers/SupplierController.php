@@ -10,7 +10,6 @@ use Illuminate\View\View;
 
 class SupplierController extends Controller
 {
-    // عرض قائمة الموردين مع رصيد كل مورد
     public function index(): View
     {
         $suppliers = Supplier::query()
@@ -22,13 +21,11 @@ class SupplierController extends Controller
         return view('suppliers.index', compact('suppliers'));
     }
 
-    // فورم إضافة مورد جديد
     public function create(): View
     {
         return view('suppliers.create');
     }
 
-    // حفظ مورد جديد
     public function store(StoreSupplierRequest $request): RedirectResponse
     {
         Supplier::create($request->validated() + ['is_active' => true]);
@@ -37,13 +34,11 @@ class SupplierController extends Controller
             ->with('success', 'تم إضافة المورد بنجاح');
     }
 
-    // فورم تعديل مورد
     public function edit(Supplier $supplier): View
     {
         return view('suppliers.edit', compact('supplier'));
     }
 
-    // حفظ تعديلات المورد
     public function update(UpdateSupplierRequest $request, Supplier $supplier): RedirectResponse
     {
         $supplier->update($request->validated());
@@ -52,7 +47,6 @@ class SupplierController extends Controller
             ->with('success', 'تم تعديل بيانات المورد بنجاح');
     }
 
-    // تفعيل/تعطيل المورد
     public function toggleActive(Supplier $supplier): RedirectResponse
     {
         $supplier->update(['is_active' => ! $supplier->is_active]);
@@ -62,7 +56,6 @@ class SupplierController extends Controller
         return redirect()->route('suppliers.index')->with('success', $message);
     }
 
-    // حذف المورد — يُمنع لو عنده فواتير شراء
     public function destroy(Supplier $supplier): RedirectResponse
     {
         if ($supplier->purchaseOrders()->exists()) {

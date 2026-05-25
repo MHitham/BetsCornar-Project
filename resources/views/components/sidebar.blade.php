@@ -4,7 +4,7 @@
             <i class="bi bi-heart-pulse-fill"></i>
         </div>
         <div>
-            {{-- اسم العيادة الديناميكي من الإعدادات --}}
+            
             <div class="brand-eyebrow">{{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}</div>
             <div class="brand-text">{{ __('messages.app_name') }}</div>
             <div class="brand-sub">لوحة تشغيل العيادة البيطرية</div>
@@ -12,7 +12,7 @@
     </div>
 
     <nav class="sidebar-nav">
-        {{-- تم التعديل: روابط لوحة التحكم والإدارة للأدمن فقط --}}
+        
         @role('admin')
             <div class="nav-label">الرئيسية</div>
             <a href="{{ route('dashboard') }}"
@@ -41,19 +41,19 @@
                class="sidebar-link {{ request()->routeIs('vaccinations.*') ? 'active' : '' }}">
                 <i class="bi bi-shield-plus"></i> {{ __('messages.nav_vaccinations') }}
             </a>
-            {{-- تم الإضافة: رابط المصروفات في القائمة الجانبية --}}
+            
             <a href="{{ route('expenses.index') }}"
                class="sidebar-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
                 <i class="bi bi-wallet2"></i> {{ __('expenses.title') }}
             </a>
-            {{-- تم الإضافة: رابط التقارير في القائمة الجانبية --}}
+            
 
             <a href="{{ route('reports.index') }}"
                class="sidebar-link {{ request()->routeIs('reports.index') ? 'active' : '' }}">
                 <i class="bi bi-bar-chart-line-fill"></i> {{ __('reports.title') }}
             </a>
 
-            {{-- تم الإضافة: قسم المشتريات والموردين --}}
+            
             <div class="nav-label mt-2">المشتريات</div>
             <a href="{{ route('suppliers.index') }}"
                class="sidebar-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
@@ -63,24 +63,24 @@
                class="sidebar-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
                 <i class="bi bi-cart-check-fill"></i> فواتير الشراء
             </a>
-            {{-- تم الإضافة: رابط إدارة المستخدمين (يظهر للأدمن فقط) --}}
+            
             <a href="{{ route('users.index') }}"
                class="sidebar-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
                 <i class="bi bi-person-badge-fill"></i> المستخدمين
             </a>
-            {{-- رابط إعدادات النظام للأدمن فقط --}}
+            
             <a href="{{ route('settings.index') }}"
                class="sidebar-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
                 <i class="bi bi-sliders"></i> إعدادات النظام
             </a>
-            {{-- رابط النسخ الاحتياطي --}}
+            
             <a href="{{ route('backup.index') }}"
                class="sidebar-link {{ request()->is('settings/backup*') ? 'active' : '' }}">
                 <i class="bi bi-gear"></i> النسخ الاحتياطي
             </a>
         @endrole
 
-        {{-- تم الإضافة: روابط الموظف — تظهر فقط للموظف --}}
+        
         @role('employee')
             <div class="nav-label">القائمة</div>
             <a href="{{ route('invoices.index') }}"

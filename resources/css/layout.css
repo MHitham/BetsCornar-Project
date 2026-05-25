@@ -275,7 +275,7 @@ a:hover {
     margin-right: var(--sidebar-w);
     flex: 1;
     min-width: 0;
-    /* CRITICAL: prevents flexbox from expanding beyond screen width when tables are wide */
+    
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -1329,12 +1329,12 @@ textarea:focus {
     }
 }
 
-/* Make tables within responsive wrappers strictly scrollable horizontally without squishing text */
+
 .table-responsive .table {
     white-space: nowrap;
 }
 
-/* Mobile specific form/button refinements */
+
 @media (max-width: 575.98px) {
 
     .form-control,
@@ -1345,12 +1345,12 @@ textarea:focus {
         font-size: 0.9rem;
     }
 
-    /* Enhance lists that use d-flex justify-content-between to wrap on tiny screens if needed */
+    
     .d-flex.justify-content-between {
         gap: 0.5rem;
     }
 
-    /* Make stat cards fit 2 per row nicely by stacking their content */
+    
     .stat-card {
         flex-direction: column;
         text-align: center;
@@ -1373,7 +1373,7 @@ textarea:focus {
         font-size: 0.75rem;
     }
 
-    /* Ensure action cards in action-grid fit nicely */
+    
     .action-grid {
         grid-template-columns: 1fr;
     }

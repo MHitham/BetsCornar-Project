@@ -13,16 +13,14 @@ class PurchasePayment extends Model
 
     protected $casts = [
         'paid_at' => 'date',
-        'amount'  => 'decimal:2',
+        'amount' => 'decimal:2',
     ];
 
-    // علاقة: الدفعة تخص فاتورة شراء
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
     }
 
-    // علاقة: الدفعة اتعملت بواسطة يوزر
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

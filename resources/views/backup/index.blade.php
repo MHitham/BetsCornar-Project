@@ -5,20 +5,20 @@
 
 @section('content')
 
-{{-- رأس الصفحة مع أزرار الإجراءات --}}
+
 <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-3">
     <div>
         <h5 class="fw-bold mb-1">النسخ الاحتياطية</h5>
         <p class="text-muted mb-0 small">إدارة نسخ قاعدة البيانات</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        {{-- مسار مجلد النسخ الاحتياطية --}}
+        
         <span class="text-muted small d-flex align-items-center gap-1">
             <i class="bi bi-folder2"></i>
             {{ config('backup.backup_path') }}
         </span>
 
-        {{-- زر إنشاء نسخة احتياطية الآن --}}
+        
         <form method="POST" action="{{ route('backup.store') }}"
               onsubmit="return confirm('هل تريد إنشاء نسخة احتياطية الآن؟')">
             @csrf
@@ -30,7 +30,7 @@
     </div>
 </div>
 
-{{-- تنبيه معلوماتي --}}
+
 <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
     <i class="bi bi-info-circle-fill fs-5"></i>
     <span>
@@ -38,7 +38,7 @@
     </span>
 </div>
 
-{{-- جدول النسخ الاحتياطية --}}
+
 <div class="card">
     <div class="card-header fw-bold">
         <i class="bi bi-archive-fill text-success me-1"></i>
@@ -68,7 +68,7 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="d-flex gap-1 justify-content-center">
-                                        {{-- زر الاستعادة مع تأكيد --}}
+                                        
                                         <form method="POST"
                                               action="{{ route('backup.restore', $backup['filename']) }}"
                                               onsubmit="return confirm('⚠️ تحذير: سيتم استبدال قاعدة البيانات الحالية بهذه النسخة.\n\nسيتم حفظ نسخة احتياطية تلقائية من الحالة الراهنة أولاً.\n\nهل تريد المتابعة؟')">
@@ -78,7 +78,7 @@
                                             </button>
                                         </form>
 
-                                        {{-- زر الحذف مع تأكيد --}}
+                                        
                                         <form method="POST"
                                               action="{{ route('backup.destroy', $backup['filename']) }}"
                                               onsubmit="return confirm('هل أنت متأكد من حذف هذه النسخة؟ لا يمكن التراجع.')">

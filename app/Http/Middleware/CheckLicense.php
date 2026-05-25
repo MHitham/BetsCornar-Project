@@ -8,84 +8,53 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * ===================================================================
- * وسيط التحقق من الترخيص - CheckLicense Middleware
- * ===================================================================
- *
- * يتحقق من حالة ترخيص التطبيق في كل طلب HTTP:
- *
- * 1. إذا مُفعل → يسمح بالمرور
- * 2. إذا في فترة التجربة → يسمح بالمرور
- * 3. إذا انتهت التجربة / تلاعب بالوقت / تلاعب بالبيانات:
- *    → يعرض نافذة ترخيص حظر (بدون Blade page)
- *    → المستخدم يدخل المفتاح أو يغلق التطبيق
- *
- * المسارات المستثناة: license/* و native-test (لتجنب الحلقة المغلقة)
- */
 class CheckLicense
 {
-    /**
-     * المسارات المستثناة من فحص الترخيص
-     */
     protected array $excludedPaths = [
         'license/*',
         'native-test',
     ];
 
-    /**
-     * معالجة الطلب الوارد
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        // ===================================================================
-        // تخطي المسارات المستثناة (مسار التفعيل + اختبار NativePHP)
-        // ===================================================================
+
         foreach ($this->excludedPaths as $pattern) {
             if ($request->is($pattern)) {
                 return $next($request);
             }
         }
 
-        // ===================================================================
-        // التحقق من وجود جدول الترخيص (قد لا يكون موجوداً قبل أول migration)
-        // ===================================================================
         try {
-            if (!\Schema::hasTable('app_licenses')) {
+            if (! \Schema::hasTable('app_licenses')) {
                 return $next($request);
             }
         } catch (\Throwable $e) {
-            // إذا فشل الاتصال بقاعدة البيانات، نسمح بالمرور مؤقتاً
+
             return $next($request);
         }
 
-        // ===================================================================
-        // فحص حالة الترخيص
-        // ===================================================================
         try {
             $result = \Illuminate\Support\Facades\Cache::remember('license_status', 300, function () {
                 return LicenseService::checkLicense();
             });
         } catch (\Throwable $e) {
-            // في حالة أي خطأ غير متوقع، نسجل الخطأ ونسمح بالمرور
+
             Log::error('CheckLicense: خطأ غير متوقع', ['error' => $e->getMessage()]);
+
             return $next($request);
         }
 
-        // ===================================================================
-        // اتخاذ القرار بناءً على حالة الترخيص
-        // ===================================================================
         switch ($result['status']) {
             case 'activated':
-                // مُفعل بالكامل → السماح بالمرور
+
                 return $next($request);
 
             case 'trial':
-                // في فترة التجربة → السماح بالمرور
+
                 return $next($request);
 
             case 'expired':
-                // انتهت الفترة التجريبية → عرض نافذة التفعيل
+
                 return $this->blockWithPopup(
                     $result['machine_id'],
                     'expired',
@@ -93,7 +62,7 @@ class CheckLicense
                 );
 
             case 'time_tampered':
-                // تم اكتشاف تلاعب بالوقت → قفل فوري
+
                 return $this->blockWithPopup(
                     $result['machine_id'],
                     'time_tampered',
@@ -101,7 +70,7 @@ class CheckLicense
                 );
 
             case 'tampered':
-                // تم اكتشاف تلاعب بالبيانات → قفل فوري
+
                 return $this->blockWithPopup(
                     $result['machine_id'],
                     'tampered',
@@ -113,50 +82,25 @@ class CheckLicense
         }
     }
 
-    /**
-     * ===================================================================
-     * عرض نافذة الترخيص المانعة - Block With Popup
-     * ===================================================================
-     *
-     * يعرض صفحة HTML مضمنة (ليست Blade page) تعمل كنافذة حظر:
-     * - تعرض رسالة الخطأ
-     * - تعرض رقم الجهاز (قابل للنسخ)
-     * - تحتوي على حقل إدخال مفتاح الترخيص
-     * - إذا أغلق المستخدم النافذة أو ضغط إلغاء → يُغلق التطبيق فوراً
-     * - إذا أدخل مفتاح صحيح → يُفعل ويعيد التوجيه
-     * - إذا أدخل مفتاح خاطئ → يعرض خطأ ويعيد المحاولة
-     *
-     * ملاحظة: هذا HTML مضمن في الـ middleware وليس Blade template
-     * لتلبية متطلبات "استخدم NativePHP dialog أو JavaScript prompt"
-     *
-     * @param string $machineId بصمة الجهاز
-     * @param string $reason سبب القفل
-     * @param Request $request الطلب الأصلي
-     * @return Response
-     */
     protected function blockWithPopup(string $machineId, string $reason, Request $request): Response
     {
-        // تحديد رسالة الخطأ حسب السبب
+
         $title = match ($reason) {
-            'expired'       => '⚠️ انتهت الفترة التجريبية',
+            'expired' => '⚠️ انتهت الفترة التجريبية',
             'time_tampered' => '🔒 تم قفل التطبيق',
-            'tampered'      => '🔒 تم قفل التطبيق',
-            default         => '🔒 الترخيص مطلوب',
+            'tampered' => '🔒 تم قفل التطبيق',
+            default => '🔒 الترخيص مطلوب',
         };
 
         $subtitle = match ($reason) {
-            'expired'       => 'يرجى إدخال مفتاح الترخيص للاستمرار في استخدام التطبيق',
+            'expired' => 'يرجى إدخال مفتاح الترخيص للاستمرار في استخدام التطبيق',
             'time_tampered' => 'تم اكتشاف تلاعب بتاريخ النظام - يرجى إدخال مفتاح الترخيص',
-            'tampered'      => 'تم اكتشاف تلاعب ببيانات التطبيق - يرجى إدخال مفتاح الترخيص',
-            default         => 'يرجى إدخال مفتاح الترخيص',
+            'tampered' => 'تم اكتشاف تلاعب ببيانات التطبيق - يرجى إدخال مفتاح الترخيص',
+            default => 'يرجى إدخال مفتاح الترخيص',
         };
 
-        // توليد CSRF token لطلب التفعيل
         $csrfToken = csrf_token();
 
-        // ===================================================================
-        // HTML مضمن - نافذة الترخيص المانعة
-        // ===================================================================
         $html = <<<HTML
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -666,16 +610,13 @@ HTML;
         return response($html, 403);
     }
 
-    /**
-     * الحصول على أيقونة القفل المناسبة حسب السبب
-     */
     private function getLockEmoji(string $reason): string
     {
         return match ($reason) {
-            'expired'       => '⏰',
+            'expired' => '⏰',
             'time_tampered' => '🔒',
-            'tampered'      => '🛡️',
-            default         => '🔒',
+            'tampered' => '🛡️',
+            default => '🔒',
         };
     }
 }

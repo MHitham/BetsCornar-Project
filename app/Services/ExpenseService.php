@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\DB;
 
 class ExpenseService
 {
-    // تم الإضافة: حفظ مصروف جديد داخل transaction واحدة
     public function create(array $validated): Expense
     {
         return DB::transaction(function () use ($validated) {
@@ -18,7 +17,6 @@ class ExpenseService
         });
     }
 
-    // تم الإضافة: تحديث المصروف داخل transaction واحدة
     public function update(Expense $expense, array $validated): Expense
     {
         return DB::transaction(function () use ($expense, $validated) {
@@ -28,7 +26,6 @@ class ExpenseService
         });
     }
 
-    // تم الإضافة: حذف ناعم للمصروف داخل transaction واحدة
     public function delete(Expense $expense): void
     {
         DB::transaction(function () use ($expense) {

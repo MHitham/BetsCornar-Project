@@ -8,7 +8,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-8 col-xl-6">
 
-            {{-- رسالة النجاح --}}
+            
             @if (session('success'))
                 <div class="alert alert-success app-alert mb-4">
                     <div class="app-alert__row">
@@ -22,7 +22,7 @@
                 </div>
             @endif
 
-            {{-- بطاقة إعدادات النظام --}}
+            
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white d-flex align-items-center gap-2">
                     <i class="bi bi-gear-fill"></i>
@@ -32,7 +32,7 @@
                     <form action="{{ route('settings.update') }}" method="POST">
                         @csrf
 
-                        {{-- حقل اسم العيادة --}}
+                        
                         <div class="mb-4">
                             <label for="clinic_name" class="form-label fw-semibold">
                                 <i class="bi bi-hospital me-1"></i>
@@ -51,7 +51,7 @@
                             <div class="form-text">هذا الاسم سيظهر في الفواتير والقائمة الجانبية وصفحة الدخول.</div>
                         </div>
 
-                        {{-- زر الحفظ --}}
+                        
                         <button type="submit" class="btn btn-primary px-4">
                             <i class="bi bi-check-lg me-1"></i>
                             حفظ الإعدادات

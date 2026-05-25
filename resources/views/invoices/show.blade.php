@@ -21,7 +21,7 @@
         }
     </style>
 
-    {{-- تنبيه يظهر فقط إذا كانت الفاتورة ملغية --}}
+    
     @if ($invoice->isCancelled())
         <div class="alert alert-danger d-flex align-items-center gap-2 mb-4">
             <i class="bi bi-x-octagon-fill fs-5"></i>
@@ -39,7 +39,7 @@
 
     <div class="row g-4">
 
-        {{-- Invoice Header --}}
+        
         <div class="col-12 col-lg-5">
             <div class="card">
                 <div class="card-header">
@@ -60,7 +60,7 @@
     <td class="text-muted">تم الإنشاء بواسطة</td>
     <td>{{ $invoice->creator->name ?? '—' }}</td>
 </tr>
-                        {{-- حالة الفاتورة: مؤكدة أو ملغية --}}
+                        
                         <tr>
                             <td class="text-muted">الحالة</td>
                             <td>
@@ -77,7 +77,7 @@
                         </tr>
                         <tr>
                             <td class="text-muted">الإجمالي</td>
-                            {{-- الإجمالي يظهر مشطوباً إذا كانت الفاتورة ملغية --}}
+                            
                             <td
                                 class="fw-bold fs-5 {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-dark' }}">
                                 {{ number_format($invoice->total, 2) }} {{ __('messages.currency') }}
@@ -113,12 +113,12 @@
                 <a href="{{ route('invoices.pdf', $invoice) }}" class="btn btn-warning ms-2">
                     📄 تحميل PDF
                 </a>
-                {{-- زرار الإلغاء يظهر فقط للفواتير المؤكدة --}}
+                
                 @if ($invoice->isConfirmed())
                     <button type="button" class="btn btn-outline-danger ms-2 mb-2" data-bs-toggle="modal" data-bs-target="#cancelModal">
                         <i class="bi bi-x-circle me-1"></i>إلغاء الفاتورة
                     </button>
-                    {{-- زرار إرجاع أصناف - يظهر للفواتير المؤكدة فقط --}}
+                    
                     <button type="button" class="btn btn-outline-warning ms-2 mb-2"
                             data-bs-toggle="modal" data-bs-target="#returnModal">
                         <i class="bi bi-arrow-return-right me-1"></i>إرجاع أصناف
@@ -135,7 +135,7 @@
             </div>
         </div>
 
-        {{-- Invoice Items --}}
+        
         <div class="col-12 col-lg-7">
             <div class="card">
                 <div class="card-header">
@@ -183,7 +183,7 @@
                 </div>
             </div>
 
-            {{-- Vaccinations if any --}}
+            
             @if ($invoice->vaccinations->isNotEmpty())
                 <div class="card mt-3">
                     <div class="card-header">
@@ -215,7 +215,7 @@
                 </div>
             @endif
 
-            {{-- قسم المرتجعات - يظهر إذا وجدت مرتجعات --}}
+            
             @if ($invoice->returns->isNotEmpty())
                 <div class="card mt-3 border-warning">
                     <div class="card-header bg-warning bg-opacity-10">
@@ -263,7 +263,7 @@
 
     </div>
 
-    {{-- modal تأكيد الإلغاء — يظهر فقط للفواتير المؤكدة --}}
+    
     @if ($invoice->isConfirmed())
         <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
@@ -286,7 +286,7 @@
                                 <i class="bi bi-info-circle me-1"></i>
                                 سيتم إرجاع الكميات المخصومة إلى المخزون تلقائياً.
                             </p>
-                            {{-- حقل سبب الإلغاء اختياري --}}
+                            
                             <div class="mb-3">
                                 <label for="cancellation_reason" class="form-label">
                                     سبب الإلغاء <span class="text-muted">(اختياري)</span>
@@ -309,7 +309,7 @@
         </div>
     @endif
 
-    {{-- modal سجل الدفعات --}}
+    
     <div class="modal fade" id="paymentsModal" tabindex="-1" aria-labelledby="paymentsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div class="modal-content">
@@ -321,7 +321,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    {{-- قسم 1: جدول الدفعات السابقة --}}
+                    
                     @if($invoice->payments->isEmpty())
                         <p class="text-muted text-center py-3">لا توجد دفعات مسجلة</p>
                     @else
@@ -361,7 +361,7 @@
                         </table>
                     @endif
 
-                    {{-- قسم 2: إضافة دفعة جديدة --}}
+                    
                     @php $remaining = $invoice->total - $invoice->payments->sum('amount'); @endphp
                     @if($remaining > 0 && $invoice->status !== 'cancelled')
                         <hr>
@@ -401,7 +401,7 @@
         </div>
     </div>
 
-{{-- Modal إرجاع أصناف --}}
+
 @if ($invoice->isConfirmed())
 @php
     $alreadyReturnedQtys = $invoice->returns

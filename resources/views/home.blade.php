@@ -5,9 +5,9 @@
 
 @section('content')
 
-    {{-- Stats Row --}}
+    
     <div class="row g-3 mb-4">
-        {{-- Today Visits --}}
+        
         <div class="col-6 col-md-3">
             <div class="stat-card bg-white h-100 border">
                 <div class="stat-icon" style="background:#dbeafe; color:#1d4ed8;">🏥</div>
@@ -17,7 +17,7 @@
                 </div>
             </div>
         </div>
-        {{-- Today Revenue --}}
+        
         <div class="col-6 col-md-3">
             <div class="stat-card bg-white h-100 border">
                 <div class="stat-icon" style="background:#d1fae5; color:#065f46;">💰</div>
@@ -28,7 +28,7 @@
                 </div>
             </div>
         </div>
-        {{-- Total Products --}}
+        
         <div class="col-6 col-md-3">
             <div class="stat-card bg-white h-100 border">
                 <div class="stat-icon" style="background:#fef3c7; color:#92400e;">📦</div>
@@ -38,7 +38,7 @@
                 </div>
             </div>
         </div>
-        {{-- Total Vaccinations --}}
+        
         <div class="col-6 col-md-3">
             <div class="stat-card bg-white h-100 border">
                 <div class="stat-icon" style="background:#ede9fe; color:#6d28d9;">💉</div>
@@ -50,7 +50,7 @@
         </div>
     </div>
 
-    {{-- Quick Actions --}}
+    
     <div class="row g-3 mb-4">
         <div class="col-12">
             <div class="card">
@@ -76,9 +76,9 @@
         </div>
     </div>
 
-    {{-- Alerts Row --}}
+    
     <div class="row g-3 mb-4">
-        {{-- Low Stock --}}
+        
         <div class="col-md-6">
             <div class="card h-100">
                 <div class="card-header d-flex align-items-center justify-content-between">
@@ -108,7 +108,7 @@
             </div>
         </div>
 
-        {{-- Expiry Alerts --}}
+        
         <div class="col-md-6">
             <div class="card h-100">
                 <div class="card-header d-flex align-items-center justify-content-between">
@@ -143,7 +143,7 @@
         </div>
     </div>
 
-    {{-- Upcoming Vaccinations --}}
+    
     <div class="card">
         <div class="card-header d-flex align-items-center justify-content-between">
             <span class="fw-bold"><i

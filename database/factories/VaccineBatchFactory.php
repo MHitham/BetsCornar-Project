@@ -12,7 +12,7 @@ class VaccineBatchFactory extends Factory
 
         return [
             'product_id' => \App\Models\Product::factory()->vaccination(),
-            'batch_code' => 'BATCH-' . fake()->unique()->numerify('####'),
+            'batch_code' => 'BATCH-'.fake()->unique()->numerify('####'),
             'received_date' => fake()->dateTimeBetween('-1 month', 'now')->format('Y-m-d'),
             'expiry_date' => fake()->dateTimeBetween('+1 month', '+1 year')->format('Y-m-d'),
             'quantity_received' => $qty,

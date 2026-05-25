@@ -18,7 +18,7 @@
 
 @section('content')
 
-    <!-- Choices CSS -->
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
     <form method="POST" action="{{ route('invoices.store') }}" id="quickSaleForm">
@@ -26,7 +26,7 @@
 
         <div class="row g-4">
 
-            {{-- Customer info --}}
+            
             <div class="col-lg-5">
                 <div class="card">
                     <div class="card-header">
@@ -34,10 +34,10 @@
                         <span class="fw-bold">بيانات العميل</span>
                     </div>
                     <div class="card-body row g-3">
-                        {{-- تم التعديل: حقل بحث مباشر عن العميل بالاسم أو الهاتف --}}
+                        
                         <div class="col-12">
                             <label class="form-label">{{ __('invoices.fields.customer_name') }}</label>
-                            {{-- حقل مخفي يحمل customer_id عند الاختيار --}}
+                            
                             <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id') }}">
                             <div class="position-relative" id="customer-search-wrap">
                                 <input type="text"
@@ -50,7 +50,7 @@
                                 @error('customer_name')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                {{-- نتائج البحث --}}
+                                
                                 <div id="customer-search-results"
                                      style="display:none; position:absolute; top:100%; right:0; left:0; z-index:9999;
                                             background:#fff; border:1px solid #ced4da; border-top:0;
@@ -65,7 +65,7 @@
                     </div>
                 </div>
 
-                {{-- Grand Total Card --}}
+                
                 <div class="card mt-3 border-success">
                     <div class="card-body text-center">
                         <div class="text-muted small mb-1">{{ __('invoices.fields.grand_total') }}</div>
@@ -84,7 +84,7 @@
                 </div>
             </div>
 
-            {{-- Items --}}
+            
             <div class="col-lg-7">
                 <div class="card">
                     <div class="card-header d-flex align-items-center justify-content-between">
@@ -99,7 +99,7 @@
                         <div class="table-responsive">
                             <table class="table mb-0" id="items-table">
                                 <thead>
-                                    {{-- تم التعديل: تحسين مساحات وأعراض أعمدة الجدول لسهولة القراءة --}}
+                                    
                                     <tr class="align-middle">
                                         <th style="min-width:250px" class="py-3 px-2">{{ __('invoices.fields.product') }}</th>
                                         <th style="width:130px" class="py-3 px-2 text-center">{{ __('invoices.fields.quantity') }}</th>
@@ -148,7 +148,7 @@
 @endsection
 
 @push('scripts')
-    <!-- Choices JS -->
+    
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script>
         const products = @json($productsJson);

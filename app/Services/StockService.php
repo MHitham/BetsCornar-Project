@@ -19,7 +19,7 @@ class StockService
         }
 
         if ($product->type === 'vaccination') {
-            // Vaccine stock is derived from batches only.
+
             $this->recalculateVaccineStock($product);
 
             return;
@@ -34,15 +34,10 @@ class StockService
         ]);
     }
 
-    /**
-     * إرجاع ستوك التطعيم عند إلغاء فاتورة.
-     * بيرجع الكميات المخصومة لكل batch عبر invoice_item_vaccine_batches،
-     * ثم يعيد حساب products.quantity من الـ batches الصالحة.
-     */
     public function restoreVaccineStock(InvoiceItem $invoiceItem): void
     {
         DB::transaction(function () use ($invoiceItem) {
-            // جلب كل الـ batches المرتبطة بهذا البند مع lock
+
             $batches = InvoiceItemVaccineBatch::query()
                 ->where('invoice_item_id', $invoiceItem->id)
                 ->with('vaccineBatch')
@@ -56,7 +51,6 @@ class StockService
                     continue;
                 }
 
-                // إرجاع الكمية المخصومة لكل batch
                 $batch->update([
                     'quantity_remaining' => $this->normalizeDecimal(
                         (float) $batch->quantity_remaining + (float) $link->quantity
@@ -64,7 +58,6 @@ class StockService
                 ]);
             }
 
-            // إعادة حساب products.quantity من الـ batches الصالحة فقط
             $product = $invoiceItem->product;
 
             if ($product) {
@@ -73,10 +66,6 @@ class StockService
         });
     }
 
-    /**
-     * إرجاع ستوك جزئي للتطعيمات عند إنشاء مرتجع.
-     * بيرجع الكمية بشكل نسبي على الـ batches المستخدمة الأصلية.
-     */
     public function restorePartialVaccineStock(InvoiceItem $invoiceItem, float $quantityToReturn): void
     {
         DB::transaction(function () use ($invoiceItem, $quantityToReturn) {
@@ -86,7 +75,6 @@ class StockService
                 return;
             }
 
-            // نسبة الإرجاع من الكمية الأصلية
             $ratio = $quantityToReturn / $originalQty;
 
             $batches = InvoiceItemVaccineBatch::query()
@@ -102,7 +90,6 @@ class StockService
                     continue;
                 }
 
-                // الكمية المُرجعة لهذا الـ batch بالنسبة
                 $toRestore = $this->normalizeDecimal((float) $link->quantity * $ratio);
 
                 $batch->update([
@@ -145,7 +132,6 @@ class StockService
             'stock_status' => $this->resolveStockStatus($newQuantity, (float) $product->low_stock_threshold),
         ]);
 
-        // تسجيل تكلفة الوحدة وقت البيع للمنتجات العادية (من التكلفة المتوسطة المرجحة)
         if ($invoiceItem && (float) $product->average_cost > 0) {
             $invoiceItem->update([
                 'cost_price_at_sale' => (float) $product->average_cost,
@@ -297,7 +283,6 @@ class StockService
                 $remainingToDeduct = $this->normalizeDecimal($remainingToDeduct - $usedQuantity);
             }
 
-            // تسجيل تكلفة الوحدة وقت البيع للقاحات (متوسط مرجح من الباتشات المستخدمة)
             if ($invoiceItem && count($deductions) > 0) {
                 $totalQty = array_sum(array_column($deductions, 'quantity'));
                 $totalCost = 0;
@@ -339,7 +324,6 @@ class StockService
             'stock_status' => $this->resolveStockStatus($usableQuantity, (float) $vaccineProduct->low_stock_threshold),
         ]);
 
-        // كسر الكاش المرتبط بلوحة التحكم عند تغيير ستوك التطعيم
         Cache::forget(dashboardKey('batch_expiry'));
         Cache::forget('dashboard.total_available_vaccinations_count');
     }

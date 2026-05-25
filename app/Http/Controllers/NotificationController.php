@@ -9,7 +9,6 @@ class NotificationController extends Controller
 {
     public function __construct(private readonly NotificationService $service) {}
 
-    // إرجاع قائمة تنبيهات النظام كـ JSON
     public function index(): JsonResponse
     {
         return response()->json([

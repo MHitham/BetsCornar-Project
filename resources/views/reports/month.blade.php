@@ -5,7 +5,7 @@
 
 @section('content')
 
-{{-- Header + Back --}}
+
 <div class="card mb-4 border-0 shadow-sm report-card" style="background: linear-gradient(135deg, rgba(13,110,253,0.06) 0%, rgba(25,135,84,0.04) 100%);">
     <div class="card-body py-3 px-4">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -24,9 +24,9 @@
     </div>
 </div>
 
-{{-- Summary Cards --}}
+
 <div class="row g-3 mb-4">
-    {{-- Revenue --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden report-card">
             <div class="card-body p-3">
@@ -50,7 +50,7 @@
         </div>
     </div>
 
-    {{-- Expenses --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden report-card">
             <div class="card-body p-3">
@@ -74,7 +74,7 @@
         </div>
     </div>
 
-    {{-- Net Profit --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden report-card">
             <div class="card-body p-3">
@@ -105,7 +105,7 @@
         </div>
     </div>
 
-    {{-- Visits --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden report-card">
             <div class="card-body p-3">
@@ -130,7 +130,7 @@
         </div>
     </div>
 
-    {{-- بطاقة تكلفة البضاعة المباعة (COGS) --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden report-card">
             <div class="card-body p-3">
@@ -154,7 +154,7 @@
         </div>
     </div>
 
-    {{-- بطاقة الربح الإجمالي --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden report-card">
             <div class="card-body p-3">
@@ -180,9 +180,9 @@
 
 </div>
 
-{{-- Invoices & Expenses Side by Side --}}
+
 <div class="row g-4 mb-4">
-    {{-- Invoices Table --}}
+    
     <div class="col-xl-7">
         <div class="card border-0 shadow-sm h-100 report-card">
             <div class="card-header bg-transparent border-0 pt-3 px-4">
@@ -242,7 +242,7 @@
         </div>
     </div>
 
-    {{-- Expenses Table --}}
+    
     <div class="col-xl-5">
         <div class="card border-0 shadow-sm h-100 report-card">
             <div class="card-header bg-transparent border-0 pt-3 px-4">
@@ -289,9 +289,9 @@
     </div>
 </div>
 
-{{-- Top Products & Vaccinations --}}
+
 <div class="row g-4 mb-4">
-    {{-- Top Products --}}
+    
     <div class="col-xl-6">
         <div class="card border-0 shadow-sm h-100 report-card">
             <div class="card-header bg-transparent border-0 pt-3 px-4">
@@ -362,7 +362,7 @@
         </div>
     </div>
 
-    {{-- Completed Vaccinations --}}
+    
     <div class="col-xl-6">
         <div class="card border-0 shadow-sm h-100 report-card">
             <div class="card-header bg-transparent border-0 pt-3 px-4">
@@ -414,7 +414,7 @@
     </div>
 </div>
 
-{{-- Stock Additions (Vaccine Batches Received) --}}
+
 @if($stockAdditions->isNotEmpty())
 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
     <div class="card-header bg-transparent border-0 pt-3 px-4">
@@ -471,7 +471,7 @@
 </div>
 @endif
 
-{{-- New Customers Table --}}
+
 @if($newCustomers->isNotEmpty())
 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
     <div class="card-header bg-transparent border-0 pt-3 px-4">

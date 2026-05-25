@@ -16,7 +16,6 @@ class ReportController extends Controller
     {
         $year = (int) $request->input('year', now()->year);
 
-        // تم الإضافة: استعلام واحد للإيرادات المؤكدة مجمع بالشهر
         $revenueByMonth = Invoice::confirmed()
             ->whereYear('created_at', $year)
             ->selectRaw('
@@ -29,7 +28,6 @@ class ReportController extends Controller
             ->get()
             ->keyBy('month');
 
-        // تم الإضافة: استعلام واحد للمصروفات مجمع بالشهر
         $expensesByMonth = Expense::query()
             ->whereYear('expense_date', $year)
             ->selectRaw('MONTH(expense_date) as month, COALESCE(SUM(amount), 0) as expenses')
@@ -38,11 +36,34 @@ class ReportController extends Controller
             ->get()
             ->keyBy('month');
 
-        // تم الإضافة: تجميع بيانات 12 شهرًا في Collection واحدة للعرض
-        $monthlyData = collect(range(1, 12))->map(function (int $month) use ($revenueByMonth, $expensesByMonth) {
+        $newCustomersByMonth = Customer::query()
+            ->whereYear('created_at', $year)
+            ->selectRaw('MONTH(created_at) as month, COUNT(*) as new_customers')
+            ->groupByRaw('MONTH(created_at)')
+            ->get()
+            ->keyBy('month');
+
+        $cogsByMonth = \App\Models\InvoiceItem::query()
+            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+            ->where('invoices.status', 'confirmed')
+            ->whereYear('invoices.created_at', $year)
+            ->whereNotNull('invoice_items.cost_price_at_sale')
+            ->selectRaw('MONTH(invoices.created_at) as month, SUM(invoice_items.cost_price_at_sale * invoice_items.quantity) as total_cogs')
+            ->groupByRaw('MONTH(invoices.created_at)')
+            ->get()
+            ->keyBy('month');
+
+        $monthlyData = collect(range(1, 12))->map(function (int $month) use ($revenueByMonth, $expensesByMonth, $cogsByMonth, $newCustomersByMonth) {
             $revenue = (float) ($revenueByMonth[$month]->revenue ?? 0);
             $visitCount = (int) ($revenueByMonth[$month]->visit_count ?? 0);
             $expenses = (float) ($expensesByMonth[$month]->expenses ?? 0);
+
+            $cogs = (float) ($cogsByMonth[$month]->total_cogs ?? 0);
+            $grossProfit = $revenue - $cogs;
+            $netProfit = $grossProfit - $expenses;
+            $margin = $revenue > 0
+                ? round(($netProfit / $revenue) * 100, 1)
+                : 0;
 
             return [
                 'month' => $month,
@@ -51,10 +72,13 @@ class ReportController extends Controller
                 'visit_count' => $visitCount,
                 'expenses' => $expenses,
                 'net_profit' => $revenue - $expenses,
+                'cogs' => $cogs,
+                'gross_profit' => $grossProfit,
+                'margin' => $margin,
+                'new_customers' => (int) ($newCustomersByMonth[$month]->new_customers ?? 0),
             ];
         });
 
-        // تم الإضافة: أعلى المنتجات والخدمات مبيعًا خلال السنة من الفواتير المؤكدة فقط
         $topProducts = Invoice::query()
             ->confirmed()
             ->join('invoice_items', 'invoice_items.invoice_id', '=', 'invoices.id')
@@ -72,7 +96,6 @@ class ReportController extends Controller
             ->limit(15)
             ->get();
 
-        // تم الإضافة: إجماليات السنة محسوبة من نفس البيانات المجمعة
         $yearlyTotals = [
             'revenue' => $monthlyData->sum('revenue'),
             'expenses' => $monthlyData->sum('expenses'),
@@ -80,10 +103,8 @@ class ReportController extends Controller
             'visit_count' => $monthlyData->sum('visit_count'),
         ];
 
-        // حساب أفضل شهر من ناحية الإيرادات لتمييزه في الجدول
         $bestMonth = $monthlyData->sortByDesc('revenue')->first()['month'] ?? null;
 
-        // حساب نسبة الإيرادات لكل شهر مقارنة بالأعلى (للـ progress bar)
         $maxRevenue = $monthlyData->max('revenue') ?: 1;
         $monthlyData = $monthlyData->map(function ($row) use ($maxRevenue) {
             $row['has_data'] = $row['revenue'] > 0 || $row['expenses'] > 0;
@@ -92,7 +113,6 @@ class ReportController extends Controller
             return $row;
         });
 
-        // هل الربح الإجمالي للسنة موجب أم لا
         $profitPositive = $yearlyTotals['net_profit'] >= 0;
 
         return view('reports.index', compact(
@@ -109,7 +129,6 @@ class ReportController extends Controller
         $periodEnd = $periodStart->copy()->endOfMonth();
         $monthName = self::arabicMonthName($month);
 
-        // ===== الفواتير المؤكدة =====
         $invoices = Invoice::confirmed()
             ->with(['items.product'])
             ->whereBetween('created_at', [$periodStart, $periodEnd])
@@ -124,7 +143,6 @@ class ReportController extends Controller
             'quick_sales' => $invoices->where('source', '!=', 'customer')->count(),
         ];
 
-        // ===== المصروفات =====
         $expenses = Expense::query()
             ->whereBetween('expense_date', [$periodStart->toDateString(), $periodEnd->toDateString()])
             ->orderByDesc('expense_date')
@@ -135,7 +153,6 @@ class ReportController extends Controller
             'count' => $expenses->count(),
         ];
 
-        // ===== المنتجات / الخدمات الأعلى مبيعاً في الشهر =====
         $topProducts = Invoice::query()
             ->confirmed()
             ->join('invoice_items', 'invoice_items.invoice_id', '=', 'invoices.id')
@@ -153,14 +170,12 @@ class ReportController extends Controller
             ->limit(10)
             ->get();
 
-        // ===== إضافات المخزون (التطعيمات الواردة) =====
         $stockAdditions = \App\Models\VaccineBatch::query()
             ->with('product:id,name,type')
             ->whereBetween('received_date', [$periodStart->toDateString(), $periodEnd->toDateString()])
             ->orderByDesc('received_date')
             ->get();
 
-        // ===== التطعيمات المنجزة في الشهر =====
         $vaccinations = \App\Models\Vaccination::query()
             ->with(['customer:id,name', 'product:id,name'])
             ->where('is_completed', true)
@@ -170,7 +185,6 @@ class ReportController extends Controller
 
         $netProfit = $revenueSummary['total'] - $expensesSummary['total'];
 
-        // حساب تكلفة البضاعة المباعة (COGS) لهذا الشهر فقط
         $cogs = InvoiceItem::whereHas('invoice', function ($q) use ($periodStart, $periodEnd) {
             $q->confirmed()->whereBetween('created_at', [$periodStart, $periodEnd]);
         })
@@ -178,16 +192,13 @@ class ReportController extends Controller
             ->selectRaw('SUM(cost_price_at_sale * quantity) as total_cogs')
             ->value('total_cogs') ?? 0;
 
-        // حساب الربح الإجمالي (قبل خصم المصروفات التشغيلية)
         $grossProfit = $revenueSummary['total'] - $cogs;
 
-        // عدد العملاء الجدد المُسجَّلين خلال الشهر المحدد
         $newCustomers = Customer::query()
             ->whereBetween('created_at', [$periodStart, $periodEnd])
             ->latest()
             ->get();
 
-        // متغيرات الإشارة محسوبة في الكنترولر بدل الـ Blade
         $profitPositive = $netProfit >= 0;
         $grossPositive = $grossProfit >= 0;
 
@@ -219,12 +230,10 @@ class ReportController extends Controller
         ][$month] ?? '';
     }
 
-    // تقرير الربحية - إيرادات وتكاليف وأرباح وديون
     public function profitability(Request $request)
     {
         $year = (int) $request->get('year', now()->year);
 
-        // السنوات المتاحة للفلتر
         $availableYears = Invoice::confirmed()
             ->selectRaw('YEAR(created_at) as year')
             ->distinct()
@@ -237,14 +246,10 @@ class ReportController extends Controller
             rsort($availableYears);
         }
 
-        // ── KPIs السنوية ──────────────────────────────────────────
-
-        // إجمالي الإيرادات (فواتير مؤكدة فقط)
         $revenue = Invoice::confirmed()
             ->whereYear('created_at', $year)
             ->sum('total');
 
-        // تكلفة البضاعة المباعة COGS
         $cogs = InvoiceItem::whereHas('invoice', function ($q) use ($year) {
             $q->confirmed()->whereYear('created_at', $year);
         })
@@ -252,18 +257,14 @@ class ReportController extends Controller
             ->selectRaw('SUM(cost_price_at_sale * quantity) as total_cogs')
             ->value('total_cogs') ?? 0;
 
-        // إجمالي المصروفات
         $expenses = Expense::whereYear('created_at', $year)
             ->whereNull('deleted_at')
             ->sum('amount');
 
-        // الأرباح
         $grossProfit = $revenue - $cogs;
         $netProfit = $grossProfit - $expenses;
         $margin = $revenue > 0 ? round(($netProfit / $revenue) * 100, 1) : 0;
 
-        // ── التفصيل الشهري ────────────────────────────────────────
-        // تخزين التفصيل الشهري في الكاش لمدة ساعتين لتجنب 36 استعلام عند كل تحميل
         $months = Cache::remember("report-profitability-months-{$year}", now()->addHours(2), function () use ($year) {
             $result = [];
             for ($m = 1; $m <= 12; $m++) {
@@ -305,13 +306,11 @@ class ReportController extends Controller
             return $result;
         });
 
-        // ── ديون الموردين ─────────────────────────────────────────
         $supplierDebts = \App\Models\PurchaseOrder::with('supplier')
             ->whereColumn('amount_paid', '<', 'total_cost')
             ->orderByDesc('purchased_at')
             ->get();
 
-        // ── ديون العملاء ──────────────────────────────────────────
         $customerDebts = Invoice::confirmed()
             ->with('customer')
             ->whereColumn('amount_paid', '<', 'total')
@@ -319,11 +318,9 @@ class ReportController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        // حساب إجماليات الديون في الكنترولر بدل الـ Blade
         $totalSupplierDebts = $supplierDebts->sum(fn ($po) => $po->total_cost - $po->amount_paid);
         $totalCustomerDebts = $customerDebts->sum(fn ($inv) => $inv->total - $inv->amount_paid);
 
-        // متغيرات الإشارة للإيجابية/السلبية
         $grossPositive = $grossProfit >= 0;
         $netPositive = $netProfit >= 0;
 

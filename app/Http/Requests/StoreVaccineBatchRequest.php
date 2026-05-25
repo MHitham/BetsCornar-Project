@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-// طلب إنشاء تطعيم جديد
 class StoreVaccineBatchRequest extends FormRequest
 {
     public function authorize(): bool

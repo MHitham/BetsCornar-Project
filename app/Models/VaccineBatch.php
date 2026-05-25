@@ -46,7 +46,6 @@ class VaccineBatch extends Model
         return $this->hasMany(InvoiceItemVaccineBatch::class);
     }
 
-    // علاقة: الباتش ممكن يكون مرتبط ببند شراء
     public function purchaseOrderItem(): HasOne
     {
         return $this->hasOne(PurchaseOrderItem::class, 'batch_id');

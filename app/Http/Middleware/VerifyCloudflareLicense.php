@@ -9,51 +9,29 @@ use Symfony\Component\HttpFoundation\Response;
 
 class VerifyCloudflareLicense
 {
-    /**
-     * المسارات المستثناة من التحقق من الترخيص
-     */
     protected array $excludedPaths = [
         'license/*',
         'login',
         'logout',
     ];
 
-    /**
-     * معالجة الطلب الوارد
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        // ── التحقق مما إذا كان المسار مستثنى من فحص الترخيص ──
+
         if ($this->isExcludedPath($request)) {
             return $next($request);
         }
 
-        // ── فحص MAC Address للتحقق من أن البرنامج على نفس الجهاز ──
         if (! $this->checkMacLock()) {
             return $this->licenseErrorResponse('MAC_MISMATCH');
         }
 
-        // ── قراءة مفتاح الترخيص من ملف الإعدادات ──
         $licenseKey = config('app.license_key') ?: env('LICENSE_KEY');
 
         if (empty($licenseKey)) {
             return $this->licenseErrorResponse($this->getDeviceFingerprint());
         }
 
-        // ── فحص الكاش أولاً قبل الاتصال بـ API ──
-        $cachedResult = cache()->get('license_check_result');
-
-        if ($cachedResult === 'active') {
-            // الترخيص نشط ومخزّن في الكاش — السماح بالطلب
-            return $next($request);
-        }
-
-        if ($cachedResult === 'blocked') {
-            // الترخيص محظور ومخزّن في الكاش — عرض صفحة الخطأ
-            return $this->licenseErrorResponse($this->getDeviceFingerprint());
-        }
-
-        // ── لا يوجد كاش — الاتصال بـ API الخاص بـ Cloudflare ──
         $deviceHash = $this->getDeviceFingerprint();
         $apiUrl = env('CLOUDFLARE_LICENSE_API_URL');
 
@@ -63,64 +41,47 @@ class VerifyCloudflareLicense
                 'device_hash' => $deviceHash,
             ]);
 
-            // ── التحقق من حالة الاستجابة ──
             if ($response->successful() && $response->json('active') === true) {
-                // الترخيص نشط — تخزين النتيجة في الكاش ليوم كامل
-                cache()->put('license_check_result', 'active', now()->addDay());
 
                 return $next($request);
             }
 
-            // الترخيص غير نشط أو مرفوض — تخزين النتيجة في الكاش لساعة واحدة
-            cache()->put('license_check_result', 'blocked', now()->addHour());
-
             return $this->licenseErrorResponse($deviceHash);
 
         } catch (\Throwable $e) {
-            // ── فشل الاتصال بـ API (لا يوجد إنترنت أو انتهت المهلة) ──
+
             return $this->handleOfflineGracePeriod($deviceHash, $next, $request);
         }
     }
 
-    /**
-     * معالجة فترة السماح عند انقطاع الاتصال
-     */
     protected function handleOfflineGracePeriod(string $deviceHash, Closure $next, Request $request): Response
     {
-        // ── مسار ملف انتهاء صلاحية فترة السماح الدائم ──
+
         $expiryFilePath = storage_path('app/.offline_expiry');
 
-        // ── الملف غير موجود — أول انقطاع، إنشاء فترة سماح لمدة 7 أيام ──
         if (! file_exists($expiryFilePath)) {
-            // حفظ تاريخ انتهاء الصلاحية في الملف
+
             file_put_contents($expiryFilePath, now()->addDays(7)->toIso8601String());
 
             return $next($request);
         }
 
-        // ── الملف موجود — قراءة التاريخ المخزّن ومقارنته بالوقت الحالي ──
         $storedExpiry = trim(file_get_contents($expiryFilePath));
 
-        // ── تحويل النص المخزّن إلى كائن Carbon للمقارنة ──
         $expiryDate = \Carbon\Carbon::parse($storedExpiry);
 
         if (now()->lessThanOrEqualTo($expiryDate)) {
-            // لا تزال فترة السماح سارية — السماح بالطلب
+
             return $next($request);
         }
 
-        // ── انتهت فترة السماح — عرض صفحة الخطأ دون إعادة إنشاء الملف ──
         return $this->licenseErrorResponse($deviceHash);
     }
 
-    /**
-     * توليد بصمة الجهاز واستردادها من الملف إن وُجدت
-     */
     protected function getDeviceFingerprint(): string
     {
         $deviceIdPath = storage_path('app/.device_id');
 
-        // ── قراءة البصمة من الملف إن كانت موجودة مسبقاً ──
         if (file_exists($deviceIdPath)) {
             $stored = trim(file_get_contents($deviceIdPath));
             if (! empty($stored)) {
@@ -128,36 +89,29 @@ class VerifyCloudflareLicense
             }
         }
 
-        // ── توليد بصمة الجهاز لأول مرة ──
         $fingerprint = $this->generateDeviceFingerprint();
 
-        // حفظ البصمة في الملف للاستخدام لاحقاً
         file_put_contents($deviceIdPath, $fingerprint);
 
         return $fingerprint;
     }
 
-    /**
-     * توليد بصمة فريدة للجهاز باستخدام معلومات النظام
-     */
     protected function generateDeviceFingerprint(): string
     {
-        // ── جمع معلومات النظام الأساسية ──
+
         $uname = php_uname();
         $hostname = gethostname() ?: '';
 
-        // ── محاولة الحصول على UUID الجهاز (Windows فقط) ──
         $uuid = '';
         try {
             $output = [];
             exec('wmic csproduct get uuid 2>NUL', $output);
-            // تجاهل السطر الأول (العنوان) وقراءة القيمة
+
             $uuid = isset($output[1]) ? trim($output[1]) : '';
         } catch (\Throwable $e) {
             $uuid = '';
         }
 
-        // ── محاولة الحصول على معرّف المعالج (Windows فقط) ──
         $processorId = '';
         try {
             $output = [];
@@ -167,19 +121,15 @@ class VerifyCloudflareLicense
             $processorId = '';
         }
 
-        // ── دمج جميع البيانات وتشفيرها بـ SHA256 ──
         $combined = implode('|', [$uname, $hostname, $uuid, $processorId]);
 
         return hash('sha256', $combined);
     }
 
-    /**
-     * استخراج هاش عناوين MAC الخاصة بالجهاز
-     */
     protected function getMacHash(): string
     {
         try {
-            // ── تشغيل أمر Windows لاسترداد عناوين MAC بصيغة CSV ──
+
             $output = [];
             exec('getmac /fo csv /nh 2>NUL', $output);
 
@@ -187,7 +137,6 @@ class VerifyCloudflareLicense
                 return '';
             }
 
-            // ── استخراج عناوين MAC ومعالجتها ──
             $macs = [];
             foreach ($output as $line) {
                 $line = trim($line);
@@ -195,7 +144,6 @@ class VerifyCloudflareLicense
                     continue;
                 }
 
-                // تحليل سطر CSV لاستخراج عمود MAC الأول
                 $parts = str_getcsv($line);
                 if (! isset($parts[0])) {
                     continue;
@@ -203,7 +151,6 @@ class VerifyCloudflareLicense
 
                 $mac = $parts[0];
 
-                // ── إزالة الشرطات والمسافات وتحويل إلى أحرف كبيرة ──
                 $mac = strtoupper(str_replace(['-', ' ', ':'], '', $mac));
 
                 if (! empty($mac) && $mac !== 'N/A') {
@@ -215,56 +162,42 @@ class VerifyCloudflareLicense
                 return '';
             }
 
-            // ── ترتيب العناوين أبجدياً لضمان الثبات عبر التشغيلات ──
             sort($macs);
 
-            // ── دمج العناوين وتشفيرها بـ SHA256 ──
             return hash('sha256', implode('|', $macs));
 
         } catch (\Throwable $e) {
-            // فشل الأمر — إرجاع سلسلة فارغة للسماح بمرور الطلب
+
             return '';
         }
     }
 
-    /**
-     * التحقق من قفل MAC Address ومطابقته مع الجهاز الحالي
-     */
     protected function checkMacLock(): bool
     {
         $macLockPath = storage_path('app/.mac_lock');
 
-        // ── الملف غير موجود — أول تشغيل على هذا الجهاز ──
         if (! file_exists($macLockPath)) {
             $currentMacHash = $this->getMacHash();
 
-            // إذا فشل استرداد MAC — تخطّي الفحص والسماح بالطلب
             if (empty($currentMacHash)) {
                 return true;
             }
 
-            // ── حفظ هاش MAC الحالي في ملف القفل ──
             file_put_contents($macLockPath, $currentMacHash);
 
             return true;
         }
 
-        // ── الملف موجود — قراءة الهاش المخزّن ومقارنته بالحالي ──
         $storedMacHash = trim(file_get_contents($macLockPath));
         $currentMacHash = $this->getMacHash();
 
-        // إذا فشل استرداد MAC — تخطّي الفحص والسماح بالطلب
         if (empty($currentMacHash)) {
             return true;
         }
 
-        // ── مقارنة الهاشين: تطابق = نفس الجهاز، اختلاف = جهاز آخر ──
         return $storedMacHash === $currentMacHash;
     }
 
-    /**
-     * التحقق مما إذا كان المسار الحالي مستثنى من فحص الترخيص
-     */
     protected function isExcludedPath(Request $request): bool
     {
         foreach ($this->excludedPaths as $pattern) {
@@ -276,9 +209,6 @@ class VerifyCloudflareLicense
         return false;
     }
 
-    /**
-     * إرجاع صفحة خطأ الترخيص بتصميم عربي RTL
-     */
     protected function licenseErrorResponse(string $deviceHash): Response
     {
         $html = <<<HTML

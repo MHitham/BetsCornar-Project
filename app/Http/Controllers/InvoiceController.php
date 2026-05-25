@@ -17,9 +17,6 @@ class InvoiceController extends Controller
         private readonly InvoiceService $invoiceService,
     ) {}
 
-    /**
-     * Show invoice list with optional search/filter.
-     */
     public function index(Request $request)
     {
         $isEmployee = auth()->user()->hasRole('employee');
@@ -37,10 +34,10 @@ class InvoiceController extends Controller
             }
 
             $invoices = Invoice::query()
-                // تم التعديل: إزالة eager loading غير المستخدم للعلاقة customer من فهرس الفواتير للموظف
+
                 ->where('created_by', auth()->id())
                 ->whereBetween('created_at', [$periodStart, $periodEnd])
-                // تم التعديل: تحديد أعمدة قائمة الفواتير المطلوبة فقط في فهرس الموظف
+
                 ->select(['id', 'invoice_number', 'customer_name', 'source', 'total', 'status', 'created_at'])
                 ->latest()
                 ->paginate(25)
@@ -95,8 +92,7 @@ class InvoiceController extends Controller
         }
 
         $invoices = $query
-            // تم التعديل: إزالة eager loading غير المستخدم للعلاقة customer من فهرس الفواتير للأدمن
-            // تم التعديل: تحديد أعمدة قائمة الفواتير المطلوبة فقط في فهرس الأدمن
+
             ->select(['id', 'invoice_number', 'customer_name', 'source', 'total', 'status', 'created_at', 'cancelled_at'])
             ->latest()
             ->paginate(25)
@@ -125,9 +121,6 @@ class InvoiceController extends Controller
         ));
     }
 
-    /**
-     * Show the quick-sale form.
-     */
     public function create()
     {
         $products = Product::query()
@@ -138,9 +131,6 @@ class InvoiceController extends Controller
         return view('invoices.create', compact('products'));
     }
 
-    /**
-     * Save a quick-sale invoice (transactional).
-     */
     public function store(StoreQuickSaleRequest $request)
     {
         try {
@@ -156,18 +146,15 @@ class InvoiceController extends Controller
         }
     }
 
-    /**
-     * Show a single invoice with its items.
-     */
     public function show(Invoice $invoice)
     {
-        // تم التعديل: تحميل منتجات البنود مع منتجات التطعيمات وسجل الدفعات لتجنب N+1 داخل صفحة الفاتورة
+
         $invoice->load([
             'items.product',
             'items.vaccineBatches',
             'vaccinations.product',
             'payments',
-            'returns.items.product', // إضافة: تحميل المرتجعات مع بنودها
+            'returns.items.product',
         ]);
 
         $showRevenueBar = auth()->user()->hasRole('admin');
@@ -178,18 +165,6 @@ class InvoiceController extends Controller
         return view('invoices.show', compact('invoice', 'revenueSummary', 'showRevenueBar'));
     }
 
-    /**
-     * @return array{
-     *     date: string,
-     *     label: string,
-     *     gross_revenue: float,
-     *     invoice_count: int,
-     *     cancelled_count: int,
-     *     customer_visits: int,
-     *     quick_sales: int,
-     *     period_type: string,
-     * }
-     */
     private function resolveRevenueSummary(?string $date, string $period): array
     {
         if ($date) {
@@ -229,15 +204,12 @@ class InvoiceController extends Controller
         return $summary;
     }
 
-    /**
-     * إلغاء فاتورة مع إرجاع الستوك - يستدعي InvoiceService::cancelInvoice()
-     */
     public function cancel(CancelInvoiceRequest $request, Invoice $invoice)
     {
         $validated = $request->validated();
 
         try {
-            // تمرير سبب الإلغاء إن وُجد
+
             $this->invoiceService->cancelInvoice(
                 $invoice,
                 $validated['cancellation_reason'] ?? null
@@ -251,17 +223,12 @@ class InvoiceController extends Controller
         }
     }
 
-    /**
-     * Download Invoice as PDF using mPDF natively
-     */
     public function pdf(Invoice $invoice)
     {
         $invoice->load(['items.product', 'customer', 'vaccinations.product']);
 
-        // Render the view to HTML string
         $html = view('invoices.pdf', compact('invoice'))->render();
 
-        // Initialize native mPDF
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',

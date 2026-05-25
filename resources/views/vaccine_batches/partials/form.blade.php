@@ -9,7 +9,7 @@
         </div>
         <div class="card-body row g-3">
 
-            {{-- Vaccine Product --}}
+            
             <div class="col-md-6">
                 <label class="form-label" for="product_id">{{ __('vaccine_batches.fields.product') }} <span class="text-danger">*</span></label>
                 <select id="product_id" name="product_id"
@@ -25,7 +25,7 @@
                 @error('product_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            {{-- Batch Code --}}
+            
             <div class="col-md-6">
                 <label class="form-label" for="batch_code">{{ __('vaccine_batches.fields.batch_code') }}</label>
                 <input type="text" id="batch_code" name="batch_code"
@@ -35,7 +35,7 @@
                 @error('batch_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            {{-- Received Date --}}
+            
             <div class="col-md-6">
                 <label class="form-label" for="received_date">{{ __('vaccine_batches.fields.received_date') }} <span class="text-danger">*</span></label>
                 <input type="date" id="received_date" name="received_date"
@@ -44,7 +44,7 @@
                 @error('received_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            {{-- Expiry Date --}}
+            
             <div class="col-md-6">
                 <label class="form-label" for="expiry_date">{{ __('vaccine_batches.fields.expiry_date') }} <span class="text-danger">*</span></label>
                 <input type="date" id="expiry_date" name="expiry_date"
@@ -53,10 +53,10 @@
                 @error('expiry_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            {{-- Quantity Received --}}
+            
             <div class="col-md-6">
                 <label class="form-label" for="quantity_received">{{ __('vaccine_batches.fields.quantity_received') }} <span class="text-danger">*</span></label>
-                {{-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي --}}
+                
                 <input type="number" step="1" min="0" id="quantity_received" name="quantity_received"
                        class="form-control @error('quantity_received') is-invalid @enderror"
                        value="{{ old('quantity_received', $batch->quantity_received) }}"
@@ -64,10 +64,10 @@
                 @error('quantity_received')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            {{-- Quantity Remaining --}}
+            
             <div class="col-md-6">
                 <label class="form-label" for="quantity_remaining">{{ __('vaccine_batches.fields.quantity_remaining') }}</label>
-                {{-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي --}}
+                
                 <input type="number" step="1" min="0" id="quantity_remaining" name="quantity_remaining"
                        class="form-control @error('quantity_remaining') is-invalid @enderror"
                        value="{{ old('quantity_remaining', $batch->quantity_remaining) }}"

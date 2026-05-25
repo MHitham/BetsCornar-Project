@@ -7,12 +7,11 @@ use Illuminate\Http\Request;
 
 class RoleMiddleware
 {
-    // تم الإضافة: منع الوصول حسب الدور مع رسالة عربية
     public function handle(Request $request, Closure $next, ...$roles)
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
@@ -30,4 +29,3 @@ class RoleMiddleware
             ->with('error', 'ليس لديك صلاحية للوصول لهذه الصفحة');
     }
 }
-

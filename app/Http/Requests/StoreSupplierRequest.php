@@ -6,15 +6,18 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSupplierRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
         return [
-            'name'    => ['required', 'string', 'max:255'],
-            'phone'   => ['nullable', 'string', 'max:20'],
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
             'address' => ['nullable', 'string', 'max:500'],
-            'notes'   => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
         ];
     }
 
@@ -22,7 +25,7 @@ class StoreSupplierRequest extends FormRequest
     {
         return [
             'name.required' => 'اسم المورد مطلوب',
-            'name.max'      => 'اسم المورد لا يتجاوز 255 حرف',
+            'name.max' => 'اسم المورد لا يتجاوز 255 حرف',
         ];
     }
 }

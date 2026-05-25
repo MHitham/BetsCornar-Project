@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="row g-4">
-    <!-- بيانات الحيوان -->
+    
     <div class="col-lg-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -48,7 +48,7 @@
         </div>
     </div>
 
-    <!-- سجل التطعيمات -->
+    
     <div class="col-lg-8">
         <div class="card h-100">
             <div class="card-header">
@@ -101,7 +101,7 @@
         </div>
     </div>
 
-    <!-- سجل التشخيصات عبر الزيارات -->
+    
     <div class="col-12">
         <div class="card">
             <div class="card-header">
@@ -150,7 +150,7 @@
     </a>
 </div>
 
-<!-- Edit Modal -->
+
 <div class="modal fade" id="editAnimalModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form action="{{ route('animals.update', $animal) }}" method="POST">

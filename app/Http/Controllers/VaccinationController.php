@@ -2,12 +2,9 @@
 
 namespace App\Http\Controllers;
 
-// تم التعديل: استخدام FromQuery وWithMapping لتقليل استهلاك الذاكرة أثناء تصدير التطعيمات
 use App\Models\Vaccination;
-// تم التعديل: تحديد حجم الـ chunk أثناء التصدير الكبير
 use App\Services\CustomerVisitService;
 use Illuminate\Http\JsonResponse;
-// تم التعديل: تجهيز الصفوف أثناء القراءة دون تحميل النتيجة كاملة في الذاكرة
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
@@ -15,7 +12,6 @@ use Illuminate\View\View;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
 use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
-// تم الإضافة: استخدام الكاش لمسح مؤشرات التطعيمات في لوحة التحكم بعد التحديث
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Facades\Excel;
@@ -23,7 +19,6 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VaccinationController extends Controller
 {
-    // تم الإضافة: حقن CustomerVisitService لإعادة استخدام منطق تطبيع الهاتف
     public function __construct(
         private readonly CustomerVisitService $visitService,
     ) {}
@@ -32,9 +27,8 @@ class VaccinationController extends Controller
     {
         $vaccination->update(['is_completed' => true]);
 
-        // تم الإضافة: تحديث كاش التطعيمات القادمة بعد إكمال الموعد الحالي
         Cache::forget(dashboardKey('upcoming_vaccinations'));
-        // تم الإضافة: تحديث كاش إجمالي التطعيمات بعد تعديل حالة السجل
+
         Cache::forget('dashboard.total_vaccinations');
 
         return response()->json(['success' => true]);
@@ -59,10 +53,8 @@ class VaccinationController extends Controller
 
         $validated = $validator->validated();
 
-        // 1. Mark the current vaccination record as completed
         $vaccination->update(['is_completed' => true]);
 
-        // 2. Create a new pending vaccination record for the upcoming dose
         Vaccination::create([
             'customer_id' => $vaccination->customer_id,
             'product_id' => $vaccination->product_id,
@@ -72,9 +64,8 @@ class VaccinationController extends Controller
             'is_completed' => false,
         ]);
 
-        // تم الإضافة: تحديث كاش التطعيمات القادمة بعد إعادة الجدولة وإنشاء موعد جديد
         Cache::forget(dashboardKey('upcoming_vaccinations'));
-        // تم الإضافة: تحديث كاش إجمالي التطعيمات لأن إعادة الجدولة أنشأت سجلًا إضافيًا
+
         Cache::forget('dashboard.total_vaccinations');
 
         return response()->json(['success' => true]);
@@ -87,12 +78,10 @@ class VaccinationController extends Controller
         $filter = $request->string('filter')->toString();
         $dateFilter = (string) $request->input('date', '');
 
-        // لو فيه فلتر تاريخ محدد، الافتراضي يبقي "الكل" عشان يظهر المكتمل وغير المكتمل
         $defaultCompleted = $dateFilter !== '' ? 'all' : '0';
         $isCompleted = (string) $request->input('is_completed', $defaultCompleted);
         $sort = (string) $request->input('sort', 'latest');
 
-        // Move the Blade search logic into the controller without changing the UI inputs.
         if ($search !== '') {
             $query->whereHas('customer', function ($q) use ($search) {
                 $q->where('name', 'like', '%'.$search.'%')
@@ -100,7 +89,6 @@ class VaccinationController extends Controller
             });
         }
 
-        // Move the Blade completion filter into the controller using the same defaults.
         if ($isCompleted !== 'all') {
             $query->where('is_completed', $isCompleted === '1');
         }
@@ -109,11 +97,10 @@ class VaccinationController extends Controller
             $query->whereDate('next_dose_date', $dateFilter);
         }
 
-        // Move the Blade sort logic into the controller without changing the selected values.
         if ($sort === 'oldest') {
             $query->orderBy('vaccination_date', 'asc')->orderBy('id', 'asc');
         } elseif ($sort === 'upcoming') {
-            // تم التعديل: إضافة ترتيب ثابت بـ id لضمان نتائج مستقرة في التصدير المعتمد على query
+
             $query->orderByRaw('next_dose_date IS NULL, next_dose_date ASC')->orderBy('id', 'asc');
         } else {
             $query->orderBy('vaccination_date', 'desc')->orderBy('id', 'desc');
@@ -121,7 +108,7 @@ class VaccinationController extends Controller
 
         $vaccinations = $query->paginate(15)->withQueryString();
         $threeDaysUpcoming = Vaccination::query()
-            // تم التعديل: تحديد أعمدة التطعيمات المطلوبة فقط لنافذة مواعيد 3 أيام
+
             ->select([
                 'id',
                 'customer_id',
@@ -130,7 +117,7 @@ class VaccinationController extends Controller
                 'vaccination_date',
                 'is_completed',
             ])
-            // تم التعديل: تحميل أعمدة العميل والمنتج اللازمة فقط بشكل آمن للواجهة الحالية
+
             ->with(['customer:id,name,phone,animal_type', 'product:id,name'])
             ->where('is_completed', false)
             ->whereNotNull('next_dose_date')
@@ -181,24 +168,21 @@ class VaccinationController extends Controller
         ]);
     }
 
-    /**
-     * تم الإضافة: تصدير التطعيمات المحددة أو كل نتائج التصفية الحالية إلى Excel.
-     */
     public function exportExcel(Request $request): BinaryFileResponse
     {
-        // تم التعديل: بناء Query مباشر للتصدير بدل تحميل كل التطعيمات في الذاكرة دفعة واحدة
+
         $exportQuery = $request->boolean('select_all_ids')
             ? $this->vaccinationsExportQuery($request)
-                // تم التعديل: تحديد الأعمدة المطلوبة فقط مع الإبقاء على المفاتيح اللازمة للعلاقات
+
                 ->select(['id', 'customer_id', 'product_id', 'next_dose_date'])
             : Vaccination::query()
-                // تم التعديل: الإبقاء على العلاقات اللازمة لعرض بيانات العميل والتطعيم داخل التصدير
+
                 ->with(['customer', 'product'])
-                // تم التعديل: قصر التصدير على المعرّفات المحددة فقط
+
                 ->whereKey($this->selectedIds($request))
-                // تم التعديل: تحديد الأعمدة المطلوبة فقط مع الإبقاء على المفاتيح اللازمة للعلاقات
+
                 ->select(['id', 'customer_id', 'product_id', 'next_dose_date'])
-                // تم التعديل: استخدام ترتيب ثابت بـ id لضمان chunking آمن
+
                 ->orderBy('id');
 
         return Excel::download(
@@ -209,13 +193,11 @@ class VaccinationController extends Controller
                     private readonly CustomerVisitService $visitService,
                 ) {}
 
-                // تم التعديل: إعادة الـ query مباشرة إلى Laravel Excel ليعالجها على دفعات
                 public function query(): \Illuminate\Database\Eloquent\Builder
                 {
                     return $this->query;
                 }
 
-                // تم التعديل: تجهيز صف التصدير أثناء القراءة دون تجميع النتائج بالكامل في الذاكرة
                 public function map($vaccination): array
                 {
                     return [
@@ -227,13 +209,11 @@ class VaccinationController extends Controller
                     ];
                 }
 
-                // تم التعديل: الإبقاء على نفس عناوين ملف Excel
                 public function headings(): array
                 {
                     return ['الاسم', 'رقم الهاتف', 'نوع الحيوان', 'اسم التطعيم', 'موعد الجرعة القادمة'];
                 }
 
-                // تم التعديل: تحديد حجم الـ chunk لتقليل استهلاك الذاكرة أثناء التصدير
                 public function chunkSize(): int
                 {
                     return 1000;
@@ -252,12 +232,9 @@ class VaccinationController extends Controller
         );
     }
 
-    /**
-     * تم الإضافة: جلب أرقام الهواتف المحددة أو كل نتائج التصفية الحالية مع إزالة التكرار.
-     */
     public function getPhones(Request $request): JsonResponse
     {
-        // تم الإضافة: إعادة استخدام نفس استعلام التصفية الحالي قبل تجميع الهواتف
+
         $phones = ($request->boolean('select_all_ids')
             ? $this->vaccinationsExportQuery($request)->get()->pluck('customer.phone')
             : Vaccination::query()
@@ -276,9 +253,6 @@ class VaccinationController extends Controller
         ]);
     }
 
-    /**
-     * تم الإضافة: توحيد فلاتر صفحة التطعيمات لاستخدامها في التصدير وجلب الأرقام.
-     */
     private function vaccinationsExportQuery(Request $request)
     {
         $query = Vaccination::query()->with(['customer', 'product']);
@@ -305,7 +279,7 @@ class VaccinationController extends Controller
         if ($sort === 'oldest') {
             $query->orderBy('vaccination_date', 'asc')->orderBy('id', 'asc');
         } elseif ($sort === 'upcoming') {
-            // تم التعديل: إضافة ترتيب ثابت بـ id لضمان نتائج مستقرة في التصدير المعتمد على query
+
             $query->orderByRaw('next_dose_date IS NULL, next_dose_date ASC')->orderBy('id', 'asc');
         } else {
             $query->orderBy('vaccination_date', 'desc')->orderBy('id', 'desc');
@@ -314,9 +288,6 @@ class VaccinationController extends Controller
         return $query;
     }
 
-    /**
-     * تم الإضافة: قراءة المعرّفات المحددة من الطلب بصيغة موحدة وآمنة.
-     */
     private function selectedIds(Request $request): array
     {
         return collect($request->input('ids', []))

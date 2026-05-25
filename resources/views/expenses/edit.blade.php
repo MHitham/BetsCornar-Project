@@ -5,7 +5,7 @@
 
 @section('content')
 
-    {{-- تم الإضافة: نموذج تعديل المصروف الحالي --}}
+    
     <div class="card">
         <div class="card-body">
             <form method="POST" action="{{ route('expenses.update', $expense) }}" class="row g-3">
@@ -23,7 +23,7 @@
 
                 <div class="col-md-6">
                     <label for="amount" class="form-label">{{ __('expenses.fields.amount') }}</label>
-                    {{-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي --}}
+                    
                     <input type="number" step="0.01" min="0" name="amount" id="amount"
                         class="form-control @error('amount') is-invalid @enderror"
                         value="{{ old('amount', $expense->amount) }}" placeholder="0" required>

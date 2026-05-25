@@ -10,7 +10,7 @@ class CustomerFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'phone' => '201' . fake()->numerify('#########'),
+            'phone' => '201'.fake()->numerify('#########'),
             'address' => fake()->address(),
             'animal_type' => fake()->randomElement(['قط', 'كلب', 'طائر', 'أرنب']),
             'notes' => fake()->optional()->sentence(),

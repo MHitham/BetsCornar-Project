@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
-            // إضافة عمود المبلغ المدفوع بعد عمود total
+
             $table->decimal('amount_paid', 10, 2)->default(0)->after('total');
         });
     }

@@ -10,7 +10,6 @@ class InvoiceReturnController extends Controller
 {
     public function __construct(private readonly InvoiceService $invoiceService) {}
 
-    // حفظ المرتجع الجزئي للفاتورة
     public function store(Request $request, Invoice $invoice)
     {
         $request->validate([
@@ -20,7 +19,6 @@ class InvoiceReturnController extends Controller
             'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        // فلترة البنود التي quantity_returned > 0 فقط
         $items = collect($request->items)
             ->filter(fn ($i) => (float) ($i['quantity_returned'] ?? 0) > 0)
             ->values()

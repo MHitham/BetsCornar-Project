@@ -6,7 +6,7 @@
 @section('content')
     <div class="row mb-4 align-items-center">
         <div class="col">
-            {{-- "مواعيد الـ 3 أيام 🔔" green button --}}
+            
             <button type="button" class="btn btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#upcomingModal">
                 <i class="bi bi-bell-fill me-1"></i> مواعيد الـ 3 أيام
                 <span class="badge bg-white text-success ms-1 rounded-pill">{{ $threeDaysUpcoming->count() }}</span>
@@ -14,7 +14,7 @@
         </div>
     </div>
 
-    {{-- Filters --}}
+    
     <div class="card mb-4 shadow-sm border-0">
         <div class="card-body">
             <form method="GET" action="{{ route('vaccinations.index') }}" class="row g-3 align-items-end" id="filterForm">
@@ -61,13 +61,13 @@
         </div>
     </div>
 
-    {{-- Header --}}
+    
     <div class="d-flex align-items-center mb-3">
         <i class="bi bi-capsule-pill text-primary fs-4 me-2"></i>
         <h5 class="fw-bold mb-0">{{ $vaccinations->total() }} سجل تطعيم</h5>
     </div>
 
-    {{-- تم الإضافة: شريط الإجراءات الجماعية لنسخ الأرقام وتصدير التطعيمات إلى Excel --}}
+    
     <div id="bulk-actions-toolbar" class="card mb-3 d-none">
         <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
             <div class="fw-semibold text-primary">
@@ -88,7 +88,7 @@
         </div>
     </div>
 
-    {{-- تم الإضافة: بانر اختيار كل نتائج التطعيمات عبر جميع الصفحات --}}
+    
     <div id="selection-banner"
         class="alert alert-info d-none d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
         <span id="selection-banner-text"></span>
@@ -97,7 +97,7 @@
         </button>
     </div>
 
-    {{-- Table --}}
+    
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -111,7 +111,7 @@
                         <th>{{ __('vaccinations.fields.vaccination_date') }}</th>
                         <th>{{ __('vaccinations.fields.next_dose_date') }}</th>
                         <th class="text-center">{{ __('vaccinations.fields.whatsapp') }}</th>
-                        {{-- تم الإضافة: عمود مستقل لتحديد العناصر المخصصة للتصدير دون لمس checkbox التطعيم الحالي --}}
+                        
                         <th class="text-center" style="width: 64px;">
                             <input type="checkbox" class="form-check-input" id="select-page-vaccinations"
                                 title="{{ __('vaccinations.bulk.select_page') }}">
@@ -131,14 +131,14 @@
                             <tr id="row-{{ $vacc->id }}"
                                 class="{{ $vacc->is_completed ? 'table-light text-muted' : '' }}">
                                 <td class="text-center">
-                                    {{-- Checkbox confirmation flow --}}
+                                    
                                     <input class="form-check-input vaccination-checkbox" type="checkbox"
                                         style="transform: scale(1.3); cursor: pointer;" data-id="{{ $vacc->id }}"
                                         {{ $vacc->is_completed ? 'checked disabled' : '' }} title="تغيير حالة التطعيم">
                                 </td>
                                 <td class="fw-semibold">
                                     <div class="d-flex flex-column">
-                                        {{-- اسم العميل قابل للضغط لعرض كل تطعيماته --}}
+                                        
                                         <span
                                             class="customer-name-btn text-primary {{ $vacc->is_completed ? 'text-decoration-line-through' : '' }}"
                                             style="cursor:pointer; text-decoration:underline dotted;"
@@ -179,7 +179,7 @@
                                         </button>
                                     @endif
                                 </td>
-                                {{-- تم الإضافة: checkbox منفصل للتصدير الجماعي مع تخزين رقم الهاتف للنسخ السريع --}}
+                                
                                 <td class="text-center">
                                     <input type="checkbox" class="form-check-input vaccination-export-checkbox"
                                         value="{{ $vacc->id }}" data-phone="{{ $vacc->customer->phone ?? '' }}">
@@ -205,26 +205,26 @@
         {{ $vaccinations->links() }}
     </div>
 
-    {{-- تم الإضافة: نموذج مخفي لإرسال عناصر التصدير إلى مسار Excel --}}
+    
     <form method="POST" action="{{ route('vaccinations.export-excel') }}" id="vaccinations-export-form"
         class="d-none">
         @csrf
         <div id="vaccinations-export-inputs"></div>
     </form>
 
-    {{-- 1. Modal 3 Days Upcoming --}}
+    
     <div class="modal fade" id="upcomingModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title"><i class="bi bi-bell me-2"></i> مواعيد التطعيم خلال الـ 3 أيام القادمة</h5>
-                    {{-- تم الإضافة: زر نسخ كل الأرقام الظاهرة داخل مودال الثلاثة أيام --}}
+                    
                     <div class="d-flex align-items-center gap-2">
                         <button type="button" class="btn btn-sm btn-light text-success fw-semibold"
                             id="copy-upcoming-phones">
                             <i class="bi bi-clipboard me-1"></i>{{ __('vaccinations.bulk.copy_modal_phones') }}
                         </button>
-                        {{-- زر إرسال واتساب لكل عملاء مواعيد الـ 3 أيام --}}
+                        
                         <button type="button" class="btn btn-sm btn-success fw-semibold"
                             id="send-all-whatsapp">
                             <i class="bi bi-whatsapp me-1"></i> إرسال للكل
@@ -282,7 +282,7 @@
         </div>
     </div>
 
-    {{-- 2. Action Confirmation Modal (Question 1) --}}
+    
     <div class="modal fade" id="actionModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -310,7 +310,7 @@
         </div>
     </div>
 
-    {{-- 3. Next Dose Question Modal (Question 2) --}}
+    
     <div class="modal fade" id="nextDoseQuestionModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -334,7 +334,7 @@
         </div>
     </div>
 
-    {{-- 4. Reschedule Modal --}}
+    
     <div class="modal fade" id="rescheduleModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow border-0">
@@ -360,7 +360,7 @@
         </div>
     </div>
 
-    {{-- تم الإضافة: منطق التحديد الجماعي ونسخ الأرقام والتصدير ومودال الثلاثة أيام باستخدام JavaScript فقط --}}
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const selectPageCheckbox = document.getElementById('select-page-vaccinations');
@@ -830,7 +830,7 @@
         });
     </script>
 
-    {{-- Modal: كل تطعيمات العميل --}}
+    
     <div class="modal fade" id="customerVaccinationsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">

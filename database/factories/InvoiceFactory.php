@@ -9,7 +9,7 @@ class InvoiceFactory extends Factory
     public function definition(): array
     {
         return [
-            'invoice_number' => 'INV-' . fake()->unique()->numerify('######'),
+            'invoice_number' => 'INV-'.fake()->unique()->numerify('######'),
             'customer_id' => \App\Models\Customer::factory(),
             'customer_name' => fake()->name(),
             'source' => fake()->randomElement(['customer', 'quick_sale']),

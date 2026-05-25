@@ -12,12 +12,12 @@
                     <i class="bi bi-pencil-fill me-1 text-primary"></i> تعديل: {{ $user->name }}
                 </div>
                 <div class="card-body">
-                    {{-- تم الإضافة: نموذج تعديل بيانات موظف --}}
+                    
                     <form method="POST" action="{{ route('users.update', $user) }}">
                         @csrf
                         @method('PUT')
 
-                        {{-- الاسم --}}
+                        
                         <div class="mb-3">
                             <label for="name" class="form-label">الاسم <span class="text-danger">*</span></label>
                             <input type="text"
@@ -32,7 +32,7 @@
                             @enderror
                         </div>
 
-                        {{-- البريد الإلكتروني --}}
+                        
                         <div class="mb-3">
                             <label for="email" class="form-label">البريد الإلكتروني <span class="text-danger">*</span></label>
                             <input type="email"
@@ -47,7 +47,7 @@
                             @enderror
                         </div>
 
-                        {{-- كلمة المرور (اختيارية عند التعديل) --}}
+                        
                         <div class="mb-3">
                             <label for="password" class="form-label">
                                 كلمة المرور
@@ -63,7 +63,7 @@
                             @enderror
                         </div>
 
-                        {{-- الدور --}}
+                        
                         <div class="mb-4">
                             <label for="role" class="form-label">الدور <span class="text-danger">*</span></label>
                             <select id="role"
@@ -83,7 +83,7 @@
                             @enderror
                         </div>
 
-                        {{-- أزرار الإجراءات --}}
+                        
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-check-lg me-1"></i> حفظ التعديلات

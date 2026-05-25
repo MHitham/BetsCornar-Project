@@ -16,7 +16,7 @@ class ExpenseController extends Controller
 
     public function index(Request $request)
     {
-        // تم الإضافة: فلتر المصروفات بالشهر مع إجمالي المصروفات الشهرية
+
         $month = $request->input('month');
 
         $query = Expense::query()->with('creator');

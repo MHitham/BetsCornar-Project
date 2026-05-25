@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-// طلب إلغاء فاتورة
 class CancelInvoiceRequest extends FormRequest
 {
     public function authorize(): bool

@@ -15,13 +15,11 @@ class Supplier extends Model
         'is_active' => 'boolean',
     ];
 
-    // علاقة: المورد عنده كتير فواتير شراء
     public function purchaseOrders(): HasMany
     {
         return $this->hasMany(PurchaseOrder::class);
     }
 
-    // حساب الرصيد المتبقي ديناميكياً (مش مخزن في DB)
     public function getBalanceAttribute(): float
     {
         return (float) $this->purchaseOrders()

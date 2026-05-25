@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Animal extends Model
 {
-    /** @use HasFactory<\Database\Factories\AnimalFactory> */
     use HasFactory;
 
     protected $fillable = [

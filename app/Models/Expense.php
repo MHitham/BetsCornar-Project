@@ -27,7 +27,6 @@ class Expense extends Model
         ];
     }
 
-    // تم الإضافة: علاقة المستخدم الذي أنشأ المصروف
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

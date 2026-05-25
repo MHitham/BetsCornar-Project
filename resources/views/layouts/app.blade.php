@@ -7,16 +7,16 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', \App\Models\Setting::get('clinic_name', 'عيادة بيطرية'))</title>
 
-    {{-- Bootstrap 5 RTL --}}
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
 
-    {{-- Google Fonts: Tajawal --}}
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
         rel="stylesheet">
 
-    {{-- Bootstrap Icons --}}
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     @vite(['resources/css/layout.css'])
@@ -35,15 +35,15 @@
         <span class="app-orb app-orb--three"></span>
     </div>
 
-    {{-- Sidebar --}}
+    
     <x-sidebar />
 
-    {{-- Main wrapper --}}
+    
     <div id="main-wrapper">
-        {{-- Top bar --}}
+        
         <x-navbar />
 
-        {{-- Page content --}}
+        
         <main id="page-content">
             <div class="page-inner">
                 <div class="alerts-stack">
@@ -57,7 +57,7 @@
         </main>
     </div>
 
-    {{-- Bootstrap 5 JS --}}
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function toggleSidebar() {

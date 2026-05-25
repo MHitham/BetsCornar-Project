@@ -122,7 +122,7 @@
     @endif
 
     <div class="header">
-        {{-- اسم العيادة الديناميكي من الإعدادات --}}
+        
         <h1 class="clinic-name">{{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}</h1>
         <div class="clinic-sub">رعاية متكاملة للحيوانات الأليفة</div>
     </div>
@@ -182,7 +182,7 @@
         </div>
     @endif
 
-    {{-- تذييل الفاتورة باسم العيادة الديناميكي --}}
+    
     <div class="footer">
         نشكركم على ثقتكم في {{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}
     </div>

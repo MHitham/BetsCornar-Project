@@ -20,7 +20,7 @@ class Invoice extends Model
         'total',
         'amount_paid',
         'status',
-        // تم الإضافة: تتبع المستخدم الذي أنشأ الفاتورة
+
         'created_by',
         'cancellation_reason',
         'cancelled_at',
@@ -35,7 +35,6 @@ class Invoice extends Model
             'cancelled_at' => 'datetime',
         ];
     }
-    // ── Relationships ────────────────────────────────────────────────────
 
     public function customer(): BelongsTo
     {
@@ -47,7 +46,6 @@ class Invoice extends Model
         return $this->belongsTo(Animal::class);
     }
 
-    // تم الإضافة: علاقة المستخدم الذي أنشأ الفاتورة
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -68,27 +66,20 @@ class Invoice extends Model
         return $this->hasMany(InvoicePayment::class)->orderBy('paid_at');
     }
 
-    // علاقة: الفاتورة لها مرتجعات متعددة
     public function returns(): HasMany
     {
         return $this->hasMany(InvoiceReturn::class);
     }
 
-    // ── Scopes ───────────────────────────────────────────────────────────
-
-    /** الفواتير المؤكدة فقط (تُستخدم في الإيرادات والإحصائيات) */
     public function scopeConfirmed($query)
     {
         return $query->where('status', 'confirmed');
     }
 
-    /** الفواتير الملغية فقط */
     public function scopeCancelled($query)
     {
         return $query->where('status', 'cancelled');
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────
 
     public function isConfirmed(): bool
     {
@@ -100,7 +91,6 @@ class Invoice extends Model
         return $this->status === 'cancelled';
     }
 
-    // حساب حالة الدفع ديناميكياً (accessor — مش مخزن في DB)
     public function getPaymentStatusAttribute(): string
     {
         if ((float) $this->amount_paid <= 0) {
@@ -113,7 +103,6 @@ class Invoice extends Model
         return 'partial';
     }
 
-    // المبلغ المتبقي على العميل
     public function getRemainingAmountAttribute(): float
     {
         return max(0, (float) $this->total - (float) $this->amount_paid);

@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Customer extends Model
 {
@@ -34,7 +34,6 @@ class Customer extends Model
         return $this->hasMany(Animal::class)->latest('created_at');
     }
 
-    // تم الإضافة: جلب آخر تطعيم للعميل بشكل آمن دون limit داخل eager loading
     public function latestVaccination(): HasOne
     {
         return $this->hasOne(Vaccination::class)->latestOfMany('vaccination_date');

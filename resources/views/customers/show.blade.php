@@ -5,7 +5,7 @@
 
 @section('content')
 
-    {{-- تم الإضافة: بطاقة تعريف العميل مع الإجراءات السريعة --}}
+    
     <div class="card mb-4">
         <div class="card-body">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
@@ -37,7 +37,7 @@
         </div>
     </div>
 
-    {{-- بطاقة الديون المتبقية على العميل --}}
+    
     @php
         $unpaidInvoices = $customer->invoices->filter(fn($inv) =>
             !$inv->isCancelled() && (float)$inv->remaining_amount > 0
@@ -92,7 +92,7 @@
         </div>
     </div>
 
-    {{-- Modals الدفع — واحد لكل فاتورة --}}
+    
     @foreach($unpaidInvoices as $unpaidInv)
     <div class="modal fade" id="payModal{{ $unpaidInv->id }}" tabindex="-1">
         <div class="modal-dialog">
@@ -128,7 +128,7 @@
     @endforeach
     @endif
 
-{{-- تم الإضافة: عرض ملاحظات العميل بشكل منظم وواضح --}}
+
 @if(filled($customer->notes))
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body bg-light rounded-3">
@@ -151,7 +151,7 @@
         </div>
     </div>
 @endif
-    {{-- تم الإضافة: التايم لاين الكامل لزيارات العميل من الأحدث إلى الأقدم --}}
+    
     @forelse ($customer->invoices as $invoice)
         @php
             $paid = $invoice->amount_paid ?? 0;
@@ -194,7 +194,7 @@
                 </div>
             </div>
             <div class="card-body">
-                {{-- تم الإضافة: جدول بنود الفاتورة ضمن السجل الطبي --}}
+                
                 <h6 class="mb-3">{{ __('customers.timeline.invoice_items') }}</h6>
                 <div class="table-responsive mb-4">
                     <table class="table table-hover align-middle mb-0">
@@ -225,7 +225,7 @@
                     </table>
                 </div>
 
-                {{-- تم الإضافة: جدول التطعيمات الخاصة بالزيارة الحالية عند وجودها --}}
+                
                 @if ($invoice->vaccinations->isNotEmpty())
                     <h6 class="mb-3">{{ __('customers.timeline.vaccinations') }}</h6>
                     <div class="table-responsive">
@@ -287,7 +287,7 @@
         </div>
     @endforelse
 
-    {{-- Modals سجل الدفعات لكل فاتورة --}}
+    
     @foreach($customer->invoices as $invoice)
     <div class="modal fade" id="paymentsModal{{ $invoice->id }}" tabindex="-1" aria-labelledby="paymentsModalLabel{{ $invoice->id }}" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -300,7 +300,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    {{-- قسم 1: جدول الدفعات السابقة --}}
+                    
                     @if($invoice->payments->isEmpty())
                         <p class="text-muted text-center py-3">لا توجد دفعات مسجلة</p>
                     @else
@@ -340,7 +340,7 @@
                         </table>
                     @endif
 
-                    {{-- قسم 2: إضافة دفعة جديدة --}}
+                    
                     @php $remaining = $invoice->total - $invoice->payments->sum('amount'); @endphp
                     @if($remaining > 0 && $invoice->status !== 'cancelled')
                         <hr>

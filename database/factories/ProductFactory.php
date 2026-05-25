@@ -29,7 +29,7 @@ class ProductFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'type' => 'vaccination',
             'track_stock' => true,
-            'quantity' => 0, // Calculated dynamically from batches
+            'quantity' => 0,
             'stock_status' => 'out_of_stock',
         ]);
     }

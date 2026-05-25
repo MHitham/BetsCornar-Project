@@ -5,12 +5,12 @@
 
 @section('content')
 
-    {{-- ØªÙ… Ø§Ù„Ø¥Ø¶Ø§ÙØ©: Ø­ÙØ¸ Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø­Ø§Ù„ÙŠØ© Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù…Ù‡ ÙÙŠ Ø§Ù„ØªØ­Ø¯ÙŠØ¯ Ø¹Ø¨Ø± ÙƒÙ„ Ø§Ù„ØµÙØ­Ø§Øª --}}
+    
     @php
         $customersTotal = $customers->total();
     @endphp
 
-    {{-- Search Bar --}}
+    
     <div class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('customers.index') }}" class="row g-3 align-items-end">
@@ -34,7 +34,7 @@
         </div>
     </div>
 
-    {{-- Header --}}
+    
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-people-fill text-primary fs-5"></i>
@@ -45,7 +45,7 @@
         </a>
     </div>
 
-    {{-- ØªÙ… Ø§Ù„Ø¥Ø¶Ø§ÙØ©: Ø´Ø±ÙŠØ· Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª Ø§Ù„Ø¬Ù…Ø§Ø¹ÙŠØ© Ù„Ù†Ø³Ø® Ø§Ù„Ø£Ø±Ù‚Ø§Ù… ÙˆØªØµØ¯ÙŠØ± Excel --}}
+    
     <div id="bulk-actions-toolbar" class="card mb-3 d-none">
         <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
             <div class="fw-semibold text-primary">
@@ -66,7 +66,7 @@
         </div>
     </div>
 
-    {{-- ØªÙ… Ø§Ù„Ø¥Ø¶Ø§ÙØ©: Ø¨Ø§Ù†Ø± Ø§Ù„ØªØ­Ø¯ÙŠØ¯ Ø¹Ø¨Ø± Ø¬Ù…ÙŠØ¹ Ø§Ù„ØµÙØ­Ø§Øª --}}
+    
     <div id="selection-banner"
         class="alert alert-info d-none d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
         <span id="selection-banner-text"></span>
@@ -75,13 +75,13 @@
         </button>
     </div>
 
-    {{-- Table --}}
+    
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
-                        {{-- ØªÙ… Ø§Ù„Ø¥Ø¶Ø§ÙØ©: Ù…Ø±Ø¨Ø¹ ØªØ­Ø¯ÙŠØ¯ Ø¬Ù…ÙŠØ¹ Ø¹Ù†Ø§ØµØ± Ø§Ù„ØµÙØ­Ø© Ø§Ù„Ø­Ø§Ù„ÙŠØ© --}}
+                        
                         <th class="text-center" style="width: 56px;">
                             <input type="checkbox" class="form-check-input" id="select-page-customers"
                                 title="{{ __('customers.bulk.select_page') }}">
@@ -116,7 +116,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    {{-- تم الإضافة: الاعتماد على العلاقة المباشرة latestVaccination بدل تجميع vaccinations --}}
+                                    
                                     @php $lastVacc = $customer->latestVaccination; @endphp
                                     @if ($lastVacc)
                                         <span class="badge bg-primary text-white">
@@ -131,7 +131,7 @@
                                         class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-clipboard2-plus me-1"></i>زياره جديدة
                                     </a>
-                                    {{-- تم الإضافة: زر السجل الطبي للعميل --}}
+                                    
                                     <a href="{{ route('customers.show', $customer) }}" class="btn btn-sm btn-outline-info">
                                         <i class="bi bi-clock-history me-1"></i>{{ __('customers.timeline.title') }}
                                     </a>
@@ -153,7 +153,7 @@
         </div>
     </div>
 
-    {{-- Pagination --}}
+    
     <div class="mt-4">
         {{ $customers->links() }}
     </div>

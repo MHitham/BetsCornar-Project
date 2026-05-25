@@ -16,19 +16,16 @@ class InvoiceReturn extends Model
         'total_refund' => 'decimal:2',
     ];
 
-    // علاقة: المرتجع يخص فاتورة
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
-    // علاقة: المرتجع يحتوي على بنود متعددة
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceReturnItem::class);
     }
 
-    // علاقة: المرتجع سجله مستخدم
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

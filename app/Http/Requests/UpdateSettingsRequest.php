@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-// طلب التحقق من صحة بيانات الإعدادات
 class UpdateSettingsRequest extends FormRequest
 {
     public function authorize(): bool

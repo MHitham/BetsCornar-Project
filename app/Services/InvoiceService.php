@@ -7,7 +7,6 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceReturn;
 use App\Models\InvoiceReturnItem;
-// تم الإضافة: استخدام الكاش لمسح مؤشرات لوحة التحكم بعد إلغاء الفاتورة
 use App\Models\Product;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -19,10 +18,6 @@ class InvoiceService
         private readonly StockService $stockService,
     ) {}
 
-    /**
-     * Generate a sequential, unique invoice number like INV-000001.
-     * Uses a DB-level lock to prevent race conditions.
-     */
     public function generateInvoiceNumber(): string
     {
         $last = Invoice::query()
@@ -39,16 +34,6 @@ class InvoiceService
         return 'INV-'.str_pad($next, 6, '0', STR_PAD_LEFT);
     }
 
-    /**
-     * Save a quick-sale invoice within a DB transaction.
-     *
-     * Expected $data keys:
-     *   customer_name (string),
-     *   customer_phone? (string, optional),
-     *   items => [['product_id', 'quantity', 'unit_price'], ...]
-     *
-     * @throws RuntimeException on insufficient vaccine stock
-     */
     public function saveQuickSale(array $data): Invoice
     {
         $invoice = DB::transaction(function () use ($data) {
@@ -58,7 +43,6 @@ class InvoiceService
                 $customerName = __('invoices.messages.walk_in_customer');
             }
 
-            // تم التعديل: ربط العميل — الأولوية لـ customer_id المُختار من البحث المباشر
             if (! empty($data['customer_id'])) {
                 $customer = Customer::find((int) $data['customer_id']);
                 if ($customer) {
@@ -66,8 +50,7 @@ class InvoiceService
                     $customerName = $customer->name;
                 }
             } elseif (! empty($data['customer_phone'])) {
-                // fallback قديم: ربط عن طريق رقم الهاتف
-                // استخدام PhoneHelper المركزي لتوحيد أرقام الهاتف
+
                 $normalizedPhone = PhoneHelper::normalize($data['customer_phone']);
                 $customer = Customer::where('phone', '=', $normalizedPhone)->first(['*']);
                 if ($customer) {
@@ -82,7 +65,7 @@ class InvoiceService
                 'source' => 'quick_sale',
                 'total' => 0,
                 'status' => 'confirmed',
-                // تم الإضافة: تتبع المستخدم الذي أنشأ الفاتورة
+
                 'created_by' => auth()->id(),
             ]);
 
@@ -103,7 +86,6 @@ class InvoiceService
 
                 $lineTotal += $total;
 
-                // Deduct stock — vaccines use FEFO, no vaccination record created
                 if ($product->track_stock) {
                     if ($product->type === 'vaccination') {
                         $this->stockService->deductVaccineStockFefo($product, $qty, $invoiceItem);
@@ -122,34 +104,29 @@ class InvoiceService
             if ($total > 0) {
                 \App\Models\InvoicePayment::create([
                     'invoice_id' => $invoice->id,
-                    'amount'     => $total,
-                    'notes'      => 'تسديد تلقائي - بيع سريع',
-                    'paid_at'    => now(),
+                    'amount' => $total,
+                    'notes' => 'تسديد تلقائي - بيع سريع',
+                    'paid_at' => now(),
                 ]);
             }
 
             return $invoice;
         });
 
-        // مسح كاش الإشعارات بعد إنشاء فاتورة بيع سريع
         Cache::forget('notifications.alerts');
 
         return $invoice;
     }
 
-    /**
-     * إلغاء فاتورة مع إرجاع الستوك كاملاً في transaction واحدة.
-     * يرفض الإلغاء إذا كانت الفاتورة ملغية بالفعل.
-     */
     public function cancelInvoice(Invoice $invoice, ?string $reason = null): Invoice
     {
-        // منع إلغاء فاتورة ملغية مسبقاً
+
         if ($invoice->isCancelled()) {
             throw new RuntimeException(__('invoices.messages.already_cancelled'));
         }
 
         return DB::transaction(function () use ($invoice, $reason) {
-            // تحميل البنود مع المنتجات والـ vaccine batches
+
             $invoice->load(['items.product', 'items.vaccineBatches']);
 
             foreach ($invoice->items as $item) {
@@ -160,39 +137,32 @@ class InvoiceService
                 }
 
                 if ($product->type === 'vaccination') {
-                    // إرجاع ستوك التطعيم عبر الـ batches
+
                     $this->stockService->restoreVaccineStock($item);
                 } else {
-                    // إرجاع ستوك المنتج العادي
+
                     $this->stockService->increaseStock($product, $item->quantity);
                 }
             }
 
-            // حذف سجلات التطعيمات المرتبطة بالفاتورة الملغية
             $invoice->vaccinations()->delete();
 
-            // تحديث حالة الفاتورة إلى ملغية مع تسجيل السبب والوقت
             $invoice->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,
                 'cancelled_at' => now(),
             ]);
 
-            // تم الإضافة: تحديث كاش إجمالي التطعيمات لأن إلغاء الفاتورة قد يعيد عناصر تطعيم للمخزون
             Cache::forget('dashboard.total_vaccinations');
-            // تم الإضافة: تحديث كاش التطعيمات القادمة بعد أي إلغاء قد يؤثر على مؤشرات اللوحة
+
             Cache::forget(dashboardKey('upcoming_vaccinations'));
-            // تم الإضافة: تحديث كاش صلاحية التشغيلات لأن الإلغاء قد يعيد كميات إلى التشغيلات
+
             Cache::forget(dashboardKey('batch_expiry'));
 
             return $invoice->fresh();
         });
     }
 
-    /**
-     * إنشاء مرتجع جزئي لفاتورة مؤكدة مع إرجاع الستوك.
-     * $items = [['invoice_item_id' => X, 'quantity_returned' => Y], ...]
-     */
     public function createReturn(Invoice $invoice, array $items, ?string $reason = null): InvoiceReturn
     {
         if ($invoice->isCancelled()) {
@@ -202,9 +172,6 @@ class InvoiceService
         return DB::transaction(function () use ($invoice, $items, $reason) {
             $totalRefund = 0;
 
-            // لم يعد هناك حاجة لحساب المرتجعات السابقة لأننا سنقوم بتخفيض الكمية الأصلية في الفاتورة مباشرة
-
-            // إنشاء سجل المرتجع
             $return = InvoiceReturn::create([
                 'invoice_id' => $invoice->id,
                 'reason' => $reason,
@@ -222,7 +189,6 @@ class InvoiceService
                     ->lockForUpdate()
                     ->findOrFail((int) $row['invoice_item_id']);
 
-                // التحقق: الكمية المُرجعة لا تتجاوز الكمية الحالية في الفاتورة
                 $maxReturnable = round((float) $invoiceItem->quantity, 2);
 
                 if ($qtyToReturn > $maxReturnable) {
@@ -233,7 +199,6 @@ class InvoiceService
 
                 $lineTotal = round($qtyToReturn * (float) $invoiceItem->unit_price, 2);
 
-                // إنشاء بند المرتجع
                 InvoiceReturnItem::create([
                     'invoice_return_id' => $return->id,
                     'invoice_item_id' => $invoiceItem->id,
@@ -245,7 +210,6 @@ class InvoiceService
 
                 $totalRefund += $lineTotal;
 
-                // إرجاع الستوك
                 $product = $invoiceItem->product;
                 if ($product && $product->track_stock) {
                     if ($product->type === 'vaccination') {
@@ -255,7 +219,6 @@ class InvoiceService
                     }
                 }
 
-                // خصم الكمية والقيمة من البند الأصلي في الفاتورة
                 $newQuantity = round((float) $invoiceItem->quantity - $qtyToReturn, 2);
                 $newLineTotal = round($newQuantity * (float) $invoiceItem->unit_price, 2);
 
@@ -265,10 +228,8 @@ class InvoiceService
                 ]);
             }
 
-            // تحديث إجمالي المرتجع
             $return->update(['total_refund' => round($totalRefund, 2)]);
 
-            // خصم قيمة المرتجع من إجمالي الفاتورة
             $newInvoiceTotal = max(0, round((float) $invoice->total - $totalRefund, 2));
             $invoice->update(['total' => $newInvoiceTotal]);
 
@@ -276,17 +237,6 @@ class InvoiceService
         });
     }
 
-    /**
-     * @return array{
-     *     date: string,
-     *     label: string,
-     *     gross_revenue: float,
-     *     invoice_count: int,
-     *     cancelled_count: int,
-     *     customer_visits: int,
-     *     quick_sales: int,
-     * }
-     */
     public function getDailyRevenueSummary(string $date, ?int $createdBy = null): array
     {
         $query = Invoice::query()->whereDate('created_at', $date);
@@ -309,18 +259,6 @@ class InvoiceService
         ];
     }
 
-    /**
-     * @return array{
-     *     date: string,
-     *     label: string,
-     *     period_type: string,
-     *     gross_revenue: float,
-     *     invoice_count: int,
-     *     cancelled_count: int,
-     *     customer_visits: int,
-     *     quick_sales: int,
-     * }
-     */
     public function getMonthlyRevenueSummary(int $year, int $month, ?int $createdBy = null): array
     {
         $query = Invoice::query()

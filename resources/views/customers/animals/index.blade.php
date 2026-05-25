@@ -48,7 +48,7 @@
                         </td>
                     </tr>
 
-                    <!-- Edit Modal -->
+                    
                     <div class="modal fade" id="editAnimalModal{{ $animal->id }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog">
                             <form action="{{ route('animals.update', $animal) }}" method="POST">
@@ -121,7 +121,7 @@
     </div>
 </div>
 
-<!-- Add Modal -->
+
 <div class="modal fade" id="addAnimalModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form action="{{ route('customers.animals.store', $customer) }}" method="POST">

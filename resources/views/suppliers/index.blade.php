@@ -5,7 +5,7 @@
 @section('content')
 <div class="container-fluid">
 
-    {{-- رأس الصفحة --}}
+    
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="mb-0 fw-bold">
             <i class="bi bi-truck me-2 text-primary"></i> الموردين
@@ -15,7 +15,7 @@
         </a>
     </div>
 
-    {{-- رسائل النجاح --}}
+    
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">
             {{ session('success') }}
@@ -30,7 +30,7 @@
         </div>
     @endif
 
-    {{-- جدول الموردين --}}
+    
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <table class="table table-hover mb-0 align-middle">
@@ -111,7 +111,7 @@
         </div>
     </div>
 
-    {{-- pagination --}}
+    
     <div class="mt-3">
         {{ $suppliers->links() }}
     </div>

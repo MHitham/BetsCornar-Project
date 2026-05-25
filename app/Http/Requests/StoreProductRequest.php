@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-// طلب إنشاء منتج جديد
 class StoreProductRequest extends FormRequest
 {
     public function authorize(): bool

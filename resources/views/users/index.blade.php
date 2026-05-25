@@ -5,7 +5,7 @@
 
 @section('content')
 
-    {{-- تم الإضافة: رأس الصفحة مع زر إضافة موظف --}}
+    
     <div class="d-flex align-items-center justify-content-between mb-3">
         <span class="fw-bold">
             <i class="bi bi-person-badge-fill text-primary me-1"></i>
@@ -16,7 +16,7 @@
         </a>
     </div>
 
-    {{-- تم الإضافة: جدول المستخدمين --}}
+    
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -34,12 +34,12 @@
                     @if ($users->isNotEmpty())
                         @foreach ($users as $user)
                             <tr>
-                                {{-- رقم الصف بالنسبة لمجموعة الصفحة --}}
+                                
                                 <td class="text-muted small">
                                     {{ $users->firstItem() + $loop->index }}
                                 </td>
 
-                                {{-- الاسم مع تمييز المستخدم الحالي --}}
+                                
                                 <td class="fw-semibold">
                                     {{ $user->name }}
                                     @if ($user->id === auth()->id())
@@ -47,10 +47,10 @@
                                     @endif
                                 </td>
 
-                                {{-- البريد الإلكتروني --}}
+                                
                                 <td class="text-muted">{{ $user->email }}</td>
 
-                                {{-- badge الدور --}}
+                                
                                 <td>
                                     @php
                                         $role = $user->roles->first()?->name;
@@ -68,22 +68,22 @@
                                     @endif
                                 </td>
 
-                                {{-- تاريخ الإنشاء --}}
+                                
                                 <td class="text-muted small">
                                     {{ $user->created_at->format('d/m/Y') }}
                                 </td>
 
-                                {{-- الإجراءات --}}
+                                
                                 <td class="text-center">
                                     <div class="d-flex gap-1 justify-content-center">
-                                        {{-- زر التعديل --}}
+                                        
                                         <a href="{{ route('users.edit', $user) }}"
                                            class="btn btn-sm btn-outline-primary"
                                            title="تعديل">
                                             <i class="bi bi-pencil-fill"></i>
                                         </a>
 
-                                        {{-- زر الحذف — معطّل للمستخدم الحالي --}}
+                                        
                                         @if ($user->id !== auth()->id())
                                             <form method="POST"
                                                   action="{{ route('users.destroy', $user) }}"
@@ -98,7 +98,7 @@
                                                 </button>
                                             </form>
                                         @else
-                                            {{-- زر حذف معطل للمستخدم الحالي --}}
+                                            
                                             <button class="btn btn-sm btn-outline-danger"
                                                     disabled
                                                     title="لا يمكنك حذف حسابك الشخصي">
@@ -124,7 +124,7 @@
         </div>
     </div>
 
-    {{-- Pagination --}}
+    
     <div class="mt-4">{{ $users->links() }}</div>
 
 @endsection

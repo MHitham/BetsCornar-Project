@@ -9,16 +9,13 @@ use App\Models\VaccineBatch;
 use App\Services\StockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-// تم الإضافة: استخدام الكاش لمسح تنبيهات صلاحية التشغيلات بعد تعديلها
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 use RuntimeException;
 
 class VaccineBatchController extends Controller
 {
-    public function __construct(private readonly StockService $stockService)
-    {
-    }
+    public function __construct(private readonly StockService $stockService) {}
 
     public function index(Request $request): View
     {
@@ -27,9 +24,9 @@ class VaccineBatchController extends Controller
         $search = trim((string) $request->string('q'));
         if ($search !== '') {
             $query->where(function ($innerQuery) use ($search) {
-                $innerQuery->where('batch_code', 'like', '%' . $search . '%')
+                $innerQuery->where('batch_code', 'like', '%'.$search.'%')
                     ->orWhereHas('product', function ($productQuery) use ($search) {
-                        $productQuery->where('name', 'like', '%' . $search . '%');
+                        $productQuery->where('name', 'like', '%'.$search.'%');
                     });
             });
         }
@@ -73,7 +70,6 @@ class VaccineBatchController extends Controller
         try {
             $this->stockService->createVaccineBatch($request->validated());
 
-            // تم الإضافة: تحديث كاش تنبيهات صلاحية التشغيلات بعد إضافة تشغيله جديدة
             Cache::forget(dashboardKey('batch_expiry'));
 
             return redirect()
@@ -108,7 +104,6 @@ class VaccineBatchController extends Controller
         try {
             $this->stockService->updateVaccineBatch($vaccineBatch, $request->validated());
 
-            // تم الإضافة: تحديث كاش تنبيهات صلاحية التشغيلات بعد تعديل بيانات التشغيله
             Cache::forget(dashboardKey('batch_expiry'));
 
             return redirect()

@@ -6,21 +6,15 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
-            // تم الإضافة: عمود created_by لتتبع المستخدم الذي أنشأ الفاتورة
+
             $table->unsignedBigInteger('created_by')->nullable()->after('status');
             $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('invoices', function (Blueprint $table) {

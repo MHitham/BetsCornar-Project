@@ -19,25 +19,21 @@ class PurchaseOrder extends Model
         'amount_paid' => 'decimal:2',
     ];
 
-    // علاقة: فاتورة الشراء تخص مورد (اختياري)
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
     }
 
-    // علاقة: فاتورة الشراء عندها كتير بنود
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);
     }
 
-    // علاقة: فاتورة الشراء عندها كتير دفعات
     public function payments(): HasMany
     {
         return $this->hasMany(PurchasePayment::class);
     }
 
-    // حساب حالة الدفع ديناميكياً من amount_paid (لا يُخزن في DB)
     public function getPaymentStatusAttribute(): string
     {
         if ((float) $this->amount_paid <= 0) {
@@ -50,7 +46,6 @@ class PurchaseOrder extends Model
         return 'partial';
     }
 
-    // المبلغ المتبقي
     public function getRemainingAmountAttribute(): float
     {
         return max(0, (float) $this->total_cost - (float) $this->amount_paid);

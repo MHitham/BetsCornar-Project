@@ -3,7 +3,7 @@
 @section('title', __('reports.title'))
 @section('page-title', __('reports.title'))
 
-{{-- كلاسات CSS مشتركة لصفحات التقارير --}}
+
 @push('styles')
 <style>
     .report-card {
@@ -33,7 +33,7 @@
 
 @section('content')
 
-{{-- Year Filter + Header --}}
+
 <div class="card mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, rgba(13,110,253,0.06) 0%, rgba(25,135,84,0.04) 100%);">
     <div class="card-body py-3 px-4">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -45,7 +45,7 @@
                 <p class="text-muted small mb-0">نظرة شاملة على أداء العيادة خلال العام</p>
             </div>
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                {{-- زر الانتقال لتقرير الربحية --}}
+                
                 <a href="{{ route('reports.profitability', ['year' => $year]) }}" class="btn btn-outline-primary btn-sm" style="border-radius: 8px;">
                     <i class="bi bi-graph-up-arrow me-1"></i>
                     تقرير الربحية ←
@@ -65,9 +65,9 @@
     </div>
 </div>
 
-{{-- Summary Cards --}}
+
 <div class="row g-3 mb-4">
-    {{-- Revenue Card --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden" style="border-radius: 12px;">
             <div class="card-body p-3">
@@ -88,7 +88,7 @@
         </div>
     </div>
 
-    {{-- Expenses Card --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden" style="border-radius: 12px;">
             <div class="card-body p-3">
@@ -109,7 +109,7 @@
         </div>
     </div>
 
-    {{-- Net Profit Card --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden report-card">
             <div class="card-body p-3">
@@ -130,7 +130,7 @@
         </div>
     </div>
 
-    {{-- Visits Card --}}
+    
     <div class="col-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden" style="border-radius: 12px;">
             <div class="card-body p-3">
@@ -152,9 +152,9 @@
     </div>
 </div>
 
-{{-- Charts Row --}}
+
 <div class="row g-4 mb-4">
-    {{-- Bar + Line Chart --}}
+    
     <div class="col-xl-8">
         <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
             <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
@@ -167,12 +167,12 @@
                 </div>
             </div>
             <div class="card-body px-4 pb-4">
-                <canvas id="revenueExpensesChart" height="280"></canvas>
+                <div id="revenueExpensesChart"></div>
             </div>
         </div>
     </div>
 
-    {{-- Doughnut Chart --}}
+    
     <div class="col-xl-4">
         <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
             <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
@@ -183,7 +183,7 @@
             </div>
             <div class="card-body d-flex align-items-center justify-content-center px-4 pb-4">
                 @if($topProducts->isNotEmpty())
-                    <canvas id="topProductsChart" height="280"></canvas>
+                    <div id="topProductsChart"></div>
                 @else
                     <div class="text-center text-muted py-5">
                         <i class="bi bi-pie-chart fs-1 d-block mb-2 opacity-50"></i>
@@ -195,106 +195,184 @@
     </div>
 </div>
 
-{{-- Monthly Breakdown Table --}}
+
 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
     <div class="card-header bg-transparent border-0 pt-3 px-4">
         <div class="d-flex align-items-center justify-content-between">
             <h6 class="fw-bold mb-0">
                 <i class="bi bi-table text-secondary me-2"></i>
-                {{ __('reports.monthly_table') }}
+                التفصيل الشهري الموحد
             </h6>
-            <span class="text-muted small">
-                <i class="bi bi-info-circle me-1"></i>
-                اضغط على الشهر للتفاصيل
-            </span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    اضغط على الشهر للتفاصيل
+                </span>
+                <a href="{{ route('reports.profitability', ['year' => $year]) }}"
+                   class="btn btn-outline-primary btn-sm" style="border-radius: 8px;">
+                    <i class="bi bi-graph-up-arrow me-1"></i>
+                    تقرير الربحية والديون
+                </a>
+            </div>
         </div>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0 table-sm">
             <thead>
                 <tr style="background: linear-gradient(135deg, rgba(13,110,253,0.04) 0%, rgba(25,135,84,0.03) 100%);">
-                    <th class="px-4 fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">{{ __('reports.fields.month') }}</th>
-                    <th class="fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">{{ __('reports.fields.revenue') }}</th>
-                    <th class="fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">{{ __('reports.fields.visit_count') }}</th>
-                    <th class="fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">{{ __('reports.fields.expenses') }}</th>
-                    <th class="fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">{{ __('reports.fields.net_profit') }}</th>
-                    <th style="width: 100px;" class="fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">الأداء</th>
+                    <th class="px-3 fw-bold text-muted small">الشهر</th>
+                    <th class="fw-bold text-muted small">الإيرادات</th>
+                    <th class="fw-bold text-muted small">الزيارات</th>
+                    <th class="fw-bold text-muted small">التكلفة</th>
+                    <th class="fw-bold text-muted small">الربح الإجمالي</th>
+                    <th class="fw-bold text-muted small">المصروفات</th>
+                    <th class="fw-bold text-muted small">صافي الربح</th>
+                    <th class="fw-bold text-muted small">هامش%</th>
+                    <th class="fw-bold text-muted small">عملاء جدد</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($monthlyData as $row)
-                    {{-- استخدام متغيرات الكنترولر مباشرة بدل حسابها في الـ Blade --}}
-                    <tr class="{{ !$row['has_data'] ? 'opacity-50' : '' }} {{ $row['month'] === $bestMonth ? 'best-month-row' : '' }}" style="transition: all 0.2s;">
-                        <td class="fw-semibold px-4">
-                            {{-- استخدام $row['has_data'] من الكنترولر --}}
+                    <tr class="{{ !$row['has_data'] ? 'opacity-50' : '' }} {{ $row['month'] === $bestMonth ? 'best-month-row' : '' }}"
+                        style="transition: all 0.2s;">
+
+                        
+                        <td class="fw-semibold px-3">
                             @if($row['has_data'])
-                                <a href="{{ route('reports.month', [$year, $row['month']]) }}" class="text-decoration-none text-dark d-flex align-items-center gap-2">
-                                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 28px; height: 28px; background: linear-gradient(135deg, #0d6efd, #6ea8fe); font-size: 11px; color: #fff; font-weight: 700;">
+                                <a href="{{ route('reports.month', [$year, $row['month']]) }}"
+                                   class="text-decoration-none text-dark d-flex align-items-center gap-2">
+                                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle"
+                                          style="width:26px;height:26px;background:linear-gradient(135deg,#0d6efd,#6ea8fe);font-size:10px;color:#fff;font-weight:700;">
                                         {{ $row['month'] }}
                                     </span>
                                     {{ $row['month_name'] }}
-                                    <i class="bi bi-chevron-left text-muted" style="font-size: 10px;"></i>
+                                    <i class="bi bi-chevron-left text-muted" style="font-size:10px;"></i>
                                 </a>
                             @else
                                 <span class="d-flex align-items-center gap-2">
-                                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 28px; height: 28px; background: #e9ecef; font-size: 11px; color: #adb5bd; font-weight: 700;">
+                                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle"
+                                          style="width:26px;height:26px;background:#e9ecef;font-size:10px;color:#adb5bd;font-weight:700;">
                                         {{ $row['month'] }}
                                     </span>
                                     {{ $row['month_name'] }}
                                 </span>
                             @endif
                         </td>
+
+                        
                         <td>
-                            <span class="fw-semibold" style="color: #198754;">{{ number_format($row['revenue']) }}</span>
+                            <span class="fw-semibold small" style="color:#198754;">
+                                {{ number_format($row['revenue']) }}
+                            </span>
                             <small class="text-muted">{{ __('messages.currency') }}</small>
                         </td>
+
+                        
                         <td>
-                            <span class="badge rounded-pill" style="background: rgba(111,66,193,0.1); color: #6f42c1; font-weight: 600; padding: 5px 10px;">
-                                <i class="bi bi-person-check me-1" style="font-size: 10px;"></i>{{ number_format($row['visit_count']) }}
+                            <span class="badge rounded-pill small"
+                                  style="background:rgba(111,66,193,0.1);color:#6f42c1;font-weight:600;padding:4px 8px;">
+                                <i class="bi bi-person-check me-1" style="font-size:9px;"></i>
+                                {{ $row['visit_count'] }}
                             </span>
                         </td>
+
+                        
                         <td>
-                            <span class="text-danger">{{ number_format($row['expenses']) }}</span>
+                            <span class="small" style="color:#f59e0b;">
+                                {{ number_format($row['cogs']) }}
+                            </span>
                             <small class="text-muted">{{ __('messages.currency') }}</small>
                         </td>
+
+                        
                         <td>
-                            <span class="fw-bold {{ $row['net_profit'] >= 0 ? 'text-primary' : 'text-danger' }}">
+                            <span class="fw-semibold small {{ $row['gross_profit'] >= 0 ? 'text-primary' : 'text-danger' }}">
+                                {{ $row['gross_profit'] >= 0 ? '+' : '' }}{{ number_format($row['gross_profit']) }}
+                            </span>
+                            <small class="text-muted">{{ __('messages.currency') }}</small>
+                        </td>
+
+                        
+                        <td>
+                            <span class="small text-danger">{{ number_format($row['expenses']) }}</span>
+                            <small class="text-muted">{{ __('messages.currency') }}</small>
+                        </td>
+
+                        
+                        <td>
+                            <span class="fw-bold small {{ $row['net_profit'] >= 0 ? 'text-success' : 'text-danger' }}">
                                 {{ $row['net_profit'] >= 0 ? '+' : '' }}{{ number_format($row['net_profit']) }}
-                                <small class="fw-normal text-muted">{{ __('messages.currency') }}</small>
                             </span>
+                            <small class="text-muted">{{ __('messages.currency') }}</small>
                         </td>
+
+                        
                         <td>
                             @if($row['has_data'])
-                                <div class="progress" style="height: 6px; border-radius: 3px; background: rgba(0,0,0,0.06);">
-                                    <div class="progress-bar" style="width: {{ $row['revenue_percent'] }}%; background: linear-gradient(90deg, #198754, #20c997); border-radius: 3px;"></div>
-                                </div>
+                                <span class="badge rounded-pill"
+                                      style="background:{{ $row['margin'] >= 0 ? 'rgba(25,135,84,0.1)' : 'rgba(220,53,69,0.1)' }};
+                                             color:{{ $row['margin'] >= 0 ? '#198754' : '#dc3545' }};
+                                             font-size:11px;padding:4px 8px;">
+                                    {{ $row['margin'] }}%
+                                </span>
                             @else
-                                <span class="text-muted" style="font-size: 10px;">—</span>
+                                <span class="text-muted" style="font-size:10px;">—</span>
+                            @endif
+                        </td>
+
+                        
+                        <td>
+                            @if($row['new_customers'] > 0)
+                                <span class="badge rounded-pill"
+                                      style="background:rgba(13,202,240,0.1);color:#0891b2;font-weight:600;padding:4px 8px;">
+                                    <i class="bi bi-person-plus" style="font-size:9px;"></i>
+                                    {{ $row['new_customers'] }}
+                                </span>
+                            @else
+                                <span class="text-muted" style="font-size:10px;">—</span>
                             @endif
                         </td>
                     </tr>
                 @endforeach
             </tbody>
             <tfoot>
-                <tr style="background: linear-gradient(135deg, rgba(13,110,253,0.06) 0%, rgba(25,135,84,0.04) 100%);">
-                    <td class="px-4 fw-bold">
+                <tr style="background:linear-gradient(135deg,rgba(13,110,253,0.06) 0%,rgba(25,135,84,0.04) 100%);">
+                    <td class="px-3 fw-bold small">
                         <i class="bi bi-calculator me-1 text-primary"></i>
-                        {{ __('reports.totals_row') }}
+                        الإجمالي
                     </td>
-                    <td class="fw-bold" style="color: #198754;">{{ number_format($yearlyTotals['revenue']) }} {{ __('messages.currency') }}</td>
-                    <td class="fw-bold">{{ number_format($yearlyTotals['visit_count']) }}</td>
-                    <td class="fw-bold text-danger">{{ number_format($yearlyTotals['expenses']) }} {{ __('messages.currency') }}</td>
-                    <td class="fw-bold {{ $yearlyTotals['net_profit'] >= 0 ? 'text-primary' : 'text-danger' }}">
-                        {{ $yearlyTotals['net_profit'] >= 0 ? '+' : '' }}{{ number_format($yearlyTotals['net_profit']) }} {{ __('messages.currency') }}
+                    <td class="fw-bold small" style="color:#198754;">
+                        {{ number_format($yearlyTotals['revenue']) }}
+                        <small class="text-muted fw-normal">{{ __('messages.currency') }}</small>
                     </td>
-                    <td></td>
+                    <td class="fw-bold small">{{ number_format($yearlyTotals['visit_count']) }}</td>
+                    <td class="fw-bold small" style="color:#f59e0b;">
+                        {{ number_format($monthlyData->sum('cogs')) }}
+                        <small class="text-muted fw-normal">{{ __('messages.currency') }}</small>
+                    </td>
+                    <td class="fw-bold small text-primary">
+                        {{ number_format($monthlyData->sum('gross_profit')) }}
+                        <small class="text-muted fw-normal">{{ __('messages.currency') }}</small>
+                    </td>
+                    <td class="fw-bold small text-danger">
+                        {{ number_format($yearlyTotals['expenses']) }}
+                        <small class="text-muted fw-normal">{{ __('messages.currency') }}</small>
+                    </td>
+                    <td class="fw-bold small {{ $yearlyTotals['net_profit'] >= 0 ? 'text-success' : 'text-danger' }}">
+                        {{ number_format($yearlyTotals['net_profit']) }}
+                        <small class="text-muted fw-normal">{{ __('messages.currency') }}</small>
+                    </td>
+                    <td class="fw-bold small">—</td>
+                    <td class="fw-bold small">
+                        {{ number_format($monthlyData->sum('new_customers')) }}
+                    </td>
                 </tr>
             </tfoot>
         </table>
     </div>
 </div>
 
-{{-- Top Products Table --}}
+
 <div class="card border-0 shadow-sm" style="border-radius: 12px;">
     <div class="card-header bg-transparent border-0 pt-3 px-4">
         <div class="d-flex align-items-center justify-content-between">
@@ -377,153 +455,112 @@
 </div>
 
 @push('scripts')
-{{-- Chart.js من CDN --}}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.45.2/apexcharts.min.js"></script>
 <script>
-    // بيانات من PHP لاستخدامها في الرسوم البيانية
-    const monthLabels = @json($monthlyData->pluck('month_name'));
-    const revenueData  = @json($monthlyData->pluck('revenue'));
-    const expensesData = @json($monthlyData->pluck('expenses'));
+    // بيانات الشهور للرسوم البيانية
+    const monthLabels   = @json($monthlyData->pluck('month_name'));
+    const revenueData   = @json($monthlyData->pluck('revenue'));
+    const expensesData  = @json($monthlyData->pluck('expenses'));
     const netProfitData = @json($monthlyData->pluck('net_profit'));
 
-    // ألوان مخصصة للشارت
-    Chart.defaults.font.family = "'Tajawal', 'Segoe UI', sans-serif";
-    Chart.defaults.color = '#6c757d';
-
-    // ===== Bar Chart: إيرادات vs مصروفات =====
-    const revenueCtx = document.getElementById('revenueExpensesChart');
-    if (revenueCtx) {
-        new Chart(revenueCtx, {
-            type: 'bar',
-            data: {
-                labels: monthLabels,
-                datasets: [
-                    {
-                        label: 'الإيرادات',
-                        data: revenueData,
-                        backgroundColor: 'rgba(25, 135, 84, 0.75)',
-                        borderColor: 'rgba(25, 135, 84, 1)',
-                        borderWidth: 1,
-                        borderRadius: 6,
-                        borderSkipped: false,
-                    },
-                    {
-                        label: 'المصروفات',
-                        data: expensesData,
-                        backgroundColor: 'rgba(220, 53, 69, 0.65)',
-                        borderColor: 'rgba(220, 53, 69, 1)',
-                        borderWidth: 1,
-                        borderRadius: 6,
-                        borderSkipped: false,
-                    },
-                    {
-                        label: 'صافي الربح',
-                        data: netProfitData,
-                        type: 'line',
-                        borderColor: 'rgba(13, 110, 253, 1)',
-                        backgroundColor: 'rgba(13, 110, 253, 0.05)',
-                        borderWidth: 2.5,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: 'rgba(13, 110, 253, 1)',
-                        pointBorderWidth: 2.5,
-                        pointHoverRadius: 7,
-                        fill: true,
-                        tension: 0.4,
-                        yAxisID: 'y',
-                    }
-                ]
+    // ===== شارت الإيرادات مقابل المصروفات =====
+    const revenueChartEl = document.getElementById('revenueExpensesChart');
+    if (revenueChartEl) {
+        new ApexCharts(revenueChartEl, {
+            chart: {
+                type: 'bar', height: 320,
+                fontFamily: 'Tajawal, sans-serif',
+                toolbar: { show: false },
+                animations: { enabled: true, speed: 600 },
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        align: 'end',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 16,
-                            font: { size: 12, weight: '600' }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        titleFont: { size: 13, weight: 'bold' },
-                        bodyFont: { size: 12 },
-                        padding: 12,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: ctx => ` ${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('ar-EG')} ج.م`
-                        }
-                    }
+            series: [
+                { name: 'الإيرادات',   type: 'bar',  data: revenueData },
+                { name: 'المصروفات',   type: 'bar',  data: expensesData },
+                { name: 'صافي الربح', type: 'line', data: netProfitData },
+            ],
+            colors: ['#198754', '#dc3545', '#0d6efd'],
+            plotOptions: { bar: { borderRadius: 6, columnWidth: '55%' } },
+            stroke: { width: [0, 0, 3], curve: 'smooth' },
+            markers: {
+                size: [0, 0, 5], strokeWidth: 2,
+                fillOpacity: 1, strokeColors: '#fff',
+                colors: ['#0d6efd'],
+            },
+            fill: { opacity: [0.85, 0.75, 0.1], type: ['solid','solid','gradient'] },
+            xaxis: {
+                categories: monthLabels,
+                labels: { style: { fontFamily: 'Tajawal, sans-serif', fontSize: '12px' } },
+                axisBorder: { show: false }, axisTicks: { show: false },
+            },
+            yaxis: {
+                labels: {
+                    style: { fontFamily: 'Tajawal, sans-serif', fontSize: '11px' },
+                    formatter: val => Number(val).toLocaleString('ar-EG'),
                 },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { font: { size: 11 } }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.04)' },
-                        ticks: {
-                            font: { size: 11 },
-                            callback: val => Number(val).toLocaleString('ar-EG')
-                        }
-                    }
-                }
-            }
-        });
+            },
+            grid: { borderColor: 'rgba(0,0,0,0.04)', strokeDashArray: 4 },
+            tooltip: {
+                shared: true, intersect: false,
+                style: { fontFamily: 'Tajawal, sans-serif' },
+                y: { formatter: val => Number(val).toLocaleString('ar-EG') + ' ج.م' },
+            },
+            legend: {
+                position: 'top', horizontalAlign: 'left',
+                fontFamily: 'Tajawal, sans-serif', fontSize: '13px',
+                markers: { radius: 4 },
+            },
+            dataLabels: { enabled: false },
+        }).render();
     }
 
-    // ===== Doughnut Chart: أعلى المنتجات =====
-    const productsCtx = document.getElementById('topProductsChart');
-    if (productsCtx) {
+    // ===== شارت أعلى المنتجات (Donut) =====
+    const productsChartEl = document.getElementById('topProductsChart');
+    if (productsChartEl) {
         const topProductsLabels = @json($topProducts->take(7)->pluck('name'));
-        const topProductsData   = @json($topProducts->take(7)->pluck('total_sales'));
-        const chartColors = [
-            '#0d6efd','#198754','#6f42c1','#fd7e14',
-            '#0dcaf0','#ffc107','#20c997'
-        ];
+        const topProductsData   = @json($topProducts->take(7)->pluck('total_sales')->map(fn($v) => (float)$v));
 
-        new Chart(productsCtx, {
-            type: 'doughnut',
-            data: {
-                labels: topProductsLabels,
-                datasets: [{
-                    data: topProductsData,
-                    backgroundColor: chartColors,
-                    borderWidth: 3,
-                    borderColor: '#fff',
-                    hoverOffset: 12,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 14,
-                            font: { size: 11, weight: '500' },
-                            boxWidth: 10,
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: ctx => ` ${ctx.label}: ${Number(ctx.raw).toLocaleString('ar-EG')} ج.م`
-                        }
-                    }
+        if (topProductsData.length > 0) {
+            new ApexCharts(productsChartEl, {
+                chart: {
+                    type: 'donut', height: 300,
+                    fontFamily: 'Tajawal, sans-serif',
+                    toolbar: { show: false },
+                    animations: { speed: 600 },
                 },
-                cutout: '68%',
-            }
-        });
+                series: topProductsData,
+                labels: topProductsLabels,
+                colors: ['#0d6efd','#198754','#6f42c1','#fd7e14','#0dcaf0','#ffc107','#20c997'],
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '68%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'الإجمالي',
+                                    fontFamily: 'Tajawal, sans-serif',
+                                    formatter: w => {
+                                        const t = w.globals.seriesTotals.reduce((a,b) => a+b, 0);
+                                        return Number(t).toLocaleString('ar-EG') + ' ج.م';
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                dataLabels: { enabled: false },
+                legend: {
+                    position: 'bottom',
+                    fontFamily: 'Tajawal, sans-serif', fontSize: '11px',
+                    markers: { radius: 4 },
+                },
+                tooltip: {
+                    style: { fontFamily: 'Tajawal, sans-serif' },
+                    y: { formatter: val => Number(val).toLocaleString('ar-EG') + ' ج.م' },
+                },
+            }).render();
+        }
     }
 </script>
 @endpush

@@ -11,12 +11,9 @@ use Illuminate\Support\Facades\Cache;
 
 class NotificationService
 {
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     public function getAlerts(): array
     {
-        // تخزين مؤقت لنتائج التنبيهات لمدة 60 ثانية
+
         return Cache::remember('notifications.alerts', 60, function (): array {
             return array_merge(
                 $this->getLowStockAlerts(),
@@ -31,12 +28,9 @@ class NotificationService
         });
     }
 
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     private function getLowStockAlerts(): array
     {
-        // تنبيهات المنتجات ذات المخزون المنخفض
+
         $products = Product::query()
             ->where('stock_status', 'low')
             ->where('track_stock', true)
@@ -59,12 +53,9 @@ class NotificationService
         return $alerts;
     }
 
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     private function getOutOfStockAlerts(): array
     {
-        // تنبيهات المنتجات التي نفد مخزونها
+
         $products = Product::query()
             ->where('stock_status', 'out_of_stock')
             ->where('track_stock', true)
@@ -87,12 +78,9 @@ class NotificationService
         return $alerts;
     }
 
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     private function getExpiredVaccineAlerts(): array
     {
-        // تنبيهات باتشات اللقاحات المنتهية الصلاحية
+
         $batches = VaccineBatch::query()
             ->whereDate('expiry_date', '<', today())
             ->where('quantity_remaining', '>', 0)
@@ -117,12 +105,9 @@ class NotificationService
         return $alerts;
     }
 
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     private function getExpiringVaccineAlerts(): array
     {
-        // تنبيهات باتشات اللقاحات التي ستنتهي خلال 5 أيام
+
         $batches = VaccineBatch::query()
             ->whereBetween('expiry_date', [today(), today()->addDays(5)])
             ->where('quantity_remaining', '>', 0)
@@ -148,12 +133,9 @@ class NotificationService
         return $alerts;
     }
 
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     private function getVaccinationTodayAlerts(): array
     {
-        // تنبيه مواعيد التطعيم اليوم (إشعار واحد بالعدد)
+
         $count = Vaccination::query()
             ->whereDate('next_dose_date', today())
             ->where('is_completed', false)
@@ -175,12 +157,9 @@ class NotificationService
         ]];
     }
 
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     private function getVaccinationOverdueAlerts(): array
     {
-        // تنبيه التطعيمات المتأخرة (إشعار واحد بالعدد)
+
         $count = Vaccination::query()
             ->whereDate('next_dose_date', '<', today())
             ->where('is_completed', false)
@@ -202,12 +181,9 @@ class NotificationService
         ]];
     }
 
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     private function getUnpaidInvoiceAlerts(): array
     {
-        // تنبيه الفواتير غير المدفوعة لأكثر من 7 أيام
+
         $count = Invoice::confirmed()
             ->whereColumn('amount_paid', '<', 'total')
             ->where('created_at', '<', now()->subDays(7))
@@ -229,12 +205,9 @@ class NotificationService
         ]];
     }
 
-    /**
-     * @return array<int, array{id: string, type: string, title: string, message: string, severity: string, url: string}>
-     */
     private function getSupplierDebtAlerts(): array
     {
-        // تنبيه طلبات الشراء غير المدفوعة بالكامل
+
         $count = PurchaseOrder::query()
             ->whereColumn('amount_paid', '<', 'total_cost')
             ->count();

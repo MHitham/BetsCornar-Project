@@ -5,7 +5,7 @@
 
 @section('content')
 
-    {{-- تم الإضافة: فلتر المصروفات بالشهر مع ملخص إجمالي الشهر --}}
+    
     <div class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('expenses.index') }}" class="row g-3 align-items-end">
@@ -32,7 +32,7 @@
         </div>
     </div>
 
-    {{-- تم الإضافة: جدول المصروفات مع إجراءات التعديل والحذف --}}
+    
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -85,7 +85,7 @@
 
     <div class="mt-4">{{ $expenses->links() }}</div>
 
-    {{-- تم الإضافة: مودال تأكيد حذف المصروف بدون أي تغيير في المنطق --}}
+    
     <div class="modal fade" id="deleteExpenseModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -111,7 +111,7 @@
         </div>
     </div>
 
-    {{-- تم الإضافة: ربط زر الحذف بالمودال المشترك باستخدام JavaScript عادي فقط --}}
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const deleteButtons = document.querySelectorAll('.expense-delete-button');

@@ -45,7 +45,6 @@ class InvoiceItem extends Model
         return $this->hasMany(InvoiceItemVaccineBatch::class);
     }
 
-    // علاقة: بند الفاتورة له بنود مرتجعات
     public function returnItems(): HasMany
     {
         return $this->hasMany(InvoiceReturnItem::class);

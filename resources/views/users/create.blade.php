@@ -12,11 +12,11 @@
                     <i class="bi bi-person-plus-fill me-1 text-primary"></i> بيانات الموظف
                 </div>
                 <div class="card-body">
-                    {{-- تم الإضافة: نموذج إضافة موظف جديد --}}
+                    
                     <form method="POST" action="{{ route('users.store') }}">
                         @csrf
 
-                        {{-- الاسم --}}
+                        
                         <div class="mb-3">
                             <label for="name" class="form-label">الاسم <span class="text-danger">*</span></label>
                             <input type="text"
@@ -31,7 +31,7 @@
                             @enderror
                         </div>
 
-                        {{-- البريد الإلكتروني --}}
+                        
                         <div class="mb-3">
                             <label for="email" class="form-label">البريد الإلكتروني <span class="text-danger">*</span></label>
                             <input type="email"
@@ -46,7 +46,7 @@
                             @enderror
                         </div>
 
-                        {{-- كلمة المرور --}}
+                        
                         <div class="mb-3">
                             <label for="password" class="form-label">كلمة المرور <span class="text-danger">*</span></label>
                             <input type="password"
@@ -60,7 +60,7 @@
                             @enderror
                         </div>
 
-                        {{-- الدور --}}
+                        
                         <div class="mb-4">
                             <label for="role" class="form-label">الدور <span class="text-danger">*</span></label>
                             <select id="role"
@@ -79,7 +79,7 @@
                             @enderror
                         </div>
 
-                        {{-- أزرار الإجراءات --}}
+                        
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-check-lg me-1"></i> حفظ

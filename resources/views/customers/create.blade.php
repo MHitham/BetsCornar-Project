@@ -5,7 +5,7 @@
 
 @section('content')
 
-    <!-- Choices CSS -->
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
     <form method="POST" action="{{ route('customers.store') }}" id="visitForm">
@@ -13,7 +13,7 @@
 
         <div class="row g-4">
 
-            {{-- === Customer Info === --}}
+            
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header">
@@ -21,7 +21,7 @@
                         <span class="fw-bold">بيانات العميل والحيوان</span>
                     </div>
                     <div class="card-body row g-3">
-                        {{-- تم الإضافة: بحث مباشر بالاسم أو الهاتف --}}
+                        
                         <div class="col-12">
                             <label class="form-label text-primary fw-bold"><i class="bi bi-search me-1"></i>بحث عن عميل مسجل (اختياري)</label>
                             <div class="position-relative" id="customer-search-wrap">
@@ -52,7 +52,7 @@
                             @enderror
                         </div>
                         
-                        <!-- تم الإضافة: اختيار الحيوان بناءً على بحث الهاتف الفريد -->
+                        
                         <div class="col-md-6">
                             <label class="form-label">
                                 الحيوان (اختياري)
@@ -97,7 +97,7 @@
                 </div>
             </div>
 
-            {{-- === Visit Info  تفاصيل الزيارة=== --}}
+            
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header">
@@ -106,7 +106,7 @@
                     </div>
                     <div class="card-body row g-3">
 
-                        {{-- Consultation  سعر الكشف--}}
+                        
                         <div class="col-12">
                             <label class="form-label">{{ __('customers.visit.consultation_price') }} <span
                                     class="text-danger">*</span></label>
@@ -121,13 +121,13 @@
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </div>
-                        {{-- Diagnosis Field --}}
+                        
                         <div class="col-12 mt-3">
                             <label class="form-label">تشخيص الحيوان</label>
                             <textarea name="diagnosis" class="form-control" rows="2" placeholder="أدخل التشخيص هنا لهذه الزيارة فقط...">{{ old('diagnosis') }}</textarea>
                         </div>
 
-                        {{-- checkbox لتفعيل قسم التطعيمات --}}
+                        
                         <div class="col-12 mt-3">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch" id="has_vaccination"
@@ -142,7 +142,7 @@
                 </div>
             </div>
 
-            {{-- قسم التطعيمات — مخفي بالافتراضي ويظهر عند تفعيل الـ checkbox --}}
+            
             <div class="col-12" id="vaccinations-card" style="display:none;">
                 <div class="card">
                     <div class="card-header d-flex align-items-center justify-content-between">
@@ -168,7 +168,7 @@
 </tr>
                             </thead>
                             <tbody id="vaccinations-body">
-                                {{-- JS-rendered rows --}}
+                                
                             </tbody>
                             <tfoot>
                                 <tr class="table-light">
@@ -183,7 +183,7 @@
                 </div>
             </div>
 
-            {{-- === Additional Items === --}}
+            
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex align-items-center justify-content-between">
@@ -207,7 +207,7 @@
                                 </tr>
                             </thead>
                             <tbody id="items-body">
-                                {{-- JS-rendered rows --}}
+                                
                             </tbody>
                             <tfoot>
                                 <tr class="table-light fw-bold">
@@ -222,7 +222,7 @@
                 </div>
             </div>
 
-            {{-- === الدفع الجزئي (اختياري) === --}}
+            
             <div class="col-12">
                 <div class="card border-0 bg-light">
                     <div class="card-body py-3">
@@ -237,7 +237,7 @@
                             </label>
                         </div>
 
-                        {{-- حقول الدفع الجزئي — مخفية بالافتراضي --}}
+                        
                         <div id="partial-payment-section" style="display:none;" class="mt-3">
                             <div class="row g-3 align-items-end">
                                 <div class="col-md-3">
@@ -272,7 +272,7 @@
                 </div>
             </div>
 
-            {{-- === Submit === --}}
+            
             <div class="col-12 d-flex gap-3">
                 <button type="submit" class="btn btn-primary btn-lg px-5">
                     <i class="bi bi-save-fill me-1"></i>{{ __('customers.actions.save') }}
@@ -285,7 +285,7 @@
         </div>
     </form>
 
-    <!-- Modal إضافة حيوان جديد مؤقتاً للزيارة -->
+    
     <div class="modal fade" id="newAnimalModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -345,7 +345,7 @@
 
 
     @push('scripts')
-        <!-- Choices JS -->
+        
         <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
         <script>
             @php
@@ -405,7 +405,7 @@
                             </select>
                         </td>
                         <td>
-                            <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
+                            
                             <input type="number" name="vaccinations[${idx}][vaccine_quantity]"
                                    class="form-control form-control-sm vacc-qty-input"
                                    data-idx="${idx}" value="1" min="0" step="1"
@@ -413,7 +413,7 @@
                         </td>
                         <td>
                             <div class="input-group input-group-sm">
-                                <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
+                                
                                 <input type="number" name="vaccinations[${idx}][vaccine_unit_price]"
                                        class="form-control form-control-sm vacc-price-input"
                                        data-idx="${idx}" placeholder="0" min="0" step="0.01"
@@ -590,7 +590,7 @@
                 </select>
             </td>
             <td>
-                <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
+                
                 <input type="number" name="additional_items[${idx}][quantity]"
                        class="form-control form-control-sm qty-input"
                        data-idx="${idx}" value="1" min="0" step="1"
@@ -598,7 +598,7 @@
             </td>
             <td>
                 <div class="input-group input-group-sm">
-                    <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
+                    
                     <input type="number" name="additional_items[${idx}][unit_price]"
                            class="form-control form-control-sm price-input"
                            data-idx="${idx}" placeholder="0" min="0" step="0.01"
@@ -607,7 +607,7 @@
                 </div>
             </td>
             <td>
-                <!-- تم التعديل: تحديث القيم الافتراضية للحقل الرقمي -->
+                
                 <input type="text" class="form-control form-control-sm bg-light line-total"
                        id="line-total-${idx}" placeholder="0" readonly>
             </td>

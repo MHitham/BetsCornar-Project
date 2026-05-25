@@ -5,7 +5,7 @@
 
 @section('content')
 
-    {{-- Search / Filters --}}
+    
     <div class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('products.index') }}" class="row g-3 align-items-end">
@@ -47,7 +47,7 @@
         </div>
     </div>
 
-    {{-- Header --}}
+    
     <div class="d-flex align-items-center justify-content-between mb-3">
         <span class="fw-bold">
             <i class="bi bi-box-seam-fill text-primary me-1"></i>
@@ -58,7 +58,7 @@
         </a>
     </div>
 
-    {{-- Table --}}
+    
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -169,7 +169,7 @@
         </div>
     </div>
 
-    {{-- Pagination --}}
+    
     <div class="mt-4">{{ $products->links() }}</div>
 
 @endsection

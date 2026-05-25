@@ -10,7 +10,7 @@ class RolesSeeder extends Seeder
 {
     public function run(): void
     {
-        // تم الإضافة: مسح cache الخاص بالصلاحيات قبل/بعد إنشاء الأدوار لتجنب مشاكل Spatie cache
+
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         Role::firstOrCreate(['name' => 'admin']);

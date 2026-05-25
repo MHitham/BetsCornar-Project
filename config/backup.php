@@ -1,6 +1,5 @@
 <?php
 
-// إعدادات النسخ الاحتياطي لقاعدة بيانات MySQL
 return [
     'backup_path' => env('BACKUP_PATH', 'C:\\BetsCornarBackups\\'),
     'mysqldump_path' => env('MYSQLDUMP_PATH', 'C:\\laragon\\bin\\mysql\\mysql-8.4.3-winx64\\bin\\mysqldump.exe'),

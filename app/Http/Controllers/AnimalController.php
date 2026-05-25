@@ -10,15 +10,13 @@ use Illuminate\View\View;
 
 class AnimalController extends Controller
 {
-    // تم الإضافة: قائمة الحيوانات الخاصة بالعميل (مسار تحت العميل)
     public function index(Customer $customer): View
     {
-       $animals = $customer->animals()->latest('created_at')->paginate(15);
+        $animals = $customer->animals()->latest('created_at')->paginate(15);
 
         return view('customers.animals.index', compact('customer', 'animals'));
     }
 
-    // تم الإضافة: حفظ حيوان جديد مرتبط بالعميل
     public function store(Request $request, Customer $customer): RedirectResponse
     {
         $validated = $request->validate([
@@ -37,7 +35,6 @@ class AnimalController extends Controller
         return back()->with('success', 'تم إضافة الحيوان بنجاح');
     }
 
-    // تم الإضافة: صفحة بروفايل الحيوان (مسار مستقل تحت /animals/{animal})
     public function show(Animal $animal): View
     {
         $animal->load([
@@ -53,7 +50,6 @@ class AnimalController extends Controller
         return view('customers.animals.show', compact('animal'));
     }
 
-    // تم الإضافة: تحديث بيانات الحيوان
     public function update(Request $request, Animal $animal): RedirectResponse
     {
         $validated = $request->validate([
@@ -72,7 +68,6 @@ class AnimalController extends Controller
         return back()->with('success', 'تم تحديث بيانات الحيوان بنجاح');
     }
 
-    // تم الإضافة: حذف الحيوان فقط إن لم يكن مرتبطًا بفواتير أو تطعيمات
     public function destroy(Animal $animal): RedirectResponse
     {
         if ($animal->vaccinations()->exists() || $animal->invoices()->exists()) {

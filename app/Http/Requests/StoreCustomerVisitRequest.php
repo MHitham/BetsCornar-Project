@@ -15,7 +15,7 @@ class StoreCustomerVisitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // ─── بيانات العميل ─────────────────────────────────────
+
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:20'],
             'address' => ['nullable', 'string', 'max:500'],
@@ -40,13 +40,10 @@ class StoreCustomerVisitRequest extends FormRequest
             'new_animal.notes' => ['nullable', 'string', 'max:1000'],
             'diagnosis' => ['nullable', 'string'],
 
-            // ─── سعر الكشف ──────────────────────────────────────────
             'consultation_price' => ['required', 'numeric', 'min:0'],
 
-            // ─── الدفع الجزئي ────────────────────────────────────────
             'amount_paid' => ['nullable', 'numeric', 'min:0'],
 
-            // ─── التطعيمات المتعددة (array) ────────────────────────
             'vaccinations' => ['nullable', 'array'],
             'vaccinations.*.vaccine_product_id' => [
                 'required',
@@ -58,7 +55,6 @@ class StoreCustomerVisitRequest extends FormRequest
             'vaccinations.*.vaccination_date' => ['required', 'date'],
             'vaccinations.*.next_dose_date' => ['required', 'date', 'after:vaccinations.*.vaccination_date'],
 
-            // ─── المنتجات/الخدمات الإضافية ──────────────────────
             'additional_items' => ['nullable', 'array'],
             'additional_items.*.product_id' => [
                 'required',
@@ -77,7 +73,7 @@ class StoreCustomerVisitRequest extends FormRequest
             'phone' => __('customers.fields.phone'),
             'animal_type' => __('customers.fields.animal_type'),
             'consultation_price' => __('customers.visit.consultation_price'),
-            // ─── رسائل الخطأ للتطعيمات المتعددة ─────────────────
+
             'vaccinations.*.vaccine_product_id' => __('customers.visit.vaccine_product'),
             'vaccinations.*.vaccine_quantity' => __('customers.visit.vaccine_quantity'),
             'vaccinations.*.vaccine_unit_price' => __('customers.visit.unit_price'),

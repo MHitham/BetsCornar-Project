@@ -7,16 +7,16 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>تسجيل الدخول</title>
 
-    {{-- Bootstrap 5 RTL --}}
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
 
-    {{-- Google Fonts: Tajawal --}}
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
         rel="stylesheet">
 
-    {{-- Bootstrap Icons --}}
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     @vite(['resources/css/layout.css'])
@@ -33,7 +33,7 @@
                                 <div>
                                     <span class="auth-brand-badge">
                                         <i class="bi bi-heart-pulse-fill"></i>
-                                        {{-- اسم العيادة الديناميكي من الإعدادات --}}
+                                        
                                         {{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}
                                     </span>
                                     <h1 class="auth-brand-title">{{ \App\Models\Setting::get('clinic_name', 'عيادة بيطرية') }}
@@ -125,7 +125,7 @@
         </div>
     </div>
 
-    {{-- Bootstrap 5 JS --}}
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 

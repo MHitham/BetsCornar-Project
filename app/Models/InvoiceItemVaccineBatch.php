@@ -33,4 +33,3 @@ class InvoiceItemVaccineBatch extends Model
         return $this->belongsTo(VaccineBatch::class);
     }
 }
-
