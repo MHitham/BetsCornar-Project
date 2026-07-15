@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCustomerVisitRequest;
+use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\VaccineBatch;
@@ -56,6 +57,22 @@ class CustomerController extends Controller
         return view('customers.show', compact('customer'));
     }
 
+    // عرض فورم تعديل بيانات العميل (الاسم/التليفون/العنوان/نوع الحيوان/الملاحظات)
+    public function edit(Customer $customer)
+    {
+        return view('customers.edit', compact('customer'));
+    }
+
+    // حفظ التعديلات على بيانات العميل بعد التحقق من صحة البيانات وتطبيع رقم التليفون
+    public function update(UpdateCustomerRequest $request, Customer $customer)
+    {
+        $customer->update($request->validated());
+
+        return redirect()
+            ->route('customers.show', $customer)
+            ->with('success', __('customers.messages.updated'));
+    }
+
     public function search(Request $request)
     {
         $q = trim($request->input('q', ''));
@@ -83,8 +100,13 @@ class CustomerController extends Controller
 
         $normalizedPhone = $this->visitService->normalizePhone($phone);
 
+        // Build all possible phone format variants to match legacy data
+        // e.g. normalized = 201012345678, local = 1012345678, withZero = 01012345678
+        $localPhone = substr($normalizedPhone, 2);       // strip country code '20'
+        $withZero   = '0' . $localPhone;                  // add leading zero
+
         $customer = Customer::query()
-            ->where('phone', $normalizedPhone)
+            ->whereIn('phone', [$normalizedPhone, $localPhone, $withZero])
             ->with(['animals' => function ($q) {
 
                 $q->select('id', 'customer_id', 'name', 'species');
@@ -106,10 +128,11 @@ class CustomerController extends Controller
     public function create()
     {
 
+        // البحث عن خدمة "كشف" بالاسم بالتحديد بدل آخر خدمة مضافة (تصليح الخلط في المنتج الافتراضي)
         $consultationProduct = Product::query()
             ->active()
             ->where('type', 'service')
-            ->orderByDesc('id')
+            ->whereRaw("TRIM(name) = ?", ['كشف'])
             ->first();
 
         $vaccines = Product::query()

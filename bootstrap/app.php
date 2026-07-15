@@ -17,9 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // ── إضافة middleware التحقق من ترخيص Cloudflare لمجموعة web ──
-        $middleware->appendToGroup('web', [
-            \App\Http\Middleware\VerifyCloudflareLicense::class,
-        ]);
+        // $middleware->appendToGroup('web', [
+        //     \App\Http\Middleware\VerifyCloudflareLicense::class,
+        // ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

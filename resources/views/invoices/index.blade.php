@@ -4,7 +4,7 @@
 @section('page-title', __('invoices.title'))
 
 @section('content')
-    @role('admin')
+
         @if (!$hasFilters)
             <script>
                 window.location.replace("{{ route('invoices.index', ['period' => 'today']) }}");
@@ -135,7 +135,7 @@
                 </form>
             </div>
         </div>
-    @endrole
+
 
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <span class="fw-bold fs-5">

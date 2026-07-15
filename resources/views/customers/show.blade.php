@@ -26,6 +26,10 @@
                     <a href="{{ route('customers.create') }}?phone={{ urlencode($customer->phone) }}&name={{ urlencode($customer->name) }}" class="btn btn-primary">
                         <i class="bi bi-clipboard2-plus me-1"></i>{{ __('customers.timeline.new_visit') }}
                     </a>
+                    {{-- زرار تعديل بيانات العميل --}}
+                    <a href="{{ route('customers.edit', $customer) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil-square me-1"></i>تعديل البيانات
+                    </a>
                     <a href="{{ route('customers.animals.index', $customer) }}" class="btn btn-info text-white">
                         <i class="bi bi-list-ul me-1"></i>حيوانات العميل
                     </a>
@@ -216,9 +220,9 @@
                                             {{ __('customers.types.' . ($item->product?->type ?? 'product')) }}
                                         </span>
                                     </td>
-                                    <td class="font-monospace">{{ number_format($item->quantity) }}</td>
-                                    <td class="font-monospace">{{ number_format($item->unit_price) }} {{ __('messages.currency') }}</td>
-                                    <td class="font-monospace fw-bold">{{ number_format($item->line_total) }} {{ __('messages.currency') }}</td>
+                                    <td class="font-monospace">{{ number_format($item->quantity,2) }}</td>
+                                    <td class="font-monospace">{{ number_format($item->unit_price,2) }} {{ __('messages.currency') }}</td>
+                                    <td class="font-monospace fw-bold">{{ number_format($item->line_total,2) }} {{ __('messages.currency') }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

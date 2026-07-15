@@ -73,7 +73,15 @@ Route::middleware('auth')->group(function () {
             ->selectRaw('COUNT(*) as today_visits, COALESCE(SUM(total), 0) as today_revenue')
             ->first();
         $todayVisits = (int) ($todaySummary->today_visits ?? 0);
-        $todayRevenue = (float) ($todaySummary->today_revenue ?? 0);
+        $grossRevenue = (float) ($todaySummary->today_revenue ?? 0);
+        
+        $todayExpenses = \App\Models\Expense::whereBetween('expense_date', [$periodStart->toDateString(), $periodEnd->toDateString()])->sum('amount');
+        
+        $todaySupplierCash = \App\Models\PurchasePayment::clinicCash()
+            ->whereBetween('paid_at', [$periodStart->toDateString(), $periodEnd->toDateString()])
+            ->sum('amount');
+
+        $todayRevenue = max(0, $grossRevenue - (float) $todayExpenses - (float) $todaySupplierCash);
 
         $totalProducts = Cache::remember('dashboard.total_products', now()->addDay(), fn () => \App\Models\Product::query()->where('type', 'product')->active()->count('*'));
 
@@ -107,12 +115,18 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     Route::middleware('role:admin,employee')->group(function () {
+        Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
         Route::get('customers/create', [CustomerController::class, 'create'])->name('customers.create');
         Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
-
         Route::get('customers/search', [CustomerController::class, 'search'])->name('customers.search');
-
+        Route::post('customers/export-excel', [CustomerController::class, 'exportExcel'])->name('customers.export-excel');
+        Route::get('customers/export-phones', [CustomerController::class, 'getPhones'])->name('customers.export-phones');
         Route::get('customers/lookup-for-visit', [CustomerController::class, 'lookupForVisit'])->name('customers.lookup-for-visit');
+        // صفحة تعديل بيانات العميل
+        Route::get('customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
+        // حفظ تعديل بيانات العميل
+        Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+        Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
 
         Route::get('customers/{customer}/animals', [\App\Http\Controllers\AnimalController::class, 'index'])->name('customers.animals.index');
         Route::post('customers/{customer}/animals', [\App\Http\Controllers\AnimalController::class, 'store'])->name('customers.animals.store');
@@ -122,60 +136,49 @@ Route::middleware('auth')->group(function () {
 
         Route::resource('invoices', InvoiceController::class)->only(['index', 'create', 'store', 'show']);
         Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
+        Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
+        Route::post('invoices/{invoice}/returns', [\App\Http\Controllers\InvoiceReturnController::class, 'store'])->name('invoice-returns.store');
+        Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoicePaymentController::class, 'pay'])->name('invoices.pay');
+        Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\InvoicePaymentController::class, 'store'])->name('invoice.payments.store');
+
+        Route::get('vaccinations', [VaccinationController::class, 'index'])->name('vaccinations.index');
+        Route::post('vaccinations/export-excel', [VaccinationController::class, 'exportExcel'])->name('vaccinations.export-excel');
+        Route::get('vaccinations/export-phones', [VaccinationController::class, 'getPhones'])->name('vaccinations.export-phones');
+        Route::post('vaccinations/{vaccination}/complete', [VaccinationController::class, 'complete'])->name('vaccinations.complete');
+        Route::post('vaccinations/{vaccination}/reschedule', [VaccinationController::class, 'reschedule'])->name('vaccinations.reschedule');
+
+        Route::get('/products/search', [ProductController::class, 'search'])->name('products.search');
+        Route::patch('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
+        Route::resource('products', ProductController::class)->except('show');
+
+        Route::resource('expenses', ExpenseController::class)->except('show');
+        
+        Route::resource('purchases', PurchaseOrderController::class)
+            ->only(['index', 'create', 'store', 'show']);
+        Route::post('purchases/{purchase}/pay', [PurchaseOrderController::class, 'pay'])
+            ->name('purchases.pay');
     });
 
     Route::middleware('role:admin')->group(function () {
 
-        Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
-
         Route::get('/api/notifications', [App\Http\Controllers\NotificationController::class, 'index'])
             ->name('notifications.index');
-
-        Route::get('customers/lookup-for-visit', [CustomerController::class, 'lookupForVisit'])->name('customers.lookup-for-visit');
-
-        Route::get('customers/{customer}/animals', [\App\Http\Controllers\AnimalController::class, 'index'])->name('customers.animals.index');
-        Route::post('customers/{customer}/animals', [\App\Http\Controllers\AnimalController::class, 'store'])->name('customers.animals.store');
-        Route::get('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'show'])->name('animals.show');
-        Route::patch('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'update'])->name('animals.update');
-        Route::delete('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'destroy'])->name('animals.destroy');
 
         Route::get('reports/{year}/{month}', [\App\Http\Controllers\ReportController::class, 'showMonth'])->name('reports.month');
 
         Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [\App\Http\Controllers\SettingsController::class, 'update'])->name('settings.update');
 
-        Route::post('customers/export-excel', [CustomerController::class, 'exportExcel'])->name('customers.export-excel');
 
-        Route::get('customers/export-phones', [CustomerController::class, 'getPhones'])->name('customers.export-phones');
 
-        Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
 
-        Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
 
-        Route::post('invoices/{invoice}/returns', [\App\Http\Controllers\InvoiceReturnController::class, 'store'])->name('invoice-returns.store');
 
-        Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoicePaymentController::class, 'pay'])
-            ->name('invoices.pay');
-
-        Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\InvoicePaymentController::class, 'store'])
-            ->name('invoice.payments.store');
-
-        Route::get('vaccinations', [VaccinationController::class, 'index'])->name('vaccinations.index');
-
-        Route::post('vaccinations/export-excel', [VaccinationController::class, 'exportExcel'])->name('vaccinations.export-excel');
-
-        Route::get('vaccinations/export-phones', [VaccinationController::class, 'getPhones'])->name('vaccinations.export-phones');
-        Route::post('vaccinations/{vaccination}/complete', [VaccinationController::class, 'complete'])->name('vaccinations.complete');
-        Route::post('vaccinations/{vaccination}/reschedule', [VaccinationController::class, 'reschedule'])->name('vaccinations.reschedule');
-
-        Route::resource('expenses', ExpenseController::class)->except('show');
 
         Route::get('reports/profitability', [ReportController::class, 'profitability'])->name('reports.profitability');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
 
-        Route::get('/products/search', [ProductController::class, 'search'])->name('products.search');
-        Route::patch('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
-        Route::resource('products', ProductController::class)->except('show');
+
 
         Route::resource('vaccine-batches', VaccineBatchController::class)->except('show');
 
@@ -199,9 +202,5 @@ Route::middleware('auth')->group(function () {
             ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sql$')
             ->name('backup.destroy');
 
-        Route::resource('purchases', PurchaseOrderController::class)
-            ->only(['index', 'create', 'store', 'show']);
-        Route::post('purchases/{purchase}/pay', [PurchaseOrderController::class, 'pay'])
-            ->name('purchases.pay');
     });
 });

@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\PurchasePayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,15 @@ class ReportController extends Controller
             ->get()
             ->keyBy('month');
 
+        // Supplier cash-drawer payments grouped by month for net-profit deduction
+        $supplierCashByMonth = PurchasePayment::clinicCash()
+            ->whereYear('paid_at', $year)
+            ->selectRaw('MONTH(paid_at) as month, COALESCE(SUM(amount), 0) as supplier_cash')
+            ->groupByRaw('MONTH(paid_at)')
+            ->orderByRaw('MONTH(paid_at)')
+            ->get()
+            ->keyBy('month');
+
         $newCustomersByMonth = Customer::query()
             ->whereYear('created_at', $year)
             ->selectRaw('MONTH(created_at) as month, COUNT(*) as new_customers')
@@ -53,28 +63,31 @@ class ReportController extends Controller
             ->get()
             ->keyBy('month');
 
-        $monthlyData = collect(range(1, 12))->map(function (int $month) use ($revenueByMonth, $expensesByMonth, $cogsByMonth, $newCustomersByMonth) {
-            $revenue = (float) ($revenueByMonth[$month]->revenue ?? 0);
-            $visitCount = (int) ($revenueByMonth[$month]->visit_count ?? 0);
-            $expenses = (float) ($expensesByMonth[$month]->expenses ?? 0);
+        $monthlyData = collect(range(1, 12))->map(function (int $month) use ($revenueByMonth, $expensesByMonth, $supplierCashByMonth, $cogsByMonth, $newCustomersByMonth) {
+            $revenue      = (float) ($revenueByMonth[$month]->revenue ?? 0);
+            $visitCount   = (int) ($revenueByMonth[$month]->visit_count ?? 0);
+            $expenses     = (float) ($expensesByMonth[$month]->expenses ?? 0);
+            $supplierCash = (float) ($supplierCashByMonth[$month]->supplier_cash ?? 0);
 
-            $cogs = (float) ($cogsByMonth[$month]->total_cogs ?? 0);
-            $grossProfit = $revenue - $cogs;
+            $cogs         = (float) ($cogsByMonth[$month]->total_cogs ?? 0);
+            $grossProfit  = $revenue - $cogs;
+            // صافي الربح الشهري = ربح إجمالي - مصروفات فقط
             $netProfit = $grossProfit - $expenses;
-            $margin = $revenue > 0
+            $margin       = $revenue > 0
                 ? round(($netProfit / $revenue) * 100, 1)
                 : 0;
 
             return [
-                'month' => $month,
-                'month_name' => self::arabicMonthName($month),
-                'revenue' => $revenue,
-                'visit_count' => $visitCount,
-                'expenses' => $expenses,
-                'net_profit' => $revenue - $expenses,
-                'cogs' => $cogs,
-                'gross_profit' => $grossProfit,
-                'margin' => $margin,
+                'month'         => $month,
+                'month_name'    => self::arabicMonthName($month),
+                'revenue'       => $revenue,
+                'visit_count'   => $visitCount,
+                'expenses'      => $expenses,
+                'supplier_cash' => $supplierCash,
+                'net_profit' => $grossProfit - $expenses,
+                'cogs'          => $cogs,
+                'gross_profit'  => $grossProfit,
+                'margin'        => $margin,
                 'new_customers' => (int) ($newCustomersByMonth[$month]->new_customers ?? 0),
             ];
         });
@@ -97,17 +110,18 @@ class ReportController extends Controller
             ->get();
 
         $yearlyTotals = [
-            'revenue' => $monthlyData->sum('revenue'),
-            'expenses' => $monthlyData->sum('expenses'),
-            'net_profit' => $monthlyData->sum('net_profit'),
-            'visit_count' => $monthlyData->sum('visit_count'),
+            'revenue'       => $monthlyData->sum('revenue'),
+            'expenses'      => $monthlyData->sum('expenses'),
+            'supplier_cash' => $monthlyData->sum('supplier_cash'),
+            'net_profit'    => $monthlyData->sum('net_profit'),
+            'visit_count'   => $monthlyData->sum('visit_count'),
         ];
 
         $bestMonth = $monthlyData->sortByDesc('revenue')->first()['month'] ?? null;
 
-        $maxRevenue = $monthlyData->max('revenue') ?: 1;
+        $maxRevenue  = $monthlyData->max('revenue') ?: 1;
         $monthlyData = $monthlyData->map(function ($row) use ($maxRevenue) {
-            $row['has_data'] = $row['revenue'] > 0 || $row['expenses'] > 0;
+            $row['has_data']        = $row['revenue'] > 0 || $row['expenses'] > 0;
             $row['revenue_percent'] = round(($row['revenue'] / $maxRevenue) * 100);
 
             return $row;
@@ -126,8 +140,8 @@ class ReportController extends Controller
         abort_if($month < 1 || $month > 12, 404);
 
         $periodStart = \Carbon\Carbon::create($year, $month, 1)->startOfMonth();
-        $periodEnd = $periodStart->copy()->endOfMonth();
-        $monthName = self::arabicMonthName($month);
+        $periodEnd   = $periodStart->copy()->endOfMonth();
+        $monthName   = self::arabicMonthName($month);
 
         $invoices = Invoice::confirmed()
             ->with(['items.product'])
@@ -136,11 +150,11 @@ class ReportController extends Controller
             ->get();
 
         $revenueSummary = [
-            'total' => $invoices->sum('total'),
-            'count' => $invoices->count(),
-            'avg' => $invoices->avg('total') ?? 0,
+            'total'          => $invoices->sum('total'),
+            'count'          => $invoices->count(),
+            'avg'            => $invoices->avg('total') ?? 0,
             'customer_visits' => $invoices->where('source', 'customer')->count(),
-            'quick_sales' => $invoices->where('source', '!=', 'customer')->count(),
+            'quick_sales'    => $invoices->where('source', '!=', 'customer')->count(),
         ];
 
         $expenses = Expense::query()
@@ -152,6 +166,13 @@ class ReportController extends Controller
             'total' => $expenses->sum('amount'),
             'count' => $expenses->count(),
         ];
+
+        // Clinic-cash supplier payments for this month
+        $supplierCashPayments = PurchasePayment::clinicCash()
+            ->whereBetween('paid_at', [$periodStart->toDateString(), $periodEnd->toDateString()])
+            ->get();
+
+        $supplierCashTotal = (float) $supplierCashPayments->sum('amount');
 
         $topProducts = Invoice::query()
             ->confirmed()
@@ -183,8 +204,6 @@ class ReportController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
-        $netProfit = $revenueSummary['total'] - $expensesSummary['total'];
-
         $cogs = InvoiceItem::whereHas('invoice', function ($q) use ($periodStart, $periodEnd) {
             $q->confirmed()->whereBetween('created_at', [$periodStart, $periodEnd]);
         })
@@ -194,18 +213,22 @@ class ReportController extends Controller
 
         $grossProfit = $revenueSummary['total'] - $cogs;
 
+        // صافي الربح = إجمالي الربح - المصروفات فقط (دفعات الموردين من الدرج تعتبر تدفق نقدي)
+        $netProfit = $grossProfit - $expensesSummary['total'];
+
         $newCustomers = Customer::query()
             ->whereBetween('created_at', [$periodStart, $periodEnd])
             ->latest()
             ->get();
 
         $profitPositive = $netProfit >= 0;
-        $grossPositive = $grossProfit >= 0;
+        $grossPositive  = $grossProfit >= 0;
 
         return view('reports.month', compact(
             'year', 'month', 'monthName',
             'invoices', 'revenueSummary',
             'expenses', 'expensesSummary',
+            'supplierCashPayments', 'supplierCashTotal',
             'topProducts', 'stockAdditions',
             'vaccinations', 'netProfit', 'cogs', 'grossProfit', 'newCustomers',
             'profitPositive', 'grossPositive'
@@ -215,15 +238,15 @@ class ReportController extends Controller
     public static function arabicMonthName(int $month): string
     {
         return [
-            1 => 'يناير',
-            2 => 'فبراير',
-            3 => 'مارس',
-            4 => 'أبريل',
-            5 => 'مايو',
-            6 => 'يونيو',
-            7 => 'يوليو',
-            8 => 'أغسطس',
-            9 => 'سبتمبر',
+            1  => 'يناير',
+            2  => 'فبراير',
+            3  => 'مارس',
+            4  => 'أبريل',
+            5  => 'مايو',
+            6  => 'يونيو',
+            7  => 'يوليو',
+            8  => 'أغسطس',
+            9  => 'سبتمبر',
             10 => 'أكتوبر',
             11 => 'نوفمبر',
             12 => 'ديسمبر',
@@ -257,13 +280,19 @@ class ReportController extends Controller
             ->selectRaw('SUM(cost_price_at_sale * quantity) as total_cogs')
             ->value('total_cogs') ?? 0;
 
-        $expenses = Expense::whereYear('created_at', $year)
+        $expenses = Expense::whereYear('expense_date', $year)
             ->whereNull('deleted_at')
             ->sum('amount');
 
+        $supplierCashYear = (float) PurchasePayment::clinicCash()
+            ->whereYear('paid_at', $year)
+            ->sum('amount');
+
         $grossProfit = $revenue - $cogs;
+        // صافي الربح = ربح إجمالي - مصروفات تشغيلية فقط
+        // دفعات الموردين من الدرج لا تُخصم من الربح (هي تدفق نقدي وليست خسارة)
         $netProfit = $grossProfit - $expenses;
-        $margin = $revenue > 0 ? round(($netProfit / $revenue) * 100, 1) : 0;
+        $margin      = $revenue > 0 ? round(($netProfit / $revenue) * 100, 1) : 0;
 
         $months = Cache::remember("report-profitability-months-{$year}", now()->addHours(2), function () use ($year) {
             $result = [];
@@ -282,24 +311,31 @@ class ReportController extends Controller
                     ->selectRaw('SUM(cost_price_at_sale * quantity) as total')
                     ->value('total') ?? 0;
 
-                $monthExpenses = Expense::whereYear('created_at', $year)
-                    ->whereMonth('created_at', $m)
+                $monthExpenses = Expense::whereYear('expense_date', $year)
+                    ->whereMonth('expense_date', $m)
                     ->whereNull('deleted_at')
                     ->sum('amount');
 
-                $monthGross = $monthRevenue - $monthCogs;
+                $monthSupplierCash = (float) PurchasePayment::clinicCash()
+                    ->whereYear('paid_at', $year)
+                    ->whereMonth('paid_at', $m)
+                    ->sum('amount');
+
+                $monthGross  = $monthRevenue - $monthCogs;
+                // صافي ربح الشهر بدون خصم دفعات الموردين
                 $monthNet = $monthGross - $monthExpenses;
                 $monthMargin = $monthRevenue > 0
                     ? round(($monthNet / $monthRevenue) * 100, 1)
                     : 0;
 
                 $result[$m] = [
-                    'revenue' => $monthRevenue,
-                    'cogs' => $monthCogs,
-                    'gross_profit' => $monthGross,
-                    'expenses' => $monthExpenses,
-                    'net_profit' => $monthNet,
-                    'margin' => $monthMargin,
+                    'revenue'       => $monthRevenue,
+                    'cogs'          => $monthCogs,
+                    'gross_profit'  => $monthGross,
+                    'expenses'      => $monthExpenses,
+                    'supplier_cash' => $monthSupplierCash,
+                    'net_profit'    => $monthNet,
+                    'margin'        => $monthMargin,
                 ];
             }
 
@@ -322,11 +358,11 @@ class ReportController extends Controller
         $totalCustomerDebts = $customerDebts->sum(fn ($inv) => $inv->total - $inv->amount_paid);
 
         $grossPositive = $grossProfit >= 0;
-        $netPositive = $netProfit >= 0;
+        $netPositive   = $netProfit >= 0;
 
         return view('reports.profitability', compact(
             'year', 'availableYears',
-            'revenue', 'cogs', 'expenses',
+            'revenue', 'cogs', 'expenses', 'supplierCashYear',
             'grossProfit', 'netProfit', 'margin',
             'months',
             'supplierDebts', 'customerDebts',
@@ -335,3 +371,5 @@ class ReportController extends Controller
         ));
     }
 }
+
+

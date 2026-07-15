@@ -73,8 +73,23 @@ class TestDataSeeder extends Seeder
         $visitService = app(CustomerVisitService::class);
         $stockService = app(StockService::class);
         $invoiceService = app(InvoiceService::class);
+        $purchaseService = app(\App\Services\PurchaseService::class);
 
-        DB::transaction(function () use ($visitService, $stockService, $invoiceService) {
+        DB::transaction(function () use ($visitService, $stockService, $invoiceService, $purchaseService) {
+
+            $this->command->info('Creating 5 Users...');
+            for ($i = 0; $i < 5; $i++) {
+                $user = \App\Models\User::updateOrCreate(
+                    ['email' => 'user'.$i.'@test.com'],
+                    [
+                        'name' => $this->getName(),
+                        'password' => \Illuminate\Support\Facades\Hash::make('password'),
+                    ]
+                );
+                if ($i === 0) {
+                    \Illuminate\Support\Facades\Auth::login($user);
+                }
+            }
 
             $this->command->info('Creating 200 Products & Services...');
             $products = [];
@@ -301,6 +316,125 @@ class TestDataSeeder extends Seeder
                     'notes' => rand(1, 10) > 7 ? 'مصروف تم إضافته للفترة الحالية.' : null,
                     'created_by' => 1,
                 ]);
+            }
+
+            $this->command->info('Creating 20 Suppliers...');
+            $suppliers = [];
+            for ($i = 0; $i < 20; $i++) {
+                $suppliers[] = \App\Models\Supplier::create([
+                    'name' => 'مورد ' . $this->getWord() . ' ' . rand(1, 999),
+                    'phone' => '010' . rand(10000000, 99999999),
+                    'address' => $this->getAddress(),
+                    'notes' => 'مورد بيانات تجريبية',
+                    'is_active' => true,
+                ]);
+            }
+
+            $this->command->info('Creating 100 Purchase Orders...');
+            $allProducts = array_filter($products, fn ($p) => $p->track_stock);
+            $allVaccines = $vaccines;
+            for ($i = 0; $i < 100; $i++) {
+                if (empty($allProducts) && empty($allVaccines)) break;
+
+                $supplier = \Illuminate\Support\Arr::random($suppliers);
+                $isPaid = rand(1, 100) <= 70;
+                $poItems = [];
+                $numItems = rand(1, 5);
+
+                for($j = 0; $j < $numItems; $j++) {
+                    $isVaccine = rand(0, 1) && !empty($allVaccines);
+                    if ($isVaccine) {
+                        $product = \Illuminate\Support\Arr::random($allVaccines);
+                        $poItems[] = [
+                            'product_id' => $product->id,
+                            'quantity' => rand(10, 100),
+                            'purchase_price_per_unit' => $product->price * 0.7,
+                            'selling_price_per_unit' => $product->price,
+                            'expiry_date' => now()->addDays(rand(30, 365))->format('Y-m-d'),
+                        ];
+                    } else {
+                        if(empty($allProducts)) continue;
+                        $product = \Illuminate\Support\Arr::random($allProducts);
+                        $poItems[] = [
+                            'product_id' => $product->id,
+                            'quantity' => rand(10, 100),
+                            'purchase_price_per_unit' => $product->price * 0.7,
+                            'selling_price_per_unit' => $product->price,
+                        ];
+                    }
+                }
+
+                if (empty($poItems)) continue;
+
+                $totalCost = collect($poItems)->sum(fn($it) => $it['quantity'] * $it['purchase_price_per_unit']);
+                $amountPaid = $isPaid ? $totalCost : (rand(0, 1) ? $totalCost * 0.5 : 0);
+
+                try {
+                    $purchaseService->createPurchaseOrder([
+                        'supplier_id' => $supplier->id,
+                        'purchased_at' => $this->randomDateInLast3Months()->format('Y-m-d'),
+                        'notes' => 'فاتورة مشتريات تجريبية',
+                        'amount_paid' => $amountPaid,
+                        'is_from_clinic_cash' => rand(0, 1) == 1,
+                        'items' => $poItems,
+                    ]);
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+
+            $this->command->info('Creating 50 Quick Sales...');
+            for ($i = 0; $i < 50; $i++) {
+                $numItems = rand(1, 3);
+                $qsItems = [];
+                for ($j = 0; $j < $numItems; $j++) {
+                    if (empty($availableProducts)) break;
+                    $product = \Illuminate\Support\Arr::random($availableProducts);
+                    $qsItems[] = [
+                        'product_id' => $product->id,
+                        'quantity' => rand(1, 3),
+                        'unit_price' => $product->price,
+                    ];
+                }
+                if (empty($qsItems)) continue;
+
+                try {
+                    $invoiceService->saveQuickSale([
+                        'customer_name' => rand(0, 1) ? $this->getName() : '',
+                        'customer_phone' => rand(0, 1) ? '011' . rand(10000000, 99999999) : '',
+                        'items' => $qsItems,
+                    ]);
+                } catch (\Exception $e) {}
+            }
+
+            $this->command->info('Creating 50 Invoice Returns...');
+            $confirmedInvoices = collect($newInvoices)
+                ->filter(fn ($inv) => $inv->status === 'confirmed')
+                ->values();
+
+            if ($confirmedInvoices->isNotEmpty()) {
+                $invoicesToReturn = $confirmedInvoices->random(min(50, $confirmedInvoices->count()));
+                foreach ($invoicesToReturn as $invoice) {
+                    try {
+                        $invoice->load('items');
+                        if ($invoice->items->isEmpty()) continue;
+
+                        $returnItems = [];
+                        foreach ($invoice->items as $item) {
+                            if (rand(0, 1)) {
+                                $qty = rand(1, max(1, floor($item->quantity)));
+                                if ($qty > $item->quantity) $qty = $item->quantity;
+                                $returnItems[] = [
+                                    'invoice_item_id' => $item->id,
+                                    'quantity_returned' => $qty,
+                                ];
+                            }
+                        }
+                        if (!empty($returnItems)) {
+                            $invoiceService->createReturn($invoice, $returnItems, 'إرجاع تجريبي للعميل');
+                        }
+                    } catch (\Exception $e) {}
+                }
             }
 
             $this->command->info('✅ TestDataSeeder completed successfully!');

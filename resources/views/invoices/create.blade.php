@@ -218,13 +218,13 @@
                 '</td>' +
                 // تم التعديل: تحديث القيم الافتراضية للحقل الرقمي
                 '<td class="p-2"><input type="number" name="items[' + idx +
-                '][quantity]" class="form-control text-center" value="1" min="0" step="1" oninput="recalcRow(' +
+                '][quantity]" class="form-control text-center" value="1" min="0.01" step="any" oninput="recalcRow(' +
                 idx + ')" required></td>' +
                 '<td class="p-2"><input type="number" name="items[' + idx +
                 '][unit_price]" class="form-control text-center" id="price-' + idx +
                 '" placeholder="0" min="0" step="1" oninput="recalcRow(' + idx + ')" required></td>' +
                 '<td class="p-2"><input type="text" class="form-control text-center bg-light text-primary fw-bold" id="total-' + idx +
-                '" placeholder="0" readonly></td>' +
+                '" data-idx="' + idx + '" placeholder="0" oninput="recalcFromTotal(' + idx + ')"></td>' +
                 '<td class="text-center p-2 delete-col"><button type="button" class="btn btn-outline-danger btn-sm delete-row-btn" onclick="removeRow(' +
 idx + ')"><i class="bi bi-trash"></i></button></td>' +
                 '</tr>';
@@ -232,6 +232,28 @@ idx + ')"><i class="bi bi-trash"></i></button></td>' +
             document.getElementById('items-body').insertAdjacentHTML('beforeend', row);
             // Initialise Choices.js AFTER the row is in the DOM
             initProductSelect(document.getElementById('product-select-' + idx));
+        }
+
+        // ── حساب الكمية تلقائياً من الإجمالي اللي كتبه المستخدم ──────────
+        function recalcFromTotal(idx) {
+            const priceInput = document.getElementById('price-' + idx);
+            const qtyInput = document.querySelector('[name="items[' + idx + '][quantity]"]');
+            const totalInput = document.getElementById('total-' + idx);
+            const price = parseFloat(priceInput.value) || 0;
+            const total = parseFloat(totalInput.value) || 0;
+
+            if (price <= 0) {
+                // السعر لسه صفر أو الصنف لسه ماتحددش، منقدرش نحسب الكمية
+                return;
+            }
+
+            let qty = total / price;
+            if (qty < 0.01) qty = 0.01;
+            qty = parseFloat(qty.toFixed(2));
+
+            qtyInput.value = qty;
+
+            recalcGrandTotal();
         }
 
         function recalcRow(idx) {

@@ -61,8 +61,9 @@ class PurchaseOrderController extends Controller
 
     public function pay(PurchaseOrder $purchase): RedirectResponse
     {
-        $amount = (float) request()->input('amount', 0);
-        $notes = request()->input('notes');
+        $amount            = (float) request()->input('amount', 0);
+        $notes             = request()->input('notes');
+        $isFromClinicCash  = filter_var(request()->input('is_from_clinic_cash', false), FILTER_VALIDATE_BOOLEAN);
 
         if ($amount <= 0) {
             return back()->with('error', 'المبلغ يجب أن يكون أكبر من صفر');
@@ -75,9 +76,10 @@ class PurchaseOrderController extends Controller
         }
 
         $this->purchaseService->addPayment($purchase, [
-            'amount' => $amount,
-            'notes' => $notes,
-            'paid_at' => now()->toDateString(),
+            'amount'            => $amount,
+            'notes'             => $notes,
+            'paid_at'           => now()->toDateString(),
+            'is_from_clinic_cash' => $isFromClinicCash,
         ]);
 
         return back()->with('success', 'تم تسجيل الدفعة بنجاح');

@@ -35,9 +35,11 @@ class PurchaseService
 
             if (! empty($data['amount_paid']) && $data['amount_paid'] > 0) {
                 $this->addPayment($order, [
-                    'amount' => $data['amount_paid'],
-                    'notes' => 'دفعة أولى عند الشراء',
-                    'paid_at' => $data['purchased_at'],
+                    'amount'               => $data['amount_paid'],
+                    'notes'                => 'دفعة أولى عند الشراء',
+                    'paid_at'              => $data['purchased_at'],
+                    // تحديد هل الدفعة خرجت من درج العيادة أم لا
+                    'is_from_clinic_cash'  => ! empty($data['is_from_clinic_cash']),
                 ]);
             }
 
@@ -119,11 +121,12 @@ class PurchaseService
         return DB::transaction(function () use ($order, $data) {
 
             $payment = PurchasePayment::create([
-                'purchase_order_id' => $order->id,
-                'amount' => $data['amount'],
-                'notes' => $data['notes'] ?? null,
-                'paid_at' => $data['paid_at'] ?? now()->toDateString(),
-                'created_by' => Auth::id(),
+                'purchase_order_id'  => $order->id,
+                'amount'             => $data['amount'],
+                'is_from_clinic_cash' => $data['is_from_clinic_cash'] ?? false,
+                'notes'              => $data['notes'] ?? null,
+                'paid_at'            => $data['paid_at'] ?? now()->toDateString(),
+                'created_by'         => Auth::id(),
             ]);
 
             $totalPaid = $order->payments()->sum('amount');

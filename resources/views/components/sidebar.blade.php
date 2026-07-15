@@ -1,4 +1,9 @@
 <aside id="sidebar">
+    {{-- زرار إغلاق الـ sidebar على الموبايل --}}
+    <button class="sidebar-close-btn d-lg-none" onclick="closeSidebar()">
+        <i class="bi bi-x-lg"></i>
+    </button>
+
     <div class="sidebar-brand d-flex align-items-center gap-3">
         <div class="brand-icon">
             <i class="bi bi-heart-pulse-fill"></i>
@@ -83,6 +88,10 @@
         
         @role('employee')
             <div class="nav-label">القائمة</div>
+            <a href="{{ route('customers.index') }}"
+               class="sidebar-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
+                <i class="bi bi-people-fill"></i> {{ __('messages.nav_customers') }}
+            </a>
             <a href="{{ route('invoices.index') }}"
                class="sidebar-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
                 <i class="bi bi-receipt"></i> الفواتير
@@ -94,6 +103,22 @@
             <a href="{{ route('invoices.create') }}"
                class="sidebar-link {{ request()->routeIs('invoices.create') ? 'active' : '' }}">
                 <i class="bi bi-lightning-fill"></i> بيع سريع
+            </a>
+            <a href="{{ route('products.index') }}"
+               class="sidebar-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
+                <i class="bi bi-box-seam-fill"></i> {{ __('messages.nav_products') }}
+            </a>
+            <a href="{{ route('vaccinations.index') }}"
+               class="sidebar-link {{ request()->routeIs('vaccinations.*') ? 'active' : '' }}">
+                <i class="bi bi-shield-plus"></i> {{ __('messages.nav_vaccinations') }}
+            </a>
+            <a href="{{ route('expenses.index') }}"
+               class="sidebar-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                <i class="bi bi-wallet2"></i> {{ __('expenses.title') }}
+            </a>
+            <a href="{{ route('purchases.index') }}"
+               class="sidebar-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
+                <i class="bi bi-cart-check-fill"></i> فواتير الشراء
             </a>
         @endrole
     </nav>
