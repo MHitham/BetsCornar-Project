@@ -4,10 +4,12 @@ namespace App\Services;
 
 use App\Helpers\PhoneHelper;
 use App\Models\Customer;
+use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\InvoiceReturn;
 use App\Models\InvoiceReturnItem;
 use App\Models\Product;
+use App\Models\PurchasePayment;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -228,10 +230,21 @@ class InvoiceService
                 ]);
             }
 
-            $return->update(['total_refund' => round($totalRefund, 2)]);
-
+            // حساب الكاش اللي المفروض يترجع فعليًا للعميل عند الإرجاع - بيتحسب بس لو العميل كان دافع فلوس أكتر من إجمالي الفاتورة بعد الخصم، عشان نفرق بين مرتجع بيقلل الدين ومرتجع بيرجع فلوس فعلية من الدرج.
+            $amountPaidBeforeReturn = (float) $invoice->amount_paid;
             $newInvoiceTotal = max(0, round((float) $invoice->total - $totalRefund, 2));
-            $invoice->update(['total' => $newInvoiceTotal]);
+            $cashRefunded = max(0, round($amountPaidBeforeReturn - $newInvoiceTotal, 2));
+
+            $invoiceUpdateData = ['total' => $newInvoiceTotal];
+            if ($cashRefunded > 0) {
+                $invoiceUpdateData['amount_paid'] = round($amountPaidBeforeReturn - $cashRefunded, 2);
+            }
+            $invoice->update($invoiceUpdateData);
+
+            $return->update([
+                'total_refund' => round($totalRefund, 2),
+                'cash_refunded' => $cashRefunded,
+            ]);
 
             return $return;
         });
@@ -247,15 +260,60 @@ class InvoiceService
 
         $confirmed = (clone $query)->confirmed()->get(['total', 'source']);
 
+        // الإيراد الدفتري (Accrual) - إجمالي قيمة الفواتير المؤكدة، بيتعرض في الشريط برّه المودال ومختلف عن الكاش الفعلي.
+        $accrualRevenue = (float) $confirmed->sum('total');
+
+        // تغيير مصدر الإيراد الفعلي من إجمالي الفواتير (accrual) إلى الكاش الفعلي المحصّل (invoice_payments) - وإضافة خصم كاش المرتجعات من صافي الدرج، بناءً على قرار العمل إن الإيراد المعروض في المودال يعكس الدرج الفعلي مش قيمة الفواتير.
+        $actualGross = (float) \App\Models\InvoicePayment::whereDate('paid_at', $date)
+            ->whereHas('invoice', function ($q) use ($createdBy) {
+                $q->where('status', 'confirmed');
+                if ($createdBy !== null) {
+                    $q->where('created_by', $createdBy);
+                }
+            })
+            ->sum('amount');
+
+        $totalExpenses = (float) Expense::whereDate('expense_date', $date)->sum('amount');
+        $supplierCash = (float) PurchasePayment::clinicCash()->whereDate('paid_at', $date)->sum('amount');
+        
+        $cashRefundsOut = (float) \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
+            ->whereDate('created_at', $date)
+            ->sum('cash_refunded');
+            
+        $cashRefundsList = \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
+            ->whereDate('created_at', $date)
+            ->where('cash_refunded', '>', 0)
+            ->with('invoice:id,invoice_number')
+            ->get(['id', 'invoice_id', 'reason', 'cash_refunded', 'created_at']);
+
+        $netCash = max(0, $actualGross - $totalExpenses - $supplierCash - $cashRefundsOut);
+
+        $expensesList = Expense::whereDate('expense_date', $date)
+            ->whereNull('deleted_at')
+            ->get(['id', 'title', 'amount', 'expense_date']);
+
+        $supplierPaymentsList = PurchasePayment::clinicCash()
+            ->whereDate('paid_at', $date)
+            ->with('purchaseOrder:id,order_number')
+            ->get(['id', 'purchase_order_id', 'amount', 'notes', 'paid_at']);
+
         return [
-            'date' => $date,
-            'label' => $date,
-            'period_type' => 'day',
-            'gross_revenue' => (float) $confirmed->sum('total'),
-            'invoice_count' => $confirmed->count(),
-            'cancelled_count' => (int) (clone $query)->cancelled()->count(),
-            'customer_visits' => $confirmed->where('source', 'customer')->count(),
-            'quick_sales' => $confirmed->where('source', '!=', 'customer')->count(),
+            'date'                   => $date,
+            'label'                  => $date,
+            'period_type'            => 'day',
+            'actual_gross_revenue'   => $actualGross,
+            'gross_revenue'          => $accrualRevenue,
+            'total_expenses'         => $totalExpenses,
+            'supplier_cash_out'      => $supplierCash,
+            'net_cash_in_drawer'     => $netCash,
+            'invoice_count'          => $confirmed->count(),
+            'cancelled_count'        => (int)(clone $query)->cancelled()->count(),
+            'customer_visits'        => $confirmed->where('source','customer')->count(),
+            'quick_sales'            => $confirmed->where('source','!=','customer')->count(),
+            'expenses_list'          => $expensesList,
+            'supplier_payments_list' => $supplierPaymentsList,
+            'cash_refunds_out'       => $cashRefundsOut,
+            'cash_refunds_list'      => $cashRefundsList,
         ];
     }
 
@@ -271,15 +329,64 @@ class InvoiceService
 
         $confirmed = (clone $query)->confirmed()->get(['total', 'source']);
 
+        // الإيراد الدفتري (Accrual) - إجمالي قيمة الفواتير المؤكدة، بيتعرض في الشريط برّه المودال ومختلف عن الكاش الفعلي.
+        $accrualRevenue = (float) $confirmed->sum('total');
+
+        // تغيير مصدر الإيراد الفعلي من إجمالي الفواتير (accrual) إلى الكاش الفعلي المحصّل (invoice_payments) - وإضافة خصم كاش المرتجعات من صافي الدرج، بناءً على قرار العمل إن الإيراد المعروض في المودال يعكس الدرج الفعلي مش قيمة الفواتير.
+        $actualGross = (float) \App\Models\InvoicePayment::whereYear('paid_at', $year)->whereMonth('paid_at', $month)
+            ->whereHas('invoice', function ($q) use ($createdBy) {
+                $q->where('status', 'confirmed');
+                if ($createdBy !== null) {
+                    $q->where('created_by', $createdBy);
+                }
+            })
+            ->sum('amount');
+
+        $totalExpenses = (float) Expense::whereYear('expense_date', $year)->whereMonth('expense_date', $month)->sum('amount');
+        $supplierCash = (float) PurchasePayment::clinicCash()->whereYear('paid_at', $year)->whereMonth('paid_at', $month)->sum('amount');
+        
+        $cashRefundsOut = (float) \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->sum('cash_refunded');
+            
+        $cashRefundsList = \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->where('cash_refunded', '>', 0)
+            ->with('invoice:id,invoice_number')
+            ->get(['id', 'invoice_id', 'reason', 'cash_refunded', 'created_at']);
+
+        $netCash = max(0, $actualGross - $totalExpenses - $supplierCash - $cashRefundsOut);
+
+        $expensesList = Expense::whereYear('expense_date', $year)
+            ->whereMonth('expense_date', $month)
+            ->whereNull('deleted_at')
+            ->get(['id', 'title', 'amount', 'expense_date']);
+
+        $supplierPaymentsList = PurchasePayment::clinicCash()
+            ->whereYear('paid_at', $year)
+            ->whereMonth('paid_at', $month)
+            ->with('purchaseOrder:id,order_number')
+            ->get(['id', 'purchase_order_id', 'amount', 'notes', 'paid_at']);
+
         return [
-            'date' => sprintf('%04d-%02d', $year, $month),
-            'label' => sprintf('%04d-%02d', $year, $month),
-            'period_type' => 'month',
-            'gross_revenue' => (float) $confirmed->sum('total'),
-            'invoice_count' => $confirmed->count(),
-            'cancelled_count' => (int) (clone $query)->cancelled()->count(),
-            'customer_visits' => $confirmed->where('source', 'customer')->count(),
-            'quick_sales' => $confirmed->where('source', '!=', 'customer')->count(),
+            'date'                   => sprintf('%04d-%02d', $year, $month),
+            'label'                  => sprintf('%04d-%02d', $year, $month),
+            'period_type'            => 'month',
+            'actual_gross_revenue'   => $actualGross,
+            'gross_revenue'          => $accrualRevenue,
+            'total_expenses'         => $totalExpenses,
+            'supplier_cash_out'      => $supplierCash,
+            'net_cash_in_drawer'     => $netCash,
+            'invoice_count'          => $confirmed->count(),
+            'cancelled_count'        => (int)(clone $query)->cancelled()->count(),
+            'customer_visits'        => $confirmed->where('source','customer')->count(),
+            'quick_sales'            => $confirmed->where('source','!=','customer')->count(),
+            'expenses_list'          => $expensesList,
+            'supplier_payments_list' => $supplierPaymentsList,
+            'cash_refunds_out'       => $cashRefundsOut,
+            'cash_refunds_list'      => $cashRefundsList,
         ];
     }
 }

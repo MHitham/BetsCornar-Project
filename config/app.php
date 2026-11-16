@@ -17,6 +17,8 @@ return [
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+    'license_key' => env('LICENSE_KEY'),
+    'cloudflare_license_url' => env('CLOUDFLARE_LICENSE_API_URL'),
 
     'cipher' => 'AES-256-CBC',
 

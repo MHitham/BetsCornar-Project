@@ -112,6 +112,23 @@
                         <input type="text" class="form-control text-danger fw-bold"
                                id="remainingDisplay" readonly placeholder="0.00 ج">
                     </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="isFromClinicCash"
+                                   name="is_from_clinic_cash"
+                                   value="1"
+                                   checked>
+                            <label class="form-check-label fw-semibold" for="isFromClinicCash">
+                                الدفعة من درج العيادة؟
+                            </label>
+                            <div class="form-text text-muted">
+                                سيتم خصمها من إيراد يوم الشراء
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

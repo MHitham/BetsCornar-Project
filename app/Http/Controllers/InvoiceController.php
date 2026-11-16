@@ -21,44 +21,6 @@ class InvoiceController extends Controller
     {
         $isEmployee = auth()->user()->hasRole('employee');
 
-        if ($isEmployee) {
-            $now = \Carbon\Carbon::now();
-            $businessDayStart = $now->copy()->startOfDay()->addHours(2);
-
-            if ($now->lt($businessDayStart)) {
-                $periodStart = $businessDayStart->copy()->subDay();
-                $periodEnd = $businessDayStart->copy()->subSecond();
-            } else {
-                $periodStart = $businessDayStart;
-                $periodEnd = $businessDayStart->copy()->addDay()->subSecond();
-            }
-
-            $invoices = Invoice::query()
-
-                ->where('created_by', auth()->id())
-                ->whereBetween('created_at', [$periodStart, $periodEnd])
-
-                ->select(['id', 'invoice_number', 'customer_name', 'source', 'total', 'status', 'created_at'])
-                ->latest()
-                ->paginate(25)
-                ->withQueryString();
-
-            return view('invoices.index', [
-                'invoices' => $invoices,
-                'q' => '',
-                'source' => '',
-                'status' => '',
-                'date' => null,
-                'period' => 'today',
-                'countToday' => 0,
-                'countMonth' => 0,
-                'countAll' => 0,
-                'hasFilters' => true,
-                'isEmployee' => true,
-                'showRevenueBar' => false,
-            ]);
-        }
-
         $q = $request->input('q', '');
         $source = $request->input('source', '');
         $status = $request->input('status', '');
@@ -100,7 +62,6 @@ class InvoiceController extends Controller
 
         $hasFilters = $request->hasAny(['q', 'source', 'period', 'date', 'page']);
 
-        $isEmployee = false;
         $showRevenueBar = true;
         $revenueSummary = $this->resolveRevenueSummary($date, $period);
 
@@ -157,7 +118,7 @@ class InvoiceController extends Controller
             'returns.items.product',
         ]);
 
-        $showRevenueBar = auth()->user()->hasRole('admin');
+        $showRevenueBar = true;
         $revenueSummary = $showRevenueBar
             ? $this->invoiceService->getDailyRevenueSummary($invoice->created_at->toDateString())
             : null;

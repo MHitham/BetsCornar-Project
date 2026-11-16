@@ -85,6 +85,7 @@
                             <tr>
                                 <th>التاريخ</th>
                                 <th>المبلغ</th>
+                                <th>من الدرج؟</th>
                                 <th>ملاحظات</th>
                                 <th>بواسطة</th>
                             </tr>
@@ -94,12 +95,19 @@
                                 <tr>
                                     <td>{{ $payment->paid_at->format('Y/m/d') }}</td>
                                     <td class="fw-semibold text-success">{{ number_format($payment->amount, 2) }} ج</td>
+                                    <td>
+                                        @if($payment->is_from_clinic_cash)
+                                            <span class="badge bg-warning text-dark">من الدرج</span>
+                                        @else
+                                            <span class="badge bg-secondary">خارجي</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $payment->notes ?? '—' }}</td>
                                     <td>{{ $payment->creator?->name ?? '—' }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-3">لا توجد دفعات مسجلة</td>
+                                    <td colspan="5" class="text-center text-muted py-3">لا توجد دفعات مسجلة</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -179,6 +187,21 @@
                                value="{{ $purchase->remaining_amount }}" required>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">من درج العيادة؟</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox"
+                                       role="switch"
+                                       id="isFromClinicCash"
+                                       name="is_from_clinic_cash"
+                                       value="1"
+                                       checked>
+                                <label class="form-check-label" for="isFromClinicCash" id="clinicCashLabel">نعم — يُخصم من إيراد اليوم</label>
+                            </div>
+                        </div>
+                        <div class="form-text text-muted">إذا كانت الدفعة من درج العيادة، سيتم خصمها من صافي إيراد يوم الدفع.</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">ملاحظات</label>
                         <input type="text" name="notes" class="form-control" placeholder="اختياري">
                     </div>
@@ -194,3 +217,23 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    const toggle = document.getElementById('isFromClinicCash');
+    const label  = document.getElementById('clinicCashLabel');
+    if (!toggle || !label) return;
+
+    function updateLabel() {
+        label.textContent = toggle.checked
+            ? 'نعم — يُخصم من إيراد اليوم'
+            : 'لا — دفعة خارجية';
+    }
+
+    toggle.addEventListener('change', updateLabel);
+    updateLabel();
+})();
+</script>
+@endpush
+

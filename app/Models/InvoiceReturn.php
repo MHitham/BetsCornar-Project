@@ -9,11 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class InvoiceReturn extends Model
 {
     protected $fillable = [
-        'invoice_id', 'reason', 'total_refund', 'created_by',
+        'invoice_id', 'reason', 'total_refund', 'cash_refunded', 'created_by',
     ];
 
     protected $casts = [
         'total_refund' => 'decimal:2',
+        'cash_refunded' => 'decimal:2',
     ];
 
     public function invoice(): BelongsTo

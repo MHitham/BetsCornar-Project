@@ -113,7 +113,8 @@
                             <div class="input-group">
                                 <input type="number" name="consultation_price" id="consultation_price"
                                     class="form-control @error('consultation_price') is-invalid @enderror"
-                                    value="{{ old('consultation_price', $consultationProduct?->price ?? 0) }}"
+                                    {{-- سعر الكشف يبدأ دايماً بصفر، الدكتورة تكتبه بنفسها في كل زيارة --}}
+                                    value="{{ old('consultation_price', 0) }}"
                                     step="1" min="0" required>
                                 <span class="input-group-text">{{ __('messages.currency') }}</span>
                             </div>
@@ -408,7 +409,7 @@
                             
                             <input type="number" name="vaccinations[${idx}][vaccine_quantity]"
                                    class="form-control form-control-sm vacc-qty-input"
-                                   data-idx="${idx}" value="1" min="0" step="1"
+                                   data-idx="${idx}" value="1" min="0.01" step="any"
                                    oninput="recalcVaccRow(${idx})" required>
                         </td>
                         <td>
@@ -593,7 +594,7 @@
                 
                 <input type="number" name="additional_items[${idx}][quantity]"
                        class="form-control form-control-sm qty-input"
-                       data-idx="${idx}" value="1" min="0" step="1"
+                       data-idx="${idx}" value="1" min="0.01" step="any"
                        oninput="recalcRow(${idx})" required>
             </td>
             <td>
@@ -609,7 +610,8 @@
             <td>
                 
                 <input type="text" class="form-control form-control-sm bg-light line-total"
-                       id="line-total-${idx}" placeholder="0" readonly>
+                       id="line-total-${idx}" data-idx="${idx}" placeholder="0"
+                       oninput="recalcFromTotal(${idx})">
             </td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})">
@@ -620,6 +622,28 @@
                 document.getElementById('items-body').insertAdjacentHTML('beforeend', row);
                 // Initialise Choices.js AFTER the row is in the DOM
                 initProductSelect(document.getElementById('product-select-' + idx));
+            }
+
+            // ── حساب الكمية تلقائياً من الإجمالي اللي كتبه المستخدم ──────────
+            function recalcFromTotal(idx) {
+                const priceInput = document.querySelector(`[name="additional_items[${idx}][unit_price]"]`);
+                const qtyInput = document.querySelector(`[name="additional_items[${idx}][quantity]"]`);
+                const totalInput = document.getElementById(`line-total-${idx}`);
+                const price = parseFloat(priceInput.value) || 0;
+                const total = parseFloat(totalInput.value) || 0;
+
+                if (price <= 0) {
+                    // السعر لسه صفر أو الصنف لسه ماتحددش، منقدرش نحسب الكمية
+                    return;
+                }
+
+                let qty = total / price;
+                if (qty < 0.01) qty = 0.01;
+                qty = parseFloat(qty.toFixed(2));
+
+                qtyInput.value = qty;
+
+                recalcTotal();
             }
 
             function recalcRow(idx) {

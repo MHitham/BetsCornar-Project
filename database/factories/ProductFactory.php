@@ -42,4 +42,12 @@ class ProductFactory extends Factory
             'quantity' => 0,
         ]);
     }
+
+    public function product(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'product',
+            'track_stock' => true,
+        ]);
+    }
 }

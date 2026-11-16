@@ -62,9 +62,10 @@
     <script>
         function toggleSidebar() {
             if (window.innerWidth < 992) {
-                document.getElementById('sidebar').classList.toggle('open');
-                document.getElementById('sidebar-overlay').style.display =
-                    document.getElementById('sidebar').classList.contains('open') ? 'block' : 'none';
+                var sidebar = document.getElementById('sidebar');
+                var overlay = document.getElementById('sidebar-overlay');
+                sidebar.classList.toggle('open');
+                overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
             } else {
                 document.body.classList.toggle('sidebar-collapsed');
                 localStorage.setItem('sidebar-collapsed', document.body.classList.contains('sidebar-collapsed'));
@@ -72,11 +73,32 @@
         }
 
         function closeSidebar() {
-            if (window.innerWidth < 992) {
-                document.getElementById('sidebar').classList.remove('open');
-                document.getElementById('sidebar-overlay').style.display = 'none';
-            }
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebar-overlay').style.display = 'none';
         }
+
+        // إغلاق الـ sidebar لما يضغط في أي مكان برره
+        document.addEventListener('click', function (e) {
+            if (window.innerWidth >= 992) return;
+            var sidebar = document.getElementById('sidebar');
+            var toggleBtn = document.querySelector('#topbar .toggle-btn');
+            if (!sidebar.classList.contains('open')) return;
+            if (sidebar.contains(e.target)) return;
+            if (toggleBtn && toggleBtn.contains(e.target)) return;
+            closeSidebar();
+        });
+
+        // إغلاق الـ sidebar لما يفتح صفحة جديدة (back/forward cache)
+        window.addEventListener('pageshow', function () {
+            if (window.innerWidth < 992) closeSidebar();
+        });
+
+        // إغلاق الـ sidebar لما يضغط على أي لينك فيه
+        document.querySelectorAll('#sidebar .sidebar-link').forEach(function (link) {
+            link.addEventListener('click', function () {
+                if (window.innerWidth < 992) closeSidebar();
+            });
+        });
     </script>
 
     @stack('scripts')

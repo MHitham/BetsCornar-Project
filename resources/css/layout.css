@@ -142,7 +142,7 @@ a:hover {
     right: 0;
     display: flex;
     flex-direction: column;
-    z-index: 1040;
+    z-index: 1060;
     transition: right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     border-left: 1px solid var(--sidebar-border);
     box-shadow: var(--shadow-lg);
@@ -275,7 +275,7 @@ a:hover {
     margin-right: var(--sidebar-w);
     flex: 1;
     min-width: 0;
-    
+
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -293,7 +293,7 @@ a:hover {
     gap: 1rem;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1050;
     box-shadow: 0 12px 30px rgba(20, 45, 62, 0.05);
 }
 
@@ -1345,12 +1345,12 @@ textarea:focus {
         font-size: 0.9rem;
     }
 
-    
+
     .d-flex.justify-content-between {
         gap: 0.5rem;
     }
 
-    
+
     .stat-card {
         flex-direction: column;
         text-align: center;
@@ -1373,7 +1373,7 @@ textarea:focus {
         font-size: 0.75rem;
     }
 
-    
+
     .action-grid {
         grid-template-columns: 1fr;
     }

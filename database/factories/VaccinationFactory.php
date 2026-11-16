@@ -13,7 +13,7 @@ class VaccinationFactory extends Factory
             'product_id' => \App\Models\Product::factory()->vaccination(),
             'invoice_id' => \App\Models\Invoice::factory(),
             'vaccination_date' => fake()->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
-            'next_dose_date' => fake()->optional(0.8)->dateTimeBetween('now', '+1 year')->format('Y-m-d'),
+            'next_dose_date' => fake()->optional(0.8)->dateTimeBetween('now', '+1 year')?->format('Y-m-d'),
         ];
     }
 }

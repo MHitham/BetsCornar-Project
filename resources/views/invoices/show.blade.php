@@ -84,8 +84,10 @@
                             </td>
                         </tr>
                         @php 
-                            $totalPaid = $invoice->payments->sum('amount'); 
-                            $remaining = max(0, $invoice->total - $totalPaid);
+                            // استخدام amount_paid المباشر من الفاتورة (المصدر الرسمي) بدل جمع الدفعات يدويًا،
+                            // عشان يعكس أي تعديل حصل بسبب مرتجعات (اللي بتقلل amount_paid من غير ما تلمس سجل الدفعات التاريخي)
+                            $totalPaid = (float) $invoice->amount_paid;
+                            $remaining = $invoice->remaining_amount;
                         @endphp
                         <tr>
                             <td class="text-muted">المدفوع</td>
@@ -162,8 +164,8 @@
                                             {{ ['product' => 'منتج', 'service' => 'خدمة', 'vaccination' => 'تطعيم'][$item->product->type] ?? $item->product->type }}
                                         </div>
                                     </td>
-                                    <td class="text-center">{{ number_format($item->quantity) }}</td>
-                                    <td class="text-center">{{ number_format($item->unit_price, 1) }}</td>
+                                    <td class="text-center">{{ number_format($item->quantity, 2) }}</td>
+                                    <td class="text-center">{{ number_format($item->unit_price, 2) }}</td>
                                     <td class="text-center fw-bold text-success">
                                         {{ number_format($item->line_total) }} {{ __('messages.currency') }}
                                     </td>
@@ -325,7 +327,10 @@
                     @if($invoice->payments->isEmpty())
                         <p class="text-muted text-center py-3">لا توجد دفعات مسجلة</p>
                     @else
-                        @php $totalPaid = $invoice->payments->sum('amount'); @endphp
+                        @php 
+                            // نفس المنطق - استخدام amount_paid الرسمي بدل جمع الدفعات يدويًا
+                            $totalPaid = (float) $invoice->amount_paid; 
+                        @endphp
                         <table class="table table-sm align-middle mb-3">
                             <thead class="table-light">
                                 <tr>
@@ -349,7 +354,7 @@
                                     <td class="text-success">{{ number_format($totalPaid, 2) }} ج.م</td>
                                     <td>-</td>
                                 </tr>
-                                @php $rem = $invoice->total - $totalPaid; @endphp
+                                @php $rem = $invoice->remaining_amount; @endphp
                                 <tr>
                                     <td>المتبقي</td>
                                     <td class="{{ $rem > 0 ? 'text-danger' : 'text-success' }}">
@@ -362,7 +367,7 @@
                     @endif
 
                     
-                    @php $remaining = $invoice->total - $invoice->payments->sum('amount'); @endphp
+                    @php $remaining = $invoice->remaining_amount; @endphp
                     @if($remaining > 0 && $invoice->status !== 'cancelled')
                         <hr>
                         <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1 text-success"></i>تسجيل دفعة جديدة</h6>

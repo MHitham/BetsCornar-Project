@@ -269,7 +269,7 @@
                         @if ($expenses->isNotEmpty())
                             @foreach ($expenses as $expense)
                                 <tr>
-                                    <td class="px-4 small">{{ $expense->description }}</td>
+                                    <td class="px-4 small">{{ $expense->title }}</td>
                                     <td class="fw-semibold small text-danger">{{ number_format($expense->amount) }} {{ __('messages.currency') }}</td>
                                     <td class="text-muted small">{{ \Carbon\Carbon::parse($expense->expense_date)->format('m/d') }}</td>
                                 </tr>

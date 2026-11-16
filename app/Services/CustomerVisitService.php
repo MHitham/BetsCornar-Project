@@ -17,6 +17,14 @@ class CustomerVisitService
         private readonly InvoiceService $invoiceService,
     ) {}
 
+    /**
+     * Normalize a phone number to a standard format (e.g. 201012345678).
+     */
+    public function normalizePhone(string $phone): string
+    {
+        return PhoneHelper::normalize($phone);
+    }
+
     public function findOrCreateCustomer(string $normalizedPhone, array $attributes = []): Customer
     {
         return Customer::findOrCreateByPhone($normalizedPhone, $attributes);
@@ -69,11 +77,19 @@ class CustomerVisitService
 
             $consultationPrice = round((float) ($data['consultation_price'] ?? 0), 2);
             if ($consultationPrice > 0) {
+                // البحث عن خدمة "كشف" بالاسم بالتحديد بدل آخر خدمة مضافة (تصليح الخلط في المنتج الافتراضي)
                 $consultationProduct = Product::query()
-                    ->where('type', '=', 'service')
                     ->active()
-                    ->orderByDesc('id')
+                    ->where('type', 'service')
+                    ->whereRaw("TRIM(name) = ?", ['كشف'])
                     ->first();
+
+                // التحقق من وجود منتج الكشف وإيقاف الحفظ في حالة عدم وجوده
+                if (! $consultationProduct) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'consultation_price' => [__('customers.messages.select_consultation')],
+                    ]);
+                }
 
                 if ($consultationProduct) {
                     $consultItem = $invoice->items()->create([
