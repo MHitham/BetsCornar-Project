@@ -20,7 +20,8 @@ test('admin sees revenue bar on invoices index', function () {
         ->assertSee('revenueModal', false);
 });
 
-test('employee does not see revenue bar on invoices index', function () {
+// قرار العمل الحالي يسمح للموظف برؤية شريط الإيرادات في صفحة الفواتير.
+test('employee sees revenue bar on invoices index', function () {
     Role::create(['name' => 'admin']);
     Role::create(['name' => 'employee']);
 
@@ -30,5 +31,5 @@ test('employee does not see revenue bar on invoices index', function () {
     $response = $this->actingAs($employee)->get(route('invoices.index'));
 
     $response->assertSuccessful();
-    expect($response->getContent())->not->toContain('revenueModal');
+    expect($response->getContent())->toContain('revenueModal');
 });

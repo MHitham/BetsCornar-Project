@@ -147,7 +147,8 @@ class CustomerVisitService
                     if ($product->type === 'vaccination') {
                         $this->stockService->deductVaccineStockFefo($product, $qty, $invoiceItem);
                     } else {
-                        $this->stockService->decreaseStock($product, $qty);
+                        // حفظ تكلفة المنتج وقت البيع على بند الزيارة لاستخدامها في التقارير.
+                        $this->stockService->decreaseStock($product, $qty, $invoiceItem);
                     }
                 }
             }

@@ -8,8 +8,10 @@
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
-    <form method="POST" action="{{ route('customers.store') }}" id="visitForm">
+    {{-- حماية نموذج الزيارة من الإرسال المكرر. --}}
+    <form method="POST" action="{{ route('customers.store') }}" id="visitForm" data-prevent-double>
         @csrf
+        <x-idempotency-token />
 
         <div class="row g-4">
 

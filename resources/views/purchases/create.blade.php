@@ -20,8 +20,10 @@
         </div>
     @endif
 
-    <form action="{{ route('purchases.store') }}" method="POST" id="purchaseForm">
+    {{-- حماية نموذج الشراء من الإرسال المكرر. --}}
+    <form action="{{ route('purchases.store') }}" method="POST" id="purchaseForm" data-prevent-double>
         @csrf
+        <x-idempotency-token />
 
         <div class="card shadow-sm mb-4">
             <div class="card-header fw-semibold bg-light">بيانات الفاتورة</div>

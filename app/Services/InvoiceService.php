@@ -6,6 +6,7 @@ use App\Helpers\PhoneHelper;
 use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\Invoice;
+use App\Models\InvoicePayment;
 use App\Models\InvoiceReturn;
 use App\Models\InvoiceReturnItem;
 use App\Models\Product;
@@ -92,7 +93,8 @@ class InvoiceService
                     if ($product->type === 'vaccination') {
                         $this->stockService->deductVaccineStockFefo($product, $qty, $invoiceItem);
                     } else {
-                        $this->stockService->decreaseStock($product, $qty);
+                        // حفظ تكلفة المنتج وقت البيع حتى لا تضيع لقطة التكلفة من بند الفاتورة.
+                        $this->stockService->decreaseStock($product, $qty, $invoiceItem);
                     }
                 }
             }
@@ -128,6 +130,11 @@ class InvoiceService
         }
 
         return DB::transaction(function () use ($invoice, $reason) {
+            // قفل الفاتورة وإعادة تحميلها قبل الإلغاء لمنع إلغاءين متزامنين.
+            $invoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+            if ($invoice->isCancelled()) {
+                throw new RuntimeException(__('invoices.messages.already_cancelled'));
+            }
 
             $invoice->load(['items.product', 'items.vaccineBatches']);
 
@@ -167,11 +174,12 @@ class InvoiceService
 
     public function createReturn(Invoice $invoice, array $items, ?string $reason = null): InvoiceReturn
     {
-        if ($invoice->isCancelled()) {
-            throw new \RuntimeException('لا يمكن إنشاء مرتجع لفاتورة ملغية.');
-        }
-
         return DB::transaction(function () use ($invoice, $items, $reason) {
+            // قفل الفاتورة أولاً لضمان أن المرتجع لا يتجاوز الفاتورة المرتبطة به.
+            $invoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+            if ($invoice->isCancelled()) {
+                throw new \RuntimeException('لا يمكن إنشاء مرتجع لفاتورة ملغية.');
+            }
             $totalRefund = 0;
 
             $return = InvoiceReturn::create([
@@ -187,9 +195,14 @@ class InvoiceService
                     continue;
                 }
 
-                $invoiceItem = \App\Models\InvoiceItem::with('product')
+                // رفض بند من فاتورة أخرى قبل أي تعديل على المرتجع أو المخزون.
+                $invoiceItem = $invoice->items()
+                    ->with('product')
                     ->lockForUpdate()
-                    ->findOrFail((int) $row['invoice_item_id']);
+                    ->find((int) $row['invoice_item_id']);
+                if (! $invoiceItem) {
+                    throw new \RuntimeException('أحد البنود المرسلة لا يتبع هذه الفاتورة.');
+                }
 
                 $maxReturnable = round((float) $invoiceItem->quantity, 2);
 
@@ -247,6 +260,32 @@ class InvoiceService
             ]);
 
             return $return;
+        });
+    }
+
+    // تسجيل الدفعة وقفل الفاتورة والتحقق من المتبقي داخل معاملة واحدة.
+    public function addPayment(Invoice $invoice, float $amount, ?string $notes = null, $paidAt = null): InvoicePayment
+    {
+        return DB::transaction(function () use ($invoice, $amount, $notes, $paidAt) {
+            // قفل الفاتورة عشان ضغطتين متزامنتين ميعدّوش الحد المسموح.
+            $invoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+            if ($invoice->isCancelled()) {
+                throw new \RuntimeException('لا يمكن تسجيل دفعة على فاتورة ملغية.');
+            }
+            $amount = round($amount, 2);
+            $remaining = round((float) $invoice->total - (float) $invoice->amount_paid, 2);
+            if ($amount <= 0 || $amount > $remaining) {
+                throw new \RuntimeException('المبلغ أكبر من المتبقي ('.number_format($remaining, 2).' ج)');
+            }
+            $payment = InvoicePayment::create([
+                'invoice_id' => $invoice->id,
+                'amount' => $amount,
+                'notes' => $notes,
+                'paid_at' => $paidAt ?? now(),
+            ]);
+            // زيادة amount_paid مباشرة لأن المرتجعات النقدية تخفضها دون صف دفتر جديد.
+            $invoice->update(['amount_paid' => round((float) $invoice->amount_paid + $amount, 2)]);
+            return $payment;
         });
     }
 

@@ -1,0 +1,75 @@
+{
+  "version": 2,
+  "skills": {
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "commit": "57217cf86ba38148a57af9e90d14a4c049558330",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "7bc223e2aafbdbf6e50ea243ba6ef67fe432bb069ab439fea0390795dac0bf7f"
+    },
+    "laravel-database-optimization": {
+      "source": "AsyrafHussin/agent-skills",
+      "commit": "1aa0ff717c10309226c9e678f00873976450fd76",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-database-optimization/SKILL.md",
+      "computedHash": "f68bdd49a5a8b676886a70eaed9e754d2b97a38afbc941564e8ec4c2ad6f05ab"
+    },
+    "laravel-patterns": {
+      "source": "affaan-m/ECC",
+      "commit": "3f14a103a8694e51c1df9a806217a6d0b5f7a6f7",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-patterns/SKILL.md",
+      "computedHash": "a05d0cb036c1bd75998d368b049b758a867cbe03d88c98fec62aa421ee7939c4"
+    },
+    "laravel-security": {
+      "source": "affaan-m/ECC",
+      "commit": "3f14a103a8694e51c1df9a806217a6d0b5f7a6f7",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-security/SKILL.md",
+      "computedHash": "76754b92b4dbe1d7de632944924e51196e2a35c6dcb85ec0b4ba4d13adc15af6"
+    },
+    "laravel-specialist": {
+      "source": "Jeffallan/claude-skills",
+      "commit": "67c1961b180dc92cf08983344627109e983e8f51",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-specialist/SKILL.md",
+      "computedHash": "576cc242c75c0b66f95de5843e96884ad6952e7df4d3e64a6c30309ba6559588"
+    },
+    "laravel-tdd": {
+      "source": "affaan-m/ECC",
+      "commit": "3f14a103a8694e51c1df9a806217a6d0b5f7a6f7",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-tdd/SKILL.md",
+      "computedHash": "006ad22ac3d173507df1cdf01e4baf937622441c39b124c6226b7a450a3cfdc4"
+    },
+    "laravel-verification": {
+      "source": "affaan-m/ECC",
+      "commit": "3f14a103a8694e51c1df9a806217a6d0b5f7a6f7",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-verification/SKILL.md",
+      "computedHash": "18cb85c73c03991ab1ab8718883fb923fae3bbfe8a2a517261b0fc8740ef50ca"
+    },
+    "pest-testing": {
+      "source": "spatie/freek.dev",
+      "commit": "f786cbbec3f28a052c712d30ea2dcf7314ab0038",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/pest-testing/SKILL.md",
+      "computedHash": "864b995e38c6657cfa793b2882fae5b413d74d1110005ffe8db245a9a806c997"
+    },
+    "tailwind-4-docs": {
+      "source": "Lombiq/Tailwind-Agent-Skills",
+      "commit": "634ec184c36e495fae1d8cf7975df7e6969e3a89",
+      "sourceType": "github",
+      "skillPath": "skills/tailwind-4-docs/SKILL.md",
+      "computedHash": "263961b82698e3defdb26dd6a1b7328044517e67a3bbe91c1b33bb2a4273f4ee"
+    },
+    "tailwind-css-patterns": {
+      "source": "giuseppe-trisciuoglio/developer-kit",
+      "commit": "fe73fb33a09ee6562eeec7415a3f9a3bcf795177",
+      "sourceType": "github",
+      "skillPath": "plugins/developer-kit-typescript/skills/tailwind-css-patterns/SKILL.md",
+      "computedHash": "9f84955f461d236a7ec7adf52934ce8389406f2d28e63b7e25bd2d134d5e50d2"
+    }
+  }
+}

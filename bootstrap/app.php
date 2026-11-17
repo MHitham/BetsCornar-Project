@@ -14,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // تم الإضافة: تسجيل alias لصلاحيات الأدوار
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            // حماية العمليات المالية من إعادة إرسال نفس الطلب.
+            'idempotent' => \App\Http\Middleware\PreventDuplicateSubmission::class,
         ]);
 
         // ── إضافة middleware التحقق من ترخيص Cloudflare لمجموعة web ──

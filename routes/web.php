@@ -13,9 +13,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VaccinationController;
 use App\Http\Controllers\VaccineBatchController;
-use App\Models\User;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 
 if (! function_exists('dashboardKey')) {
@@ -27,19 +25,7 @@ if (! function_exists('dashboardKey')) {
     }
 }
 
-Route::get('/debug-admin', function () {
-    $user = User::where('email', 'admin@betscornar.com')->first();
-
-    if (! $user) {
-        return 'admin user not found';
-    }
-
-    return [
-        'email' => $user->email,
-        'has_password_match' => Hash::check('admin123', $user->password),
-    ];
-});
-
+// حذف مسار التشخيص العام لأنه كان يكشف حالة مستخدم الإدارة دون تسجيل دخول.
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
@@ -117,7 +103,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,employee')->group(function () {
         Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
         Route::get('customers/create', [CustomerController::class, 'create'])->name('customers.create');
-        Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
+        // حماية إنشاء زيارة جديدة من إعادة إرسال نفس النموذج.
+        Route::post('customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('idempotent');
         Route::get('customers/search', [CustomerController::class, 'search'])->name('customers.search');
         Route::post('customers/export-excel', [CustomerController::class, 'exportExcel'])->name('customers.export-excel');
         Route::get('customers/export-phones', [CustomerController::class, 'getPhones'])->name('customers.export-phones');
@@ -134,12 +121,15 @@ Route::middleware('auth')->group(function () {
         Route::patch('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'update'])->name('animals.update');
         Route::delete('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'destroy'])->name('animals.destroy');
 
-        Route::resource('invoices', InvoiceController::class)->only(['index', 'create', 'store', 'show']);
+        Route::resource('invoices', InvoiceController::class)->only(['index', 'create', 'show']);
+        // حماية إنشاء البيع السريع من إعادة إرسال نفس الطلب.
+        Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store')->middleware('idempotent');
         Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
-        Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
-        Route::post('invoices/{invoice}/returns', [\App\Http\Controllers\InvoiceReturnController::class, 'store'])->name('invoice-returns.store');
-        Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoicePaymentController::class, 'pay'])->name('invoices.pay');
-        Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\InvoicePaymentController::class, 'store'])->name('invoice.payments.store');
+        // منع تكرار إلغاء الفاتورة أو إنشاء مرتجع لها.
+        Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel')->middleware('idempotent');
+        Route::post('invoices/{invoice}/returns', [\App\Http\Controllers\InvoiceReturnController::class, 'store'])->name('invoice-returns.store')->middleware('idempotent');
+        // استخدام مسار الدفعات الموحد بعد حذف endpoint الدفع القديم.
+        Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\InvoicePaymentController::class, 'store'])->name('invoice.payments.store')->middleware('idempotent');
 
         Route::get('vaccinations', [VaccinationController::class, 'index'])->name('vaccinations.index');
         Route::post('vaccinations/export-excel', [VaccinationController::class, 'exportExcel'])->name('vaccinations.export-excel');
@@ -154,9 +144,11 @@ Route::middleware('auth')->group(function () {
         Route::resource('expenses', ExpenseController::class)->except('show');
         
         Route::resource('purchases', PurchaseOrderController::class)
-            ->only(['index', 'create', 'store', 'show']);
+            ->only(['index', 'create', 'show']);
+        // حماية إنشاء فاتورة شراء وتسجيل دفعة المورد من التكرار.
+        Route::post('purchases', [PurchaseOrderController::class, 'store'])->name('purchases.store')->middleware('idempotent');
         Route::post('purchases/{purchase}/pay', [PurchaseOrderController::class, 'pay'])
-            ->name('purchases.pay');
+            ->name('purchases.pay')->middleware('idempotent');
     });
 
     Route::middleware('role:admin')->group(function () {

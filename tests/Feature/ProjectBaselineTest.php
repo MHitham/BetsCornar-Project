@@ -213,13 +213,15 @@ test('baseline cash summaries use payment date and deduct only clinic supplier p
 
 test('baseline ledger payment updates invoice and rejects overpayment', function () {
     $invoice = Invoice::factory()->create(['status' => 'confirmed', 'total' => 100, 'amount_paid' => 0]);
-    $this->post(route('invoice.payments.store', $invoice), ['amount' => 40])
+    // استخدام رمز مختلف لكل عملية دفع اختبارية.
+    $this->postWithToken(route('invoice.payments.store', $invoice), ['amount' => 40])
         ->assertSessionHasNoErrors();
     expect((float) $invoice->fresh()->amount_paid)->toBe(40.0)
         ->and((float) $invoice->payments()->sum('amount'))->toBe(40.0);
 
-    $this->post(route('invoice.payments.store', $invoice), ['amount' => 61])
-        ->assertSessionHasErrors('amount');
+    // تجاوز الإجمالي يُعرض كرسالة جلسة عامة وليس كخطأ Form Request.
+    $this->postWithToken(route('invoice.payments.store', $invoice), ['amount' => 61])
+        ->assertSessionHas('error');
     expect((float) $invoice->fresh()->amount_paid)->toBe(40.0);
 });
 
@@ -264,7 +266,8 @@ test('baseline a complete visit works through HTTP validation with a new animal'
     $batch = \App\Models\VaccineBatch::factory()->create([
         'product_id' => $vaccine->id, 'quantity_received' => 10, 'quantity_remaining' => 10,
     ]);
-    $this->post(route('customers.store'), [
+    // إرفاق رمز إرسال بطلب إنشاء الزيارة.
+    $this->postWithToken(route('customers.store'), [
         'name' => 'Baseline visit', 'phone' => '01012345678', 'animal_type' => 'cat',
         'animal_id' => 'new_animal', 'new_animal' => ['name' => 'Milo', 'species' => 'cat'],
         'consultation_price' => 100, 'amount_paid' => 120,
@@ -286,7 +289,8 @@ test('baseline a complete visit works through HTTP validation with a new animal'
 test('baseline visits reject an animal owned by another customer without partial writes', function () {
     $customer = Customer::factory()->create(['phone' => '201012345678']);
     $animal = Animal::factory()->create();
-    $this->post(route('customers.store'), [
+    // إرفاق رمز إرسال بطلب الزيارة المرفوضة.
+    $this->postWithToken(route('customers.store'), [
         'name' => $customer->name, 'phone' => '01012345678', 'animal_type' => 'cat',
         'animal_id' => $animal->id, 'consultation_price' => 0,
     ])->assertSessionHasErrors('animal_id');

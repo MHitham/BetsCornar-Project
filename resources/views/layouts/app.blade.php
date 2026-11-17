@@ -103,6 +103,8 @@
 
     @stack('scripts')
     <script src="{{ asset('js/notifications.js') }}"></script>
+    {{-- تفعيل حماية النماذج من الإرسال المكرر. --}}
+    <script src="{{ asset('js/prevent-double-submit.js') }}"></script>
 </body>
 
 </html>

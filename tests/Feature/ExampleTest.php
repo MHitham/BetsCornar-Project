@@ -3,5 +3,6 @@
 test('the application returns a successful response', function () {
     $response = $this->get('/');
 
-    $response->assertStatus(200);
+    // الصفحة الرئيسية محمية، لذلك يجب أن يُحوّل الضيف إلى تسجيل الدخول.
+    $response->assertRedirect(route('login'));
 });

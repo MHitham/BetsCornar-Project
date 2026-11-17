@@ -173,8 +173,10 @@
                 <h5 class="modal-title">تسجيل دفعة — {{ $purchase->order_number }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('purchases.pay', $purchase) }}" method="POST">
+            {{-- حماية دفعة المورد من الإرسال المكرر. --}}
+            <form action="{{ route('purchases.pay', $purchase) }}" method="POST" data-prevent-double>
                 @csrf
+                <x-idempotency-token />
                 <div class="modal-body">
                     <div class="alert alert-info">
                         المتبقي: <strong>{{ number_format($purchase->remaining_amount, 2) }} ج</strong>

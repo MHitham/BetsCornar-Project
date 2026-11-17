@@ -21,8 +21,10 @@
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
-    <form method="POST" action="{{ route('invoices.store') }}" id="quickSaleForm">
+    {{-- حماية نموذج البيع السريع من الإرسال المكرر. --}}
+    <form method="POST" action="{{ route('invoices.store') }}" id="quickSaleForm" data-prevent-double>
         @csrf
+        <x-idempotency-token />
 
         <div class="row g-4">
 

@@ -349,8 +349,10 @@
                     @if($remaining > 0 && $invoice->status !== 'cancelled')
                         <hr>
                         <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1 text-success"></i>تسجيل دفعة جديدة</h6>
-                        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST">
+                        {{-- حماية تسجيل دفعة العميل من الإرسال المكرر. --}}
+                        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" data-prevent-double>
                             @csrf
+                            <x-idempotency-token />
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold">المبلغ المدفوع <span class="text-danger">*</span></label>
