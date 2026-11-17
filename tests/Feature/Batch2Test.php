@@ -140,6 +140,71 @@ test('protected forms render an idempotency token and double-submit marker', fun
     }
 });
 
+// --- اختبارات FIX 1: بدون انتظار، 409 للـ AJAX، الـ token مش بيتحرر عند JSON ناجح ---
+
+test('duplicate token returns fast without sleeping (no usleep)', function (): void {
+    $product = Product::factory()->product()->create(['quantity' => 10]);
+    $token = (string) Str::uuid();
+    $data = [
+        '_submit_token' => $token,
+        'items' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]],
+    ];
+
+    // الطلب الأول يمشي بشكل طبيعي.
+    $this->post(route('invoices.store'), $data)->assertRedirect();
+
+    // الطلب الثاني يجب أن يرجع فورًا بدون انتظار (بدون usleep) — وقته < 2 ثانية.
+    $start = microtime(true);
+    $this->post(route('invoices.store'), $data)->assertRedirect();
+    $elapsed = microtime(true) - $start;
+
+    expect($elapsed)->toBeLessThan(2.0, 'الطلب المكرر استغرق وقتًا طويلًا جدًا — usleep لم يُزل');
+});
+
+test('duplicate token with AJAX on processing state returns 409 JSON', function (): void {
+    $userId = $this->actingAsAdmin()->id ?? 1;
+    $token = (string) Str::uuid();
+    $key = 'idem:'.$userId.':'.$token;
+
+    // نحجز الرمز يدويًا في حالة processing لمحاكاة طلب قيد التنفيذ.
+    Cache::add($key, 'processing', 300);
+
+    $this->consultationProduct(100);
+
+    $response = $this->withHeaders(['Accept' => 'application/json'])
+        ->post(route('customers.store'), [
+            '_submit_token' => $token,
+            'name' => 'AJAX Test',
+            'phone' => '01011112222',
+            'animal_type' => 'cat',
+            'consultation_price' => 100,
+        ]);
+
+    $response->assertStatus(409)
+        ->assertJson(['message' => 'الطلب قيد التنفيذ']);
+});
+
+test('JSON success response keeps token as done and second AJAX call returns 409', function (): void {
+    $product = Product::factory()->product()->create(['quantity' => 10]);
+    $token = (string) Str::uuid();
+    $data = [
+        '_submit_token' => $token,
+        'items' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]],
+    ];
+
+    // الطلب الأول ينجح وأي JSON response لا يُزيل الـ token.
+    $this->post(route('invoices.store'), $data)->assertRedirect();
+
+    // الرمز يجب أن يكون موجودًا بعد النجاح (URL أو 'done').
+    $userId = \App\Models\User::first()->id;
+    $key = 'idem:'.$userId.':'.$token;
+    expect(Cache::has($key))->toBeTrue('الـ token يجب أن يبقى محجوزًا بعد النجاح');
+
+    // الطلب الثاني بنفس الرمز يجب أن يُرجع redirect (للـ URL المخزن).
+    $this->post(route('invoices.store'), $data)->assertRedirect();
+    expect(Invoice::count())->toBe(1, 'يجب أن يُنشأ invoice واحد فقط');
+});
+
 test('file cache add accepts the first key and rejects the second sequentially', function (): void {
     $directory = sys_get_temp_dir().'\\betscornar-cache-'.Str::uuid();
     $originalDefault = config('cache.default');

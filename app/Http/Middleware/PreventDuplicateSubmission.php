@@ -22,15 +22,27 @@ class PreventDuplicateSubmission
 
         $key = 'idem:'.$userId.':'.$token;
 
-        // تسجيل الرمز ذريًا عبر مخزن Cache الافتراضي قبل تنفيذ العملية.
+        // تسجيل الرمز ذريًا — بدون أي انتظار: إذا فشل add فالرمز مستخدم بالفعل.
         if (! Cache::add($key, 'processing', 300)) {
-            for ($attempt = 0; $attempt < 16; $attempt++) {
-                usleep(500000);
-                $cached = Cache::get($key);
+            $cached = Cache::get($key);
 
-                if (is_string($cached) && $cached !== 'processing') {
-                    return redirect($cached)->with('info', 'تم حفظ الطلب بالفعل.');
+            // إذا كان الرمز يحمل URL سابق → أعد توجيه المستخدم إليه.
+            if (is_string($cached) && $cached !== 'processing' && $cached !== 'done') {
+                return redirect($cached)->with('info', 'تم حفظ الطلب بالفعل.');
+            }
+
+            // إذا كان الرمز "done" (استجابة JSON ناجحة سابقة) → 409 JSON أو back.
+            if ($cached === 'done') {
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'الطلب قيد التنفيذ'], 409);
                 }
+
+                return back()->with('info', 'الطلب قيد التنفيذ، من فضلك لا تضغط مرة أخرى.');
+            }
+
+            // الرمز لا يزال في حالة "processing" → رد فوري بدون أي انتظار.
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'الطلب قيد التنفيذ'], 409);
             }
 
             return back()->with('info', 'الطلب قيد التنفيذ، من فضلك لا تضغط مرة أخرى.');
@@ -44,14 +56,19 @@ class PreventDuplicateSubmission
             throw $exception;
         }
 
-        // لا نحجز الرمز إذا كانت الاستجابة فشلًا أو لم تُرجع تحويلًا ناجحًا.
+        // لا نحجز الرمز إذا كانت الاستجابة فشلًا أو تحتوي على أخطاء.
         $hasSessionError = $request->hasSession()
             && ($request->session()->has('errors') || $request->session()->has('error'));
 
-        if ($response->getStatusCode() >= 400 || $hasSessionError || ! $response->isRedirection()) {
+        if ($response->getStatusCode() >= 400 || $hasSessionError) {
+            // فشل — نحرر الرمز حتى يستطيع المستخدم إعادة المحاولة.
             Cache::forget($key);
-        } else {
+        } elseif ($response->isRedirection()) {
+            // نجاح مع redirect — نخزن الـ URL المستهدف لإعادة توجيه الطلبات المكررة.
             Cache::put($key, $response->getTargetUrl(), 300);
+        } else {
+            // نجاح بدون redirect (JSON أو عرض مباشر) — نضع علامة "done" لمنع التكرار.
+            Cache::put($key, 'done', 300);
         }
 
         return $response;
