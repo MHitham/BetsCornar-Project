@@ -3,19 +3,18 @@
 use App\Helpers\PhoneHelper;
 use App\Models\Animal;
 use App\Models\Customer;
-use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoicePayment;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
-use App\Models\Supplier;
 use App\Models\Vaccination;
 use App\Models\VaccineBatch;
 use App\Services\CustomerVisitService;
 use App\Services\InvoiceService;
 use App\Services\PurchaseService;
 use App\Services\StockService;
+
 function qaVaccine(array $attributes = []): Product
 {
     $product = Product::factory()->vaccination()->create($attributes);

@@ -19,7 +19,7 @@ class AuditVaccinePivot extends Command
     public function handle(): int
     {
         // استعلام قراءة فقط — لا يُعدّل أي بيانات.
-        $rows = DB::select("
+        $rows = DB::select('
             SELECT
                 ii.id                              AS invoice_item_id,
                 ii.invoice_id,
@@ -33,7 +33,7 @@ class AuditVaccinePivot extends Command
             HAVING ABS(ii.quantity - COALESCE(SUM(iivb.quantity), 0)) > 0.001
             ORDER BY ABS(ii.quantity - COALESCE(SUM(iivb.quantity), 0)) DESC
             LIMIT ?
-        ", [$this->option('limit')]);
+        ', [$this->option('limit')]);
 
         if (empty($rows)) {
             $this->info('✅ لا توجد تعارضات — كل بنود اللقاح متسقة مع الـ pivot.');

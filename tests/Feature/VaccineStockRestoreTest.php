@@ -21,7 +21,7 @@ beforeEach(function (): void {
 test('sell 4 return 1 then cancel restores batch to exactly 10', function (): void {
     $product = Product::factory()->vaccination()->create();
     $batch = VaccineBatch::factory()->create([
-        'product_id'        => $product->id,
+        'product_id' => $product->id,
         'quantity_received' => 10,
         'quantity_remaining' => 10,
     ]);
@@ -54,8 +54,8 @@ test('sell 4 return 1 then cancel restores batch to exactly 10', function (): vo
 test('two sequential partial returns of 1 each from 4 sold restore to exactly 8', function (): void {
     $product = Product::factory()->vaccination()->create();
     $batch = VaccineBatch::factory()->create([
-        'product_id'         => $product->id,
-        'quantity_received'  => 10,
+        'product_id' => $product->id,
+        'quantity_received' => 10,
         'quantity_remaining' => 10,
     ]);
 
@@ -85,18 +85,18 @@ test('partial return across multiple batches restores proportionally', function 
 
     // batch A: 6 doses (ينتهي أولًا بـ FEFO)
     $batchA = VaccineBatch::factory()->create([
-        'product_id'         => $product->id,
-        'quantity_received'  => 6,
+        'product_id' => $product->id,
+        'quantity_received' => 6,
         'quantity_remaining' => 6,
-        'expiry_date'        => now()->addMonths(2)->toDateString(),
+        'expiry_date' => now()->addMonths(2)->toDateString(),
     ]);
 
     // batch B: 4 doses
     $batchB = VaccineBatch::factory()->create([
-        'product_id'         => $product->id,
-        'quantity_received'  => 4,
+        'product_id' => $product->id,
+        'quantity_received' => 4,
         'quantity_remaining' => 4,
-        'expiry_date'        => now()->addMonths(6)->toDateString(),
+        'expiry_date' => now()->addMonths(6)->toDateString(),
     ]);
 
     // بيع 8: يأخذ 6 من A و 2 من B
@@ -126,18 +126,18 @@ test('rounding case 3 doses over 2 batches return 1 is exact', function (): void
 
     // batch A: 2 doses فقط (ينتهي أولًا بـ FEFO) → سيأخذ FEFO كل الـ 2 منه
     $batchA = VaccineBatch::factory()->create([
-        'product_id'         => $product->id,
-        'quantity_received'  => 2,
+        'product_id' => $product->id,
+        'quantity_received' => 2,
         'quantity_remaining' => 2,
-        'expiry_date'        => now()->addMonths(1)->toDateString(),
+        'expiry_date' => now()->addMonths(1)->toDateString(),
     ]);
 
     // batch B: 10 doses → سيأخذ FEFO 1 منه (3 - 2 = 1)
     $batchB = VaccineBatch::factory()->create([
-        'product_id'         => $product->id,
-        'quantity_received'  => 10,
+        'product_id' => $product->id,
+        'quantity_received' => 10,
         'quantity_remaining' => 10,
-        'expiry_date'        => now()->addMonths(5)->toDateString(),
+        'expiry_date' => now()->addMonths(5)->toDateString(),
     ]);
 
     // بيع 3: يأخذ 2 من A، 1 من B (FEFO)
@@ -176,26 +176,26 @@ test('rounding case 3 doses over 2 batches return 1 is exact', function (): void
 test('old data safety cancel restores current item quantity not stale pivot', function (): void {
     $product = Product::factory()->vaccination()->create();
     $batch = VaccineBatch::factory()->create([
-        'product_id'         => $product->id,
-        'quantity_received'  => 10,
+        'product_id' => $product->id,
+        'quantity_received' => 10,
         'quantity_remaining' => 6, // بعد البيع: 10 - 4 = 6
     ]);
 
     // ننشئ invoice item وpivot يدويًا بالبيانات القديمة (pivot=4، item.quantity=3)
     $invoice = Invoice::factory()->create(['status' => 'confirmed', 'total' => 300, 'amount_paid' => 300]);
     $item = InvoiceItem::factory()->create([
-        'invoice_id'  => $invoice->id,
-        'product_id'  => $product->id,
-        'quantity'    => 3, // بعد مرتجع سابق لم يحدّث pivot
-        'unit_price'  => 100,
-        'line_total'  => 300,
+        'invoice_id' => $invoice->id,
+        'product_id' => $product->id,
+        'quantity' => 3, // بعد مرتجع سابق لم يحدّث pivot
+        'unit_price' => 100,
+        'line_total' => 300,
     ]);
 
     // pivot قديم: quantity=4 (لم يتحدث بعد مرتجع 1)
     InvoiceItemVaccineBatch::create([
-        'invoice_item_id'  => $item->id,
+        'invoice_item_id' => $item->id,
         'vaccine_batch_id' => $batch->id,
-        'quantity'         => 4,
+        'quantity' => 4,
     ]);
 
     // إلغاء الفاتورة: scale = 3/4 = 0.75، toRestore = 4 * 0.75 = 3
@@ -215,8 +215,8 @@ test('guard throws exception and rolls back when restore would exceed quantity_r
 
     $product = Product::factory()->vaccination()->create();
     $batch = VaccineBatch::factory()->create([
-        'product_id'         => $product->id,
-        'quantity_received'  => 10,
+        'product_id' => $product->id,
+        'quantity_received' => 10,
         'quantity_remaining' => 10, // ممتلئ بالفعل — أي إضافة ستتجاوز الحد
     ]);
 
@@ -225,14 +225,14 @@ test('guard throws exception and rolls back when restore would exceed quantity_r
     $item = InvoiceItem::factory()->create([
         'invoice_id' => $invoice->id,
         'product_id' => $product->id,
-        'quantity'   => 2,
+        'quantity' => 2,
         'unit_price' => 50,
         'line_total' => 100,
     ]);
     InvoiceItemVaccineBatch::create([
-        'invoice_item_id'  => $item->id,
+        'invoice_item_id' => $item->id,
         'vaccine_batch_id' => $batch->id,
-        'quantity'         => 2,
+        'quantity' => 2,
     ]);
 
     // هذا سيحاول إضافة 2 على 10 (الحد المسموح) → overflow

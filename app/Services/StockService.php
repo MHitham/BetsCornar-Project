@@ -89,12 +89,12 @@ class StockService
                 // حارس: لا يُسمح بأن يتجاوز quantity_remaining قيمة quantity_received.
                 if ($newRemaining > (float) $batch->quantity_received) {
                     Log::error('vaccine stock restore overflow in restoreVaccineStock', [
-                        'vaccine_batch_id'   => $batch->id,
-                        'quantity_received'  => $batch->quantity_received,
+                        'vaccine_batch_id' => $batch->id,
+                        'quantity_received' => $batch->quantity_received,
                         'quantity_remaining' => $batch->quantity_remaining,
-                        'to_restore'         => $toRestore,
-                        'new_remaining'      => $newRemaining,
-                        'invoice_item_id'    => $invoiceItem->id,
+                        'to_restore' => $toRestore,
+                        'new_remaining' => $newRemaining,
+                        'invoice_item_id' => $invoiceItem->id,
                     ]);
                     throw new RuntimeException(
                         "خطأ في استعادة مخزون اللقاح: batch #{$batch->id} سيتجاوز الكمية المستلمة ({$batch->quantity_received})."
@@ -162,12 +162,12 @@ class StockService
                 // حارس: لا يُسمح بأن يتجاوز quantity_remaining قيمة quantity_received.
                 if ($newRemaining > (float) $batch->quantity_received) {
                     Log::error('vaccine stock restore overflow in restorePartialVaccineStock', [
-                        'vaccine_batch_id'   => $batch->id,
-                        'quantity_received'  => $batch->quantity_received,
+                        'vaccine_batch_id' => $batch->id,
+                        'quantity_received' => $batch->quantity_received,
                         'quantity_remaining' => $batch->quantity_remaining,
-                        'to_restore'         => $toRestore,
-                        'new_remaining'      => $newRemaining,
-                        'invoice_item_id'    => $invoiceItem->id,
+                        'to_restore' => $toRestore,
+                        'new_remaining' => $newRemaining,
+                        'invoice_item_id' => $invoiceItem->id,
                     ]);
                     throw new RuntimeException(
                         "خطأ في استعادة مخزون اللقاح: batch #{$batch->id} سيتجاوز الكمية المستلمة ({$batch->quantity_received})."

@@ -285,6 +285,7 @@ class InvoiceService
             ]);
             // زيادة amount_paid مباشرة لأن المرتجعات النقدية تخفضها دون صف دفتر جديد.
             $invoice->update(['amount_paid' => round((float) $invoice->amount_paid + $amount, 2)]);
+
             return $payment;
         });
     }
@@ -314,11 +315,11 @@ class InvoiceService
 
         $totalExpenses = (float) Expense::whereDate('expense_date', $date)->sum('amount');
         $supplierCash = (float) PurchasePayment::clinicCash()->whereDate('paid_at', $date)->sum('amount');
-        
+
         $cashRefundsOut = (float) \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
             ->whereDate('created_at', $date)
             ->sum('cash_refunded');
-            
+
         $cashRefundsList = \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
             ->whereDate('created_at', $date)
             ->where('cash_refunded', '>', 0)
@@ -337,22 +338,22 @@ class InvoiceService
             ->get(['id', 'purchase_order_id', 'amount', 'notes', 'paid_at']);
 
         return [
-            'date'                   => $date,
-            'label'                  => $date,
-            'period_type'            => 'day',
-            'actual_gross_revenue'   => $actualGross,
-            'gross_revenue'          => $accrualRevenue,
-            'total_expenses'         => $totalExpenses,
-            'supplier_cash_out'      => $supplierCash,
-            'net_cash_in_drawer'     => $netCash,
-            'invoice_count'          => $confirmed->count(),
-            'cancelled_count'        => (int)(clone $query)->cancelled()->count(),
-            'customer_visits'        => $confirmed->where('source','customer')->count(),
-            'quick_sales'            => $confirmed->where('source','!=','customer')->count(),
-            'expenses_list'          => $expensesList,
+            'date' => $date,
+            'label' => $date,
+            'period_type' => 'day',
+            'actual_gross_revenue' => $actualGross,
+            'gross_revenue' => $accrualRevenue,
+            'total_expenses' => $totalExpenses,
+            'supplier_cash_out' => $supplierCash,
+            'net_cash_in_drawer' => $netCash,
+            'invoice_count' => $confirmed->count(),
+            'cancelled_count' => (int) (clone $query)->cancelled()->count(),
+            'customer_visits' => $confirmed->where('source', 'customer')->count(),
+            'quick_sales' => $confirmed->where('source', '!=', 'customer')->count(),
+            'expenses_list' => $expensesList,
             'supplier_payments_list' => $supplierPaymentsList,
-            'cash_refunds_out'       => $cashRefundsOut,
-            'cash_refunds_list'      => $cashRefundsList,
+            'cash_refunds_out' => $cashRefundsOut,
+            'cash_refunds_list' => $cashRefundsList,
         ];
     }
 
@@ -383,12 +384,12 @@ class InvoiceService
 
         $totalExpenses = (float) Expense::whereYear('expense_date', $year)->whereMonth('expense_date', $month)->sum('amount');
         $supplierCash = (float) PurchasePayment::clinicCash()->whereYear('paid_at', $year)->whereMonth('paid_at', $month)->sum('amount');
-        
+
         $cashRefundsOut = (float) \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
             ->sum('cash_refunded');
-            
+
         $cashRefundsList = \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
@@ -410,22 +411,22 @@ class InvoiceService
             ->get(['id', 'purchase_order_id', 'amount', 'notes', 'paid_at']);
 
         return [
-            'date'                   => sprintf('%04d-%02d', $year, $month),
-            'label'                  => sprintf('%04d-%02d', $year, $month),
-            'period_type'            => 'month',
-            'actual_gross_revenue'   => $actualGross,
-            'gross_revenue'          => $accrualRevenue,
-            'total_expenses'         => $totalExpenses,
-            'supplier_cash_out'      => $supplierCash,
-            'net_cash_in_drawer'     => $netCash,
-            'invoice_count'          => $confirmed->count(),
-            'cancelled_count'        => (int)(clone $query)->cancelled()->count(),
-            'customer_visits'        => $confirmed->where('source','customer')->count(),
-            'quick_sales'            => $confirmed->where('source','!=','customer')->count(),
-            'expenses_list'          => $expensesList,
+            'date' => sprintf('%04d-%02d', $year, $month),
+            'label' => sprintf('%04d-%02d', $year, $month),
+            'period_type' => 'month',
+            'actual_gross_revenue' => $actualGross,
+            'gross_revenue' => $accrualRevenue,
+            'total_expenses' => $totalExpenses,
+            'supplier_cash_out' => $supplierCash,
+            'net_cash_in_drawer' => $netCash,
+            'invoice_count' => $confirmed->count(),
+            'cancelled_count' => (int) (clone $query)->cancelled()->count(),
+            'customer_visits' => $confirmed->where('source', 'customer')->count(),
+            'quick_sales' => $confirmed->where('source', '!=', 'customer')->count(),
+            'expenses_list' => $expensesList,
             'supplier_payments_list' => $supplierPaymentsList,
-            'cash_refunds_out'       => $cashRefundsOut,
-            'cash_refunds_list'      => $cashRefundsList,
+            'cash_refunds_out' => $cashRefundsOut,
+            'cash_refunds_list' => $cashRefundsList,
         ];
     }
 }

@@ -5,8 +5,8 @@ namespace Tests;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Illuminate\Testing\TestResponse;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Role;
 
 abstract class TestCase extends BaseTestCase

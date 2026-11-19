@@ -81,7 +81,7 @@ class CustomerVisitService
                 $consultationProduct = Product::query()
                     ->active()
                     ->where('type', 'service')
-                    ->whereRaw("TRIM(name) = ?", ['كشف'])
+                    ->whereRaw('TRIM(name) = ?', ['كشف'])
                     ->first();
 
                 // التحقق من وجود منتج الكشف وإيقاف الحفظ في حالة عدم وجوده

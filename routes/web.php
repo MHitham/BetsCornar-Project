@@ -60,9 +60,9 @@ Route::middleware('auth')->group(function () {
             ->first();
         $todayVisits = (int) ($todaySummary->today_visits ?? 0);
         $grossRevenue = (float) ($todaySummary->today_revenue ?? 0);
-        
+
         $todayExpenses = \App\Models\Expense::whereBetween('expense_date', [$periodStart->toDateString(), $periodEnd->toDateString()])->sum('amount');
-        
+
         $todaySupplierCash = \App\Models\PurchasePayment::clinicCash()
             ->whereBetween('paid_at', [$periodStart->toDateString(), $periodEnd->toDateString()])
             ->sum('amount');
@@ -145,7 +145,7 @@ Route::middleware('auth')->group(function () {
         // فصل expenses.store عن الـ resource لإضافة حماية idempotent لمنع الإضافة المكررة.
         Route::resource('expenses', ExpenseController::class)->except(['show', 'store']);
         Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store')->middleware('idempotent');
-        
+
         Route::resource('purchases', PurchaseOrderController::class)
             ->only(['index', 'create', 'show']);
         // حماية إنشاء فاتورة شراء وتسجيل دفعة المورد من التكرار.
@@ -164,16 +164,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [\App\Http\Controllers\SettingsController::class, 'update'])->name('settings.update');
 
-
-
-
-
-
-
         Route::get('reports/profitability', [ReportController::class, 'profitability'])->name('reports.profitability');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
-
-
 
         // فصل vaccine-batches.store لإضافة حماية idempotent لمنع إنشاء batch مكرر.
         Route::resource('vaccine-batches', VaccineBatchController::class)->except(['show', 'store']);
