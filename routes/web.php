@@ -120,7 +120,9 @@ Route::middleware('auth')->group(function () {
         Route::post('customers/{customer}/animals', [\App\Http\Controllers\AnimalController::class, 'store'])->name('customers.animals.store')->middleware('idempotent');
         Route::get('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'show'])->name('animals.show');
         Route::patch('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'update'])->name('animals.update');
-        Route::delete('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'destroy'])->name('animals.destroy');
+        Route::delete('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'destroy'])
+            ->name('animals.destroy')
+            ->middleware(\App\Http\Middleware\AdminOnlyAnimalDeletion::class);
 
         Route::resource('invoices', InvoiceController::class)->only(['index', 'create', 'show']);
         // حماية إنشاء البيع السريع من إعادة إرسال نفس الطلب.

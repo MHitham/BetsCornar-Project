@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Animal;
 use App\Models\Customer;
+use App\Models\Invoice;
+use App\Models\Vaccination;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class AnimalController extends Controller
 {
     public function index(Customer $customer): View
     {
-        $animals = $customer->animals()->latest('created_at')->paginate(15);
+        $animals = $customer->animals()->withCount('vaccinations')->latest('created_at')->paginate(15);
 
         return view('customers.animals.index', compact('customer', 'animals'));
     }
@@ -70,14 +74,25 @@ class AnimalController extends Controller
 
     public function destroy(Animal $animal): RedirectResponse
     {
-        if ($animal->vaccinations()->exists() || $animal->invoices()->exists()) {
-            return back()->withErrors([
-                'animal_delete' => 'لا يمكن حذف حيوان مرتبط بسجلات طبية أو فواتير',
-            ]);
-        }
+        // منع الموظف صراحةً من حذف ملف الحيوان وإرجاع 403 بدل إعادة التوجيه.
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $customerId = $animal->customer_id;
 
-        $animal->delete();
+        DB::transaction(function () use ($animal) {
+            $animal = Animal::whereKey($animal->id)->lockForUpdate()->firstOrFail();
+            // حفظ اسم الحيوان على فواتيره قبل الحذف حتى يبقى ظاهراً في السجل.
+            Invoice::where('animal_id', $animal->id)->whereNull('animal_name')->update(['animal_name' => $animal->name]);
+            // فصل الفواتير عن الحيوان، فالفواتير لا تُحذف أبداً.
+            Invoice::where('animal_id', $animal->id)->update(['animal_id' => null]);
+            // حذف التطعيمات الطبية فقط بدون لمس المخزون أو دفعات اللقاح.
+            Vaccination::where('animal_id', $animal->id)->delete();
+            $animal->delete();
+        });
 
-        return back()->with('success', 'تم حذف الحيوان بنجاح');
+        Cache::forget(dashboardKey('upcoming_vaccinations'));
+        Cache::forget('dashboard.total_vaccinations');
+
+        return redirect()->route('customers.show', $customerId)
+            ->with('success', 'تم حذف ملف الحيوان وتطعيماته. الفواتير محفوظة.');
     }
 }

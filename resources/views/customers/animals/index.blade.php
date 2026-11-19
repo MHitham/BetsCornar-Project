@@ -38,13 +38,9 @@
                             <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editAnimalModal{{ $animal->id }}" title="تعديل">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <form action="{{ route('animals.destroy', $animal) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من الحذف؟');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-danger" title="حذف">
+                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAnimalModal{{ $animal->id }}" title="حذف">
                                     <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
+                            </button>
                         </td>
                     </tr>
 
@@ -104,6 +100,15 @@
                                 </div>
                             </form>
                         </div>
+                    </div>
+                    <div class="modal fade" id="deleteAnimalModal{{ $animal->id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog"><div class="modal-content">
+                            <div class="modal-header"><h5 class="modal-title">حذف ملف {{ $animal->name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                            <div class="modal-body">سيتم حذف {{ $animal->vaccinations_count }} سجل تطعيم نهائياً. الفواتير ستبقى كما هي.</div>
+                            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <form action="{{ route('animals.destroy', $animal) }}" method="POST">@csrf @method('DELETE')<button type="submit" class="btn btn-danger">تأكيد الحذف</button></form>
+                            </div>
+                        </div></div>
                     </div>
                     @endforeach
                 </tbody>
