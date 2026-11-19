@@ -58,10 +58,23 @@ class CustomerVisitService
                 }
             }
 
+            // منع إنشاء زيارة بلا حيوان عندما يكون للعميل أكثر من حيوان نشط.
+            if (empty($animalId) && $customer->exists) {
+                $activeAnimals = $customer->animals()->where('is_active', true)->count();
+                if ($activeAnimals > 1) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'animal_id' => ['هذا العميل لديه أكثر من حيوان، اختر الحيوان أولاً.'],
+                    ]);
+                }
+            }
+
+            $animalName = isset($animal) ? $animal->name : null;
+
             $invoice = Invoice::create([
                 'invoice_number' => $this->invoiceService->generateInvoiceNumber(),
                 'customer_id' => $customer->id,
                 'animal_id' => $animalId,
+                'animal_name' => $animalName,
                 'customer_name' => $customer->name,
                 'source' => 'customer',
                 'diagnosis' => $data['diagnosis'] ?? null,

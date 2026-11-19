@@ -103,13 +103,13 @@ class CustomerController extends Controller
         // Build all possible phone format variants to match legacy data
         // e.g. normalized = 201012345678, local = 1012345678, withZero = 01012345678
         $localPhone = substr($normalizedPhone, 2);       // strip country code '20'
-        $withZero   = '0' . $localPhone;                  // add leading zero
+        $withZero = '0'.$localPhone;                  // add leading zero
 
         $customer = Customer::query()
             ->whereIn('phone', [$normalizedPhone, $localPhone, $withZero])
             ->with(['animals' => function ($q) {
-
-                $q->select('id', 'customer_id', 'name', 'species');
+                $q->select('id', 'customer_id', 'name', 'species')
+                    ->where('is_active', true);
             }])
             ->first();
 
@@ -122,6 +122,7 @@ class CustomerController extends Controller
             'name' => $customer->name,
             'phone' => $customer->phone,
             'animals' => $customer->animals,
+            'active_animals_count' => $customer->animals->count(),
         ]);
     }
 
@@ -132,7 +133,7 @@ class CustomerController extends Controller
         $consultationProduct = Product::query()
             ->active()
             ->where('type', 'service')
-            ->whereRaw("TRIM(name) = ?", ['كشف'])
+            ->whereRaw('TRIM(name) = ?', ['كشف'])
             ->first();
 
         $vaccines = Product::query()

@@ -106,6 +106,7 @@
                         <th style="width: 50px;" class="text-center"><i class="bi bi-check2-square border p-1 rounded"></i>
                         </th>
                         <th>{{ __('vaccinations.fields.customer_name') }}</th>
+                        <th>الحيوان</th>
                         <th>{{ __('vaccinations.fields.animal_type') }}</th>
                         <th>{{ __('vaccinations.fields.vaccine_name') }}</th>
                         <th>{{ __('vaccinations.fields.vaccination_date') }}</th>
@@ -152,6 +153,7 @@
                                         </a>
                                     </div>
                                 </td>
+                                <td>{{ $vacc->animal?->name ?? '—' }}</td>
                                 <td>
                                     <span class="badge bg-light text-dark border">{{ $vacc->customer->animal_type }}</span>
                                 </td>
@@ -169,7 +171,7 @@
                                 </td>
                                 <td class="text-center">
                                     @if ($vacc->customer->phone && !$vacc->is_completed)
-                                        <a href="https://wa.me/{{ $vacc->customer->phone }}?text={{ urlencode('مرحباً ' . $vacc->customer->name . '، نود تذكيركم بموعد تطعيم (' . $vacc->product->name . ') الخاص بـ (' . $vacc->customer->animal_type . ') يوم ' . $vacc->next_dose_date?->format('Y-m-d')) }}"
+                                        <a href="https://wa.me/{{ $vacc->customer->phone }}?text={{ urlencode('مرحباً ' . $vacc->customer->name . '، نود تذكيركم بموعد تطعيم (' . $vacc->product->name . ')' . ($vacc->animal?->name ? ' للحيوان (' . $vacc->animal->name . ')' : '') . ' الخاص بـ (' . $vacc->customer->animal_type . ') يوم ' . $vacc->next_dose_date?->format('Y-m-d')) }}"
                                             target="_blank" class="btn btn-sm btn-outline-success" title="مراسلة واتساب">
                                             <i class="bi bi-whatsapp"></i>
                                         </a>
@@ -240,6 +242,7 @@
                                 <tr>
                                     <th>العميل</th>
                                     <th>الحيوان</th>
+                                    <th>النوع</th>
                                     <th>التطعيم</th>
                                     <th>الموعد</th>
                                     <th class="text-center">تواصل</th>
@@ -250,6 +253,7 @@
                                     @foreach ($threeDaysUpcoming as $item)
                                         <tr data-upcoming-phone="{{ $item->customer->phone ?? '' }}">
                                             <td>{{ $item->customer->name }}</td>
+                                            <td>{{ $item->animal?->name ?? '—' }}</td>
                                             <td>{{ $item->customer->animal_type }}</td>
                                             <td>{{ $item->product ? $item->product->name : '—' }}</td>
                                             <td>
@@ -258,7 +262,7 @@
                                             </td>
                                             <td class="text-center">
                                                 @if ($item->customer->phone)
-                                                    <a href="https://wa.me/{{ $item->customer->phone }}?text={{ urlencode('مرحباً ' . $item->customer->name . '، نود تذكيركم بموعد تطعيم (' . $item->product?->name . ') الخاص بـ (' . $item->customer->animal_type . ') يوم ' . $item->next_dose_date?->format('Y-m-d')) }}"
+                                                    <a href="https://wa.me/{{ $item->customer->phone }}?text={{ urlencode('مرحباً ' . $item->customer->name . '، نود تذكيركم بموعد تطعيم (' . $item->product?->name . ')' . ($item->animal?->name ? ' للحيوان (' . $item->animal->name . ')' : '') . ' الخاص بـ (' . $item->customer->animal_type . ') يوم ' . $item->next_dose_date?->format('Y-m-d')) }}"
                                                         target="_blank" class="btn btn-sm btn-success">
                                                         <i class="bi bi-whatsapp"></i> واتساب
                                                     </a>
@@ -653,6 +657,7 @@
                         rows += `<tr>
                         <td><div style="width:10px;height:10px;border-radius:50%;background:${s.dot};margin:auto;"></div></td>
                         <td class="fw-semibold">${v.name}</td>
+                        <td>${v.animal || '—'}</td>
                         <td class="text-muted small">${v.vaccination_date}</td>
                         <td>${v.next_dose_date
                             ? `<span class="badge ${s.badge}">${v.next_dose_date}</span>`
@@ -670,7 +675,7 @@
                         data.vaccinations
                             .filter(v => v.next_dose_date && v.status !== 'done')
                             .forEach(v => {
-                                msg += `• ${v.name} — ${v.next_dose_date}\n`;
+                                msg += `• ${v.animal ? v.animal + ': ' : ''}${v.name} بتاريخ ${v.next_dose_date}\n`;
                             });
                         msg += '\nعيادة بيتس كورنر 🐾';
                         waBtn.href = 'https://wa.me/' + data.phone + '?text=' + encodeURIComponent(
@@ -847,6 +852,7 @@
                             <tr>
                                 <th style="width:8px"></th>
                                 <th>اللقاح</th>
+                                <th>الحيوان</th>
                                 <th>تاريخ التطعيم</th>
                                 <th>الموعد القادم</th>
                             </tr>

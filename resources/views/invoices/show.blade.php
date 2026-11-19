@@ -54,7 +54,12 @@
                         </tr>
                         <tr>
                             <td class="text-muted">العميل</td>
-                            <td class="fw-semibold">{{ $invoice->customer_name }}</td>
+                            <td class="fw-semibold">
+                                {{ $invoice->customer_name }}
+                                @if ($invoice->pet_name)
+                                    — الحيوان: {{ $invoice->pet_name }}
+                                @endif
+                            </td>
                         </tr>
                         <tr>
     <td class="text-muted">تم الإنشاء بواسطة</td>

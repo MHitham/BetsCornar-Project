@@ -136,7 +136,12 @@
         </tr>
         <tr>
             <td class="label">اسم العميل:</td>
-            <td class="value" colspan="3">{{ $invoice->customer_name }}</td>
+            <td class="value" colspan="3">
+                {{ $invoice->customer_name }}
+                @if ($invoice->pet_name)
+                    — الحيوان: {{ $invoice->pet_name }}
+                @endif
+            </td>
         </tr>
     </table>
 

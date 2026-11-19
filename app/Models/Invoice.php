@@ -15,6 +15,7 @@ class Invoice extends Model
         'invoice_number',
         'customer_id',
         'animal_id',
+        'animal_name',
         'customer_name',
         'source',
         'total',
@@ -44,6 +45,12 @@ class Invoice extends Model
     public function animal(): BelongsTo
     {
         return $this->belongsTo(Animal::class);
+    }
+
+    // إتاحة اسم الحيوان الحالي مع الاحتفاظ بالاسم المنسوخ بعد حذف الملف.
+    public function getPetNameAttribute(): ?string
+    {
+        return $this->animal?->name ?? $this->animal_name;
     }
 
     public function creator(): BelongsTo

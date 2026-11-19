@@ -111,6 +111,7 @@ class InvoiceController extends Controller
     {
 
         $invoice->load([
+            'animal:id,name',
             'items.product',
             'items.vaccineBatches',
             'vaccinations.product',
@@ -186,7 +187,7 @@ class InvoiceController extends Controller
 
     public function pdf(Invoice $invoice)
     {
-        $invoice->load(['items.product', 'customer', 'vaccinations.product']);
+        $invoice->load(['items.product', 'customer', 'animal', 'vaccinations.product']);
 
         $html = view('invoices.pdf', compact('invoice'))->render();
 

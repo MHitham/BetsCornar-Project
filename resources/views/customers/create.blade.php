@@ -68,6 +68,7 @@
                                     <i class="bi bi-plus-lg fw-bold"></i> إضافة حيوان
                                 </button>
                             </div>
+                            <div id="animalSelectionHint" class="form-text text-warning d-none">هذا العميل لديه أكثر من حيوان، اختر الحيوان أولاً.</div>
                             @error('animal_id')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
@@ -747,6 +748,9 @@
                     addAnimalLink.classList.add('d-none');
                     addAnimalLink.href = '#';
                 }
+
+                animalSelect.required = false;
+                document.getElementById('animalSelectionHint')?.classList.add('d-none');
             }
 
             function saveModalAnimal() {
@@ -827,6 +831,10 @@
                                 animalSelect.appendChild(option);
                             });
                         }
+
+                        const requiresAnimal = Number(data.active_animals_count || 0) > 1;
+                        animalSelect.required = requiresAnimal;
+                        document.getElementById('animalSelectionHint')?.classList.toggle('d-none', !requiresAnimal);
                         
                         if (typeof addAnimalLink !== 'undefined' && addAnimalLink) {
                             const indexUrl = `{{ url('customers') }}/${data.id}/animals`;
@@ -839,6 +847,8 @@
                         option.textContent = "-- لا يوجد عميل بهذا الرقم، اضغط الزر الأزرق لإضافة حيوان --";
                         animalSelect.appendChild(option);
                         animalSelect.disabled = true;
+                        animalSelect.required = false;
+                        document.getElementById('animalSelectionHint')?.classList.add('d-none');
                         
                         if (typeof addAnimalLink !== 'undefined' && addAnimalLink) {
                             addAnimalLink.classList.add('d-none');
