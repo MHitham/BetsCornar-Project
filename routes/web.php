@@ -116,7 +116,8 @@ Route::middleware('auth')->group(function () {
         Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
 
         Route::get('customers/{customer}/animals', [\App\Http\Controllers\AnimalController::class, 'index'])->name('customers.animals.index');
-        Route::post('customers/{customer}/animals', [\App\Http\Controllers\AnimalController::class, 'store'])->name('customers.animals.store');
+        // إضافة حماية idempotent لإضافة الحيوانات الجديدة للعملاء.
+        Route::post('customers/{customer}/animals', [\App\Http\Controllers\AnimalController::class, 'store'])->name('customers.animals.store')->middleware('idempotent');
         Route::get('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'show'])->name('animals.show');
         Route::patch('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'update'])->name('animals.update');
         Route::delete('animals/{animal}', [\App\Http\Controllers\AnimalController::class, 'destroy'])->name('animals.destroy');
@@ -141,7 +142,9 @@ Route::middleware('auth')->group(function () {
         Route::patch('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
         Route::resource('products', ProductController::class)->except('show');
 
-        Route::resource('expenses', ExpenseController::class)->except('show');
+        // فصل expenses.store عن الـ resource لإضافة حماية idempotent لمنع الإضافة المكررة.
+        Route::resource('expenses', ExpenseController::class)->except(['show', 'store']);
+        Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store')->middleware('idempotent');
         
         Route::resource('purchases', PurchaseOrderController::class)
             ->only(['index', 'create', 'show']);
@@ -172,7 +175,9 @@ Route::middleware('auth')->group(function () {
 
 
 
-        Route::resource('vaccine-batches', VaccineBatchController::class)->except('show');
+        // فصل vaccine-batches.store لإضافة حماية idempotent لمنع إنشاء batch مكرر.
+        Route::resource('vaccine-batches', VaccineBatchController::class)->except(['show', 'store']);
+        Route::post('vaccine-batches', [VaccineBatchController::class, 'store'])->name('vaccine-batches.store')->middleware('idempotent');
 
         Route::resource('users', UserController::class)->except(['show']);
 
@@ -187,9 +192,11 @@ Route::middleware('auth')->group(function () {
         Route::get('settings/backup', [BackupController::class, 'index'])->name('backup.index');
         Route::post('settings/backup', [BackupController::class, 'store'])->name('backup.store');
 
+        // إضافة حماية idempotent لاستعادة النسخ الاحتياطية — العملية خطيرة ولا يجوز تكرارها.
         Route::post('settings/backup/{filename}/restore', [BackupController::class, 'restoreBackup'])
             ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sql$')
-            ->name('backup.restore');
+            ->name('backup.restore')
+            ->middleware('idempotent');
         Route::delete('settings/backup/{filename}', [BackupController::class, 'destroy'])
             ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sql$')
             ->name('backup.destroy');

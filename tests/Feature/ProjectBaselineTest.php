@@ -321,7 +321,8 @@ test('baseline referenced products are deactivated instead of deleted', function
 });
 
 test('baseline expense deletion is soft and removes it from cash summaries', function () {
-    $this->post(route('expenses.store'), [
+    // إرفاق رمز الإرسال بطلب المصروف بعد تطبيق middleware idempotent.
+    $this->postWithToken(route('expenses.store'), [
         'title' => 'Baseline rent', 'amount' => 50, 'expense_date' => today()->toDateString(),
     ])->assertSessionHasNoErrors();
     $expense = Expense::sole();

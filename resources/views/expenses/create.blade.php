@@ -8,8 +8,10 @@
     
     <div class="card">
         <div class="card-body">
-            <form method="POST" action="{{ route('expenses.store') }}" class="row g-3">
+            {{-- إضافة data-prevent-double و x-idempotency-token لمنع تكرار تسجيل المصروف --}}
+            <form method="POST" action="{{ route('expenses.store') }}" class="row g-3" data-prevent-double>
                 @csrf
+                <x-idempotency-token />
 
                 <div class="col-md-6">
                     <label for="title" class="form-label">{{ __('expenses.fields.title') }}</label>

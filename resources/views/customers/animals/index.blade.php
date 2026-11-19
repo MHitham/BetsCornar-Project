@@ -124,8 +124,10 @@
 
 <div class="modal fade" id="addAnimalModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <form action="{{ route('customers.animals.store', $customer) }}" method="POST">
+        {{-- إضافة حماية idempotent لمنع التكرار عند إضافة حيوان جديد للعميل --}}
+        <form action="{{ route('customers.animals.store', $customer) }}" method="POST" data-prevent-double>
             @csrf
+            <x-idempotency-token />
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">إضافة حيوان جديد للعميل {{ $customer->name }}</h5>

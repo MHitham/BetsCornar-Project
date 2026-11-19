@@ -1,5 +1,9 @@
-<form method="POST" action="{{ $action }}">
+{{-- إضافة حماية منع الإرسال المزدوج ورمز idempotency عند إنشاء دفعة لقاح جديدة --}}
+<form method="POST" action="{{ $action }}" @if($method === 'POST') data-prevent-double @endif>
     @csrf
+    @if($method === 'POST')
+        <x-idempotency-token />
+    @endif
     @if($method !== 'POST') @method($method) @endif
 
     <div class="card mb-4">

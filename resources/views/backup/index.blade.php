@@ -69,10 +69,13 @@
                                 <td class="text-center">
                                     <div class="d-flex gap-1 justify-content-center">
                                         
+                                        {{-- إضافة حماية idempotent لمنع تكرار طلب استعادة النسخة الاحتياطية --}}
                                         <form method="POST"
                                               action="{{ route('backup.restore', $backup['filename']) }}"
+                                              data-prevent-double
                                               onsubmit="return confirm('⚠️ تحذير: سيتم استبدال قاعدة البيانات الحالية بهذه النسخة.\n\nسيتم حفظ نسخة احتياطية تلقائية من الحالة الراهنة أولاً.\n\nهل تريد المتابعة؟')">
                                             @csrf
+                                            <x-idempotency-token />
                                             <button type="submit" class="btn btn-sm btn-outline-warning" title="استعادة">
                                                 <i class="bi bi-arrow-counterclockwise"></i>
                                             </button>

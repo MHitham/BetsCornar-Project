@@ -133,6 +133,8 @@ test('protected forms render an idempotency token and double-submit marker', fun
         route('customers.create'),
         route('invoices.create'),
         route('purchases.create'),
+        route('expenses.create'),
+        route('vaccine-batches.create'),
     ] as $url) {
         $response = $this->get($url)->assertSuccessful();
         $response->assertSee('name="_submit_token"', false)
