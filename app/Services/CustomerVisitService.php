@@ -155,6 +155,13 @@ class CustomerVisitService
 
             $invoice->update(['total' => round($lineTotal, 2)]);
 
+            // رفض المدفوع إذا تجاوز إجمالي الفاتورة بعد حسابه — AUD-10
+            if (round((float) $invoice->amount_paid, 2) > round($lineTotal, 2)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount_paid' => ['المبلغ المدفوع لا يمكن أن يتجاوز إجمالي الفاتورة ('.round($lineTotal, 2).').'],
+                ]);
+            }
+
             if ((float) $invoice->amount_paid > 0) {
                 \App\Models\InvoicePayment::create([
                     'invoice_id' => $invoice->id,
