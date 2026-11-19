@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\VaccineBatch;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class StockService
@@ -38,24 +39,72 @@ class StockService
     {
         DB::transaction(function () use ($invoiceItem) {
 
-            $batches = InvoiceItemVaccineBatch::query()
+            $links = InvoiceItemVaccineBatch::query()
                 ->where('invoice_item_id', $invoiceItem->id)
                 ->with('vaccineBatch')
                 ->lockForUpdate()
                 ->get();
 
-            foreach ($batches as $link) {
+            // حساب مجموع كميات الـ pivot لتطبيق scale الصح.
+            // هذا يعالج البيانات القديمة التي لم تُحدَّث فيها pivot بعد المرتجعات الجزئية.
+            $pivotSum = $links->sum(fn ($l) => (float) $l->quantity);
+
+            // الكمية الحالية للبند (بعد أي مرتجعات جزئية سابقة).
+            $currentItemQty = (float) $invoiceItem->quantity;
+
+            // scale = 1 للبيانات الجديدة (pivot محدّث)؛ أقل من 1 للبيانات القديمة.
+            // حماية من القسمة على صفر: لو pivot_sum = 0 لا نعمل شيء.
+            if ($pivotSum <= 0) {
+                return;
+            }
+
+            $scale = $currentItemQty / $pivotSum;
+
+            // توزيع الكمية المُستعادة على الـ batches مع تعويض الـ rounding في آخر batch.
+            $totalRestored = 0.0;
+            $linksArr = $links->values();
+            $lastIndex = $linksArr->count() - 1;
+
+            foreach ($linksArr as $index => $link) {
                 $batch = $link->vaccineBatch;
 
                 if (! $batch) {
                     continue;
                 }
 
-                $batch->update([
-                    'quantity_remaining' => $this->normalizeDecimal(
-                        (float) $batch->quantity_remaining + (float) $link->quantity
-                    ),
-                ]);
+                // آخر batch يستوعب الفارق لضمان مجموع دقيق.
+                if ($index === $lastIndex) {
+                    $toRestore = $this->normalizeDecimal($currentItemQty - $totalRestored);
+                } else {
+                    $toRestore = $this->normalizeDecimal((float) $link->quantity * $scale);
+                    $totalRestored = $this->normalizeDecimal($totalRestored + $toRestore);
+                }
+
+                if ($toRestore <= 0) {
+                    continue;
+                }
+
+                $newRemaining = $this->normalizeDecimal((float) $batch->quantity_remaining + $toRestore);
+
+                // حارس: لا يُسمح بأن يتجاوز quantity_remaining قيمة quantity_received.
+                if ($newRemaining > (float) $batch->quantity_received) {
+                    Log::error('vaccine stock restore overflow in restoreVaccineStock', [
+                        'vaccine_batch_id'   => $batch->id,
+                        'quantity_received'  => $batch->quantity_received,
+                        'quantity_remaining' => $batch->quantity_remaining,
+                        'to_restore'         => $toRestore,
+                        'new_remaining'      => $newRemaining,
+                        'invoice_item_id'    => $invoiceItem->id,
+                    ]);
+                    throw new RuntimeException(
+                        "خطأ في استعادة مخزون اللقاح: batch #{$batch->id} سيتجاوز الكمية المستلمة ({$batch->quantity_received})."
+                    );
+                }
+
+                $batch->update(['quantity_remaining' => $newRemaining]);
+
+                // تحديث الـ pivot ليعكس الكمية المُستعادة (صفر بعد الاستعادة الكاملة).
+                $link->update(['quantity' => $this->normalizeDecimal((float) $link->quantity - $toRestore)]);
             }
 
             $product = $invoiceItem->product;
@@ -69,34 +118,67 @@ class StockService
     public function restorePartialVaccineStock(InvoiceItem $invoiceItem, float $quantityToReturn): void
     {
         DB::transaction(function () use ($invoiceItem, $quantityToReturn) {
-            $originalQty = (float) $invoiceItem->quantity;
+            // نستخدم الكمية الحالية للبند (بعد أي مرتجعات سابقة) كأساس للنسبة.
+            $currentItemQty = (float) $invoiceItem->quantity;
 
-            if ($originalQty <= 0) {
+            if ($currentItemQty <= 0) {
                 return;
             }
 
-            $ratio = $quantityToReturn / $originalQty;
+            $ratio = $quantityToReturn / $currentItemQty;
 
-            $batches = InvoiceItemVaccineBatch::query()
+            $links = InvoiceItemVaccineBatch::query()
                 ->where('invoice_item_id', $invoiceItem->id)
                 ->with('vaccineBatch')
                 ->lockForUpdate()
                 ->get();
 
-            foreach ($batches as $link) {
+            // توزيع الكمية المُستعادة على الـ batches مع تعويض الـ rounding في آخر batch.
+            $totalRestored = 0.0;
+            $linksArr = $links->values();
+            $lastIndex = $linksArr->count() - 1;
+
+            foreach ($linksArr as $index => $link) {
                 $batch = $link->vaccineBatch;
 
                 if (! $batch) {
                     continue;
                 }
 
-                $toRestore = $this->normalizeDecimal((float) $link->quantity * $ratio);
+                // آخر batch يستوعب الفارق لضمان مجموع مساوٍ لـ quantityToReturn تمامًا.
+                if ($index === $lastIndex) {
+                    $toRestore = $this->normalizeDecimal($quantityToReturn - $totalRestored);
+                } else {
+                    $toRestore = $this->normalizeDecimal((float) $link->quantity * $ratio);
+                    $totalRestored = $this->normalizeDecimal($totalRestored + $toRestore);
+                }
 
-                $batch->update([
-                    'quantity_remaining' => $this->normalizeDecimal(
-                        (float) $batch->quantity_remaining + $toRestore
-                    ),
-                ]);
+                if ($toRestore <= 0) {
+                    continue;
+                }
+
+                $newRemaining = $this->normalizeDecimal((float) $batch->quantity_remaining + $toRestore);
+
+                // حارس: لا يُسمح بأن يتجاوز quantity_remaining قيمة quantity_received.
+                if ($newRemaining > (float) $batch->quantity_received) {
+                    Log::error('vaccine stock restore overflow in restorePartialVaccineStock', [
+                        'vaccine_batch_id'   => $batch->id,
+                        'quantity_received'  => $batch->quantity_received,
+                        'quantity_remaining' => $batch->quantity_remaining,
+                        'to_restore'         => $toRestore,
+                        'new_remaining'      => $newRemaining,
+                        'invoice_item_id'    => $invoiceItem->id,
+                    ]);
+                    throw new RuntimeException(
+                        "خطأ في استعادة مخزون اللقاح: batch #{$batch->id} سيتجاوز الكمية المستلمة ({$batch->quantity_received})."
+                    );
+                }
+
+                $batch->update(['quantity_remaining' => $newRemaining]);
+
+                // تحديث الـ pivot: نطرح الكمية المُستردّة لضمان صحة المرتجعات المتسلسلة.
+                $newPivotQty = $this->normalizeDecimal((float) $link->quantity - $toRestore);
+                $link->update(['quantity' => $newPivotQty]);
             }
 
             $product = $invoiceItem->product;
