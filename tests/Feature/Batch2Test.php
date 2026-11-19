@@ -228,3 +228,46 @@ test('file cache add accepts the first key and rejects the second sequentially',
         File::deleteDirectory($directory);
     }
 });
+
+// --- اختبارات حماية إكمال وإعادة جدولة التطعيم (Status Guard) ---
+
+test('completing a vaccination twice rejects the second request', function (): void {
+    $vaccination = \App\Models\Vaccination::factory()->create(['is_completed' => false]);
+
+    // الإكمال الأول ينجح
+    $this->postJson(route('vaccinations.complete', $vaccination))
+        ->assertOk()
+        ->assertJson(['success' => true]);
+
+    // الإكمال الثاني يُرفض بكود 422
+    $this->postJson(route('vaccinations.complete', $vaccination->fresh()))
+        ->assertStatus(422)
+        ->assertJson(['success' => false]);
+});
+
+test('rescheduling a vaccination twice rejects the second request and creates only one next-dose row preserving animal_id', function (): void {
+    $customer = \App\Models\Customer::factory()->create();
+    $animal = \App\Models\Animal::factory()->for($customer)->create();
+    $vaccination = \App\Models\Vaccination::factory()->create([
+        'customer_id' => $customer->id,
+        'animal_id' => $animal->id,
+        'is_completed' => false,
+    ]);
+
+    $data = ['next_dose_date' => today()->addMonth()->toDateString()];
+
+    // إعادة الجدولة الأولى تنجح
+    $this->postJson(route('vaccinations.reschedule', $vaccination), $data)
+        ->assertOk()
+        ->assertJson(['success' => true]);
+
+    // إعادة الجدولة الثانية على نفس التطعيم تُرفض بكود 422
+    $this->postJson(route('vaccinations.reschedule', $vaccination->fresh()), $data)
+        ->assertStatus(422)
+        ->assertJson(['success' => false]);
+
+    // التأكد من وجود سجل جرعة قادمة واحد فقط مع الحفاظ على معرف الحيوان
+    $nextDoses = \App\Models\Vaccination::where('id', '!=', $vaccination->id)->get();
+    expect($nextDoses)->toHaveCount(1)
+        ->and($nextDoses->first()->animal_id)->toBe($animal->id);
+});

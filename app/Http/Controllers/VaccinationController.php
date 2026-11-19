@@ -25,6 +25,14 @@ class VaccinationController extends Controller
 
     public function complete(Vaccination $vaccination): JsonResponse
     {
+        // حماية: رفض إكمال تطعيم تم إكماله مسبقًا لمنع تكرار العملية
+        if ($vaccination->is_completed) {
+            return response()->json([
+                'success' => false,
+                'message' => 'التطعيم مكتمل بالفعل ولا يمكن إعادة إكماله.',
+            ], 422);
+        }
+
         $vaccination->update(['is_completed' => true]);
 
         Cache::forget(dashboardKey('upcoming_vaccinations'));
@@ -36,6 +44,14 @@ class VaccinationController extends Controller
 
     public function reschedule(Request $request, Vaccination $vaccination): JsonResponse
     {
+        // حماية: رفض إعادة جدولة تطعيم تم إكماله مسبقًا لمنع تكرار إنشاء الجرعات القادمة
+        if ($vaccination->is_completed) {
+            return response()->json([
+                'success' => false,
+                'message' => 'التطعيم مكتمل بالفعل ولا يمكن إعادة جدولته.',
+            ], 422);
+        }
+
         $validator = Validator::make($request->all(), [
             'next_dose_date' => ['required', 'date', 'after:today'],
         ], [
