@@ -143,6 +143,9 @@
                 @endif
             </td>
         </tr>
+        @if(filled($invoice->treatment))
+        <tr><td class="label">العلاج:</td><td class="value" colspan="3">{!! nl2br(e($invoice->treatment)) !!}</td></tr>
+        @endif
     </table>
 
     <table class="items">

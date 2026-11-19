@@ -176,6 +176,7 @@
                             <strong>{{ number_format($invoice->total, 2) }} ج.م</strong>
                         </div>
                         <div class="mt-2"><strong>التشخيص:</strong> {{ $invoice->diagnosis ?: '—' }}</div>
+                        @if(filled($invoice->treatment))<div class="mt-2"><strong>العلاج:</strong> {!! nl2br(e($invoice->treatment)) !!}</div>@endif
                         <div class="mt-2"><strong>الأصناف:</strong> {{ $invoice->items->pluck('product.name')->filter()->join('، ') ?: '—' }}</div>
                     </div>
                 @empty
@@ -206,6 +207,7 @@
                         <a href="{{ route('invoices.show', $invoice) }}" class="fw-semibold">{{ $invoice->invoice_number }}</a>
                         <span class="text-muted ms-2">{{ $invoice->created_at->format('Y-m-d H:i') }}</span>
                         <div class="mt-2"><strong>التشخيص:</strong> {{ $invoice->diagnosis ?: '—' }}</div>
+                        @if(filled($invoice->treatment))<div class="mt-2"><strong>العلاج:</strong> {!! nl2br(e($invoice->treatment)) !!}</div>@endif
                         <div><strong>الأصناف:</strong> {{ $invoice->items->pluck('product.name')->filter()->join('، ') ?: '—' }}</div>
                     </div>
                 @endforeach

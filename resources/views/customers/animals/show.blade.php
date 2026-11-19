@@ -118,6 +118,7 @@
                             <tr>
                                 <th>تاريخ الزيارة</th>
                                 <th>التشخيص</th>
+                                <th>العلاج</th>
                                 <th>الطبيب / الفاتورة</th>
                             </tr>
                         </thead>
@@ -126,6 +127,7 @@
                             <tr>
                                 <td class="fw-bold" style="white-space: nowrap;">{{ $diagInvoice->created_at->format('Y-m-d') }}</td>
                                 <td>{!! nl2br(e($diagInvoice->diagnosis)) !!}</td>
+                                <td>{!! nl2br(e($diagInvoice->treatment)) !!}</td>
                                 <td style="white-space: nowrap;">
                                     <a href="{{ route('invoices.show', $diagInvoice->id) }}" class="btn btn-sm btn-outline-info">
                                         عرض التفاصيل

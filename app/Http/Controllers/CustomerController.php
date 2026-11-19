@@ -47,7 +47,7 @@ class CustomerController extends Controller
         $customer->load([
             'animals' => fn ($q) => $q->orderBy('name'),
             'animals.invoices' => fn ($q) => $q->latest()->select(
-                'id', 'invoice_number', 'animal_id', 'customer_id', 'created_at', 'total', 'status', 'diagnosis'
+                'id', 'invoice_number', 'animal_id', 'customer_id', 'created_at', 'total', 'status', 'diagnosis', 'treatment'
             ),
             'animals.invoices.items.product:id,name,type',
             'animals.vaccinations' => fn ($q) => $q->latest('vaccination_date'),

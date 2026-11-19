@@ -39,6 +39,7 @@ class StoreCustomerVisitRequest extends FormRequest
             'new_animal.color' => ['nullable', 'string', 'max:255'],
             'new_animal.notes' => ['nullable', 'string', 'max:1000'],
             'diagnosis' => ['nullable', 'string'],
+            'treatment' => ['nullable', 'string', 'max:2000'],
 
             'consultation_price' => ['required', 'numeric', 'min:0'],
 
@@ -73,6 +74,7 @@ class StoreCustomerVisitRequest extends FormRequest
             'phone' => __('customers.fields.phone'),
             'animal_type' => __('customers.fields.animal_type'),
             'consultation_price' => __('customers.visit.consultation_price'),
+            'treatment' => 'العلاج',
 
             'vaccinations.*.vaccine_product_id' => __('customers.visit.vaccine_product'),
             'vaccinations.*.vaccine_quantity' => __('customers.visit.vaccine_quantity'),

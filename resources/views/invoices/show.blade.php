@@ -80,6 +80,12 @@
                             <td class="text-muted">التاريخ</td>
                             <td>{{ $invoice->created_at->format('(Y-m-d) - H:i') }}</td>
                         </tr>
+                        @if(filled($invoice->treatment))
+                        <tr>
+                            <td class="text-muted">العلاج</td>
+                            <td>{!! nl2br(e($invoice->treatment)) !!}</td>
+                        </tr>
+                        @endif
                         <tr>
                             <td class="text-muted">الإجمالي</td>
                             

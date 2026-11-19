@@ -26,6 +26,7 @@ class Invoice extends Model
         'cancellation_reason',
         'cancelled_at',
         'diagnosis',
+        'treatment',
     ];
 
     protected function casts(): array

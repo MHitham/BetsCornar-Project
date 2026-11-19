@@ -78,6 +78,7 @@ class CustomerVisitService
                 'customer_name' => $customer->name,
                 'source' => 'customer',
                 'diagnosis' => $data['diagnosis'] ?? null,
+                'treatment' => filled($data['treatment'] ?? null) ? trim($data['treatment']) : null,
                 'total' => 0,
                 'status' => 'confirmed',
 

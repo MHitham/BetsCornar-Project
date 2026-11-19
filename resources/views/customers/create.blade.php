@@ -131,6 +131,11 @@
                             <textarea name="diagnosis" class="form-control" rows="2" placeholder="أدخل التشخيص هنا لهذه الزيارة فقط...">{{ old('diagnosis') }}</textarea>
                         </div>
 
+                        <div class="col-12 mt-3">
+                            <label class="form-label">العلاج</label>
+                            <textarea name="treatment" class="form-control" rows="2">{{ old('treatment') }}</textarea>
+                        </div>
+
                         
                         <div class="col-12 mt-3">
                             <div class="form-check form-switch">
