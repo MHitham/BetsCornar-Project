@@ -55,13 +55,15 @@ class VaccinationController extends Controller
 
         $vaccination->update(['is_completed' => true]);
 
+        // إضافة animal_id عند إنشاء الجرعة القادمة حتى لا تضيع العلاقة بالحيوان — AUD-08
         Vaccination::create([
-            'customer_id' => $vaccination->customer_id,
-            'product_id' => $vaccination->product_id,
-            'invoice_id' => $vaccination->invoice_id,
+            'customer_id'      => $vaccination->customer_id,
+            'product_id'       => $vaccination->product_id,
+            'invoice_id'       => $vaccination->invoice_id,
+            'animal_id'        => $vaccination->animal_id,
             'vaccination_date' => today(),
-            'next_dose_date' => $validated['next_dose_date'],
-            'is_completed' => false,
+            'next_dose_date'   => $validated['next_dose_date'],
+            'is_completed'     => false,
         ]);
 
         Cache::forget(dashboardKey('upcoming_vaccinations'));
