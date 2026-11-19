@@ -116,3 +116,36 @@ test('invoice pdf remains one page and includes the pet name', function () {
     expect($response->getContent())->toContain('%PDF')
         ->and(preg_match_all('/\/Type\s*\/Page[^s]/', $response->getContent()))->toBe(1);
 });
+
+test('vaccination WhatsApp text omits null and empty animal brackets for legacy rows', function () {
+    $this->actingAsAdmin();
+    $customer = Customer::factory()->create(['name' => 'عميل بدون حيوان']);
+    $vaccine = Product::factory()->vaccination()->create(['name' => 'لقاح قديم']);
+    $invoice = Invoice::create([
+        'invoice_number' => 'INV-ORPHAN-'.fake()->unique()->numberBetween(1000, 9999),
+        'customer_id' => $customer->id,
+        'customer_name' => $customer->name,
+        'source' => 'customer',
+        'total' => 0,
+        'amount_paid' => 0,
+        'status' => 'confirmed',
+    ]);
+    Vaccination::create([
+        'customer_id' => $customer->id,
+        'product_id' => $vaccine->id,
+        'invoice_id' => $invoice->id,
+        'vaccination_date' => today(),
+        'next_dose_date' => today()->addDays(20),
+    ]);
+
+    $html = (string) $this->get(route('vaccinations.index', [
+        'q' => $customer->name,
+        'is_completed' => '0',
+    ]))->getContent();
+    preg_match_all('/href="(https:\/\/wa\.me[^"]+)"/', $html, $matches);
+    $whatsappTexts = array_map('urldecode', $matches[1]);
+
+    expect($whatsappTexts)->not->toBeEmpty()
+        ->and(implode("\n", $whatsappTexts))->not->toContain('null')
+        ->and(implode("\n", $whatsappTexts))->not->toContain('الحيوان ()');
+});
