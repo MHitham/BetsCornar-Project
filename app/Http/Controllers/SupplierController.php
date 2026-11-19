@@ -13,8 +13,8 @@ class SupplierController extends Controller
     public function index(): View
     {
         $suppliers = Supplier::query()
-            ->withSum('purchaseOrders', 'total_cost')
-            ->withSum('purchaseOrders', 'amount_paid')
+            ->withSum(['purchaseOrders as purchase_orders_sum_total_cost' => fn ($q) => $q->confirmed()], 'total_cost')
+            ->withSum(['purchaseOrders as purchase_orders_sum_amount_paid' => fn ($q) => $q->confirmed()], 'amount_paid')
             ->latest()
             ->paginate(20);
 
