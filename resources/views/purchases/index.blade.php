@@ -40,8 +40,8 @@
                             $remaining = max(0, (float)$order->total_cost - (float)$order->amount_paid);
                             $status    = $order->payment_status;
                         @endphp
-                        <tr>
-                            <td class="fw-semibold">{{ $order->order_number }}</td>
+                        <tr class="{{ $order->isCancelled() ? 'table-secondary text-muted' : '' }}">
+                            <td class="fw-semibold {{ $order->isCancelled() ? 'text-decoration-line-through' : '' }}">{{ $order->order_number }} @if($order->isCancelled())<span class="badge bg-danger">ملغية</span>@endif</td>
                             <td>{{ $order->supplier?->name ?? '—' }}</td>
                             <td>{{ $order->purchased_at->format('Y/m/d') }}</td>
                             <td>{{ number_format($order->total_cost, 2) }} ج</td>

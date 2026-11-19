@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,14 +11,30 @@ class PurchaseOrder extends Model
 {
     protected $fillable = [
         'supplier_id', 'order_number', 'total_cost',
-        'amount_paid', 'notes', 'purchased_at',
+        'amount_paid', 'notes', 'purchased_at', 'status', 'cancellation_reason', 'cancelled_at',
     ];
 
     protected $casts = [
         'purchased_at' => 'date',
         'total_cost' => 'decimal:2',
         'amount_paid' => 'decimal:2',
+        'cancelled_at' => 'datetime',
     ];
+
+    public function scopeConfirmed(Builder $query): Builder
+    {
+        return $query->where('status', 'confirmed');
+    }
+
+    public function scopeCancelled(Builder $query): Builder
+    {
+        return $query->where('status', 'cancelled');
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
 
     public function supplier(): BelongsTo
     {

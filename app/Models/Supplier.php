@@ -22,7 +22,7 @@ class Supplier extends Model
 
     public function getBalanceAttribute(): float
     {
-        return (float) $this->purchaseOrders()
+        return (float) $this->purchaseOrders()->confirmed()
             ->selectRaw('SUM(total_cost) - SUM(amount_paid) as balance')
             ->value('balance') ?? 0;
     }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\InvoiceItemVaccineBatch;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -133,6 +134,54 @@ class PurchaseService
             $order->update(['amount_paid' => $totalPaid]);
 
             return $payment;
+        });
+    }
+
+    public function cancelPurchase(PurchaseOrder $order, ?string $reason = null): PurchaseOrder
+    {
+        return DB::transaction(function () use ($order, $reason) {
+            $order = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            if ($order->isCancelled()) {
+                throw new \DomainException('فاتورة الشراء ملغية بالفعل.');
+            }
+            $items = $order->items()->get();
+            $needed = [];
+            foreach ($items as $item) {
+                $product = Product::whereKey($item->product_id)->lockForUpdate()->firstOrFail();
+                if ($product->type === 'vaccination') {
+                    $batch = $item->batch_id ? VaccineBatch::whereKey($item->batch_id)->lockForUpdate()->first() : null;
+                    if ($batch && ((float) $batch->quantity_remaining < (float) $batch->quantity_received || InvoiceItemVaccineBatch::where('vaccine_batch_id', $batch->id)->exists())) {
+                        throw new \DomainException("لا يمكن إلغاء الفاتورة: تم استخدام جزء من دفعة اللقاح «{$product->name}».");
+                    }
+                } elseif ($product->track_stock) {
+                    $needed[$product->id] = ($needed[$product->id] ?? 0) + (float) $item->quantity;
+                }
+            }
+            foreach ($needed as $productId => $quantity) {
+                $product = Product::whereKey($productId)->lockForUpdate()->firstOrFail();
+                if ((float) $product->quantity < $quantity) {
+                    throw new \DomainException("لا يمكن إلغاء الفاتورة: كمية «{$product->name}» الحالية أقل من الكمية المشتراة.");
+                }
+            }
+            foreach ($items as $item) {
+                $product = Product::whereKey($item->product_id)->lockForUpdate()->firstOrFail();
+                if ($product->type === 'vaccination') {
+                    if ($item->batch_id) {
+                        VaccineBatch::whereKey($item->batch_id)->delete();
+                    }
+                    $this->recalculateVaccineStock($product);
+                } elseif ($product->track_stock) {
+                    $current = (float) $product->quantity;
+                    $received = (float) $item->quantity;
+                    $remaining = $current - $received;
+                    $average = $remaining > 0 ? max(0, round((($current * (float) $product->average_cost) - ($received * (float) $item->purchase_price_per_unit)) / $remaining, 2)) : (float) $product->average_cost;
+                    $product->update(['quantity' => $remaining, 'average_cost' => $average]);
+                    $this->updateStockStatus($product);
+                }
+            }
+            $order->update(['status' => 'cancelled', 'cancellation_reason' => $reason, 'cancelled_at' => now()]);
+
+            return $order->fresh();
         });
     }
 

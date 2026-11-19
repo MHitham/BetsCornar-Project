@@ -30,6 +30,9 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+    @if($purchase->isCancelled())
+        <div class="alert alert-danger">الفاتورة ملغية{{ $purchase->cancellation_reason ? ' — '.$purchase->cancellation_reason : '' }}{{ $purchase->cancelled_at ? ' بتاريخ '.$purchase->cancelled_at->format('Y/m/d H:i') : '' }}</div>
+    @endif
 
     <div class="row g-4">
 
@@ -73,7 +76,7 @@
             <div class="card shadow-sm mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center bg-light">
                     <span class="fw-semibold">سجل الدفعات</span>
-                    @if($purchase->payment_status !== 'paid')
+                    @if(!$purchase->isCancelled() && $purchase->payment_status !== 'paid')
                         <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#payModal">
                             <i class="bi bi-cash-coin me-1"></i> تسجيل دفعة
                         </button>
@@ -166,6 +169,7 @@
 
 </div>
 
+@if(!$purchase->isCancelled())
 <div class="modal fade" id="payModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -218,6 +222,15 @@
         </div>
     </div>
 </div>
+@endif
+
+@if(!$purchase->isCancelled())
+<div class="mt-3"><button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelPurchaseModal">إلغاء فاتورة الشراء</button></div>
+<div class="modal fade" id="cancelPurchaseModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">إلغاء فاتورة الشراء</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form action="{{ route('purchases.cancel', $purchase) }}" method="POST" data-prevent-double>@csrf<x-idempotency-token /><div class="modal-body"><label class="form-label">سبب الإلغاء (اختياري)</label><input name="reason" maxlength="255" class="form-control"></div><div class="modal-footer"><button type="submit" class="btn btn-danger">تأكيد الإلغاء</button></div></form>
+</div></div></div>
+@endif
 @endsection
 
 @push('scripts')

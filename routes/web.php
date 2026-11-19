@@ -154,6 +154,8 @@ Route::middleware('auth')->group(function () {
         Route::post('purchases', [PurchaseOrderController::class, 'store'])->name('purchases.store')->middleware('idempotent');
         Route::post('purchases/{purchase}/pay', [PurchaseOrderController::class, 'pay'])
             ->name('purchases.pay')->middleware('idempotent');
+        Route::post('purchases/{purchase}/cancel', [PurchaseOrderController::class, 'cancel'])
+            ->name('purchases.cancel')->middleware('idempotent');
     });
 
     Route::middleware('role:admin')->group(function () {
