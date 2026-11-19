@@ -18,6 +18,8 @@ class StorePurchaseOrderRequest extends FormRequest
             'purchased_at' => ['required', 'date'],
             'notes' => ['nullable', 'string'],
             'amount_paid' => ['nullable', 'numeric', 'min:0'],
+            // إضافة is_from_clinic_cash لـ rules حتى لا يحذفها validated() — AUD-06
+            'is_from_clinic_cash' => ['nullable', 'boolean'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
