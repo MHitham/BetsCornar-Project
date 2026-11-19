@@ -88,9 +88,10 @@
                                         @csrf
 
                                         <div class="mb-3">
-                                            <label for="email" class="form-label">البريد الإلكتروني</label>
-                                            <input id="email" name="email" type="email" class="form-control"
-                                                value="{{ old('email') }}" required autocomplete="email" autofocus>
+                                            <label for="email" class="form-label">البريد الإلكتروني أو اسم المستخدم</label>
+                                            <input id="email" name="email" type="text" class="form-control"
+                                                placeholder="admin@bets.com أو الدكتور"
+                                                value="{{ old('email') }}" required autocomplete="username" autofocus>
                                         </div>
 
                                         <div class="mb-3">
