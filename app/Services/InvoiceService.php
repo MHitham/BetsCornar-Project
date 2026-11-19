@@ -390,7 +390,12 @@ class InvoiceService
             ->whereMonth('created_at', $month)
             ->sum('cash_refunded');
 
-        $cashRefundsList = \App\Models\InvoiceReturn::whereHas('invoice', fn ($q) => $q->where('status', 'confirmed'))
+        $cashRefundsList = \App\Models\InvoiceReturn::whereHas('invoice', function ($q) use ($createdBy) {
+            $q->where('status', 'confirmed');
+            if ($createdBy !== null) {
+                $q->where('created_by', $createdBy);
+            }
+        })
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
             ->where('cash_refunded', '>', 0)
