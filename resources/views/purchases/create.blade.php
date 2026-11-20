@@ -116,13 +116,14 @@
                     </div>
                     <div class="col-md-3 d-flex align-items-end">
                         <div class="form-check form-switch mb-2">
+                            <input type="hidden" name="is_from_clinic_cash" value="0">
                             <input class="form-check-input"
                                    type="checkbox"
                                    role="switch"
                                    id="isFromClinicCash"
                                    name="is_from_clinic_cash"
                                    value="1"
-                                   checked>
+                                   @checked(old('is_from_clinic_cash', true))>
                             <label class="form-check-label fw-semibold" for="isFromClinicCash">
                                 الدفعة من درج العيادة؟
                             </label>
@@ -146,22 +147,37 @@
 </div>
 
 <script>
-const PRODUCTS = @json($products->keyBy('id'));
+const products = @js($products);
+const productsById = new Map(products.map(product => [String(product.id), product]));
+const previousItems = @js(old('items', []));
+const previousPriceUpdates = @js(old('update_selling_price', []));
+const itemsBody = document.getElementById('itemsBody');
 
 let rowIndex = 0;
 
-function createRow(index) {
-    const productOptions = Object.values(PRODUCTS).map(p =>
-        `<option value="${p.id}" data-type="${p.type}" data-price="${p.price}">${p.name}</option>`
-    ).join('');
-
-    return `
-    <tr id="row_${index}">
+function addRow(item = {}, updatePrice = false) {
+    const index = rowIndex++;
+    itemsBody.insertAdjacentHTML('beforeend', `
+    <tr>
         <td>
-            <select name="items[${index}][product_id]" class="form-select form-select-sm product-select" required>
+            <select name="items[${index}][product_id]" class="form-select form-select-sm product-select" aria-label="المنتج" required>
                 <option value="">اختر المنتج</option>
-                ${productOptions}
+                <option value="new">+ منتج جديد</option>
             </select>
+            <div class="new-product-fields mt-2" hidden>
+                <label for="new_product_name_${index}" class="form-label small mb-1">اسم الصنف الجديد</label>
+                <input id="new_product_name_${index}" name="items[${index}][new_product_name]" type="text"
+                       class="form-control form-control-sm new-product-name" maxlength="255">
+                <label for="new_product_type_${index}" class="form-label small mt-2 mb-1">نوع الصنف</label>
+                <select id="new_product_type_${index}" name="items[${index}][new_product_type]" class="form-select form-select-sm new-product-type">
+                    <option value="product">منتج عادي</option>
+                    <option value="vaccination">تطعيم</option>
+                </select>
+                <div class="mt-2 existing-product-match" aria-live="polite" hidden>
+                    <span class="small text-muted">الصنف موجود بالفعل</span>
+                    <button type="button" class="btn btn-outline-primary btn-sm use-existing-product mt-1"></button>
+                </div>
+            </div>
         </td>
         <td>
             <input type="number" name="items[${index}][quantity]"
@@ -180,22 +196,79 @@ function createRow(index) {
         </td>
         <td>
             <input type="date" name="items[${index}][expiry_date]"
-                   class="form-control form-control-sm expiry-date" style="display:none">
+                   class="form-control form-control-sm expiry-date" aria-label="تاريخ الانتهاء" hidden>
             <span class="text-muted small expiry-na">—</span>
         </td>
         <td class="text-center">
             <div class="form-check form-switch d-flex justify-content-center">
-                <input class="form-check-input update-price-check" type="checkbox"
+                <input class="form-check-input update-price-check" type="checkbox" aria-label="تحديث سعر البيع"
                        name="update_selling_price[${index}]" value="1">
             </div>
         </td>
         <td class="fw-semibold line-total text-primary">0.00 ج</td>
         <td>
-            <button type="button" class="btn btn-sm btn-outline-danger remove-row">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف البند">
                 <i class="bi bi-trash"></i>
             </button>
         </td>
-    </tr>`;
+    </tr>`);
+
+    const row = itemsBody.lastElementChild;
+    const select = row.querySelector('.product-select');
+    for (const product of products) {
+        select.add(new Option(product.name, String(product.id)));
+    }
+    select.value = item.product_id ?? '';
+    if (select.selectedIndex === -1) select.value = '';
+    row.querySelector('.new-product-name').value = item.new_product_name ?? '';
+    row.querySelector('.new-product-type').value = item.new_product_type ?? 'product';
+    row.querySelector('.qty-input').value = item.quantity ?? 1;
+    row.querySelector('.purchase-price').value = item.purchase_price_per_unit ?? 0;
+    row.querySelector('.selling-price').value = item.selling_price_per_unit ?? 0;
+    row.querySelector('.expiry-date').value = item.expiry_date ?? '';
+    row.querySelector('.update-price-check').checked = updatePrice === true || String(updatePrice) === '1';
+    updateProductFields(row);
+}
+
+function updateProductFields(row) {
+    const selection = row.querySelector('.product-select').value;
+    const isNew = selection === 'new';
+    const name = row.querySelector('.new-product-name');
+    const type = row.querySelector('.new-product-type');
+    const product = productsById.get(selection);
+    const isVaccine = (isNew ? type.value : product?.type) === 'vaccination';
+    const expiry = row.querySelector('.expiry-date');
+
+    row.querySelector('.new-product-fields').hidden = !isNew;
+    name.disabled = type.disabled = !isNew;
+    name.required = type.required = isNew;
+    expiry.hidden = expiry.disabled = !isVaccine;
+    expiry.required = isVaccine;
+    row.querySelector('.expiry-na').hidden = isVaccine;
+    if (!isVaccine) expiry.value = '';
+
+    const updatePrice = row.querySelector('.update-price-check');
+    updatePrice.disabled = !product;
+    if (!product) updatePrice.checked = false;
+
+    showExistingProduct(row);
+}
+
+function showExistingProduct(row) {
+    const name = row.querySelector('.new-product-name');
+    const type = row.querySelector('.new-product-type').value;
+    const normalizedName = name.value.trim().toLowerCase();
+    const existing = name.disabled || !normalizedName ? undefined : products.find(product =>
+        product.type === type && product.name.trim().toLowerCase() === normalizedName
+    );
+
+    row.querySelector('.existing-product-match').hidden = !existing;
+    name.setCustomValidity(existing ? 'الصنف موجود بالفعل. اختاره من القائمة.' : '');
+    if (existing) {
+        const button = row.querySelector('.use-existing-product');
+        button.dataset.productId = existing.id;
+        button.textContent = 'اختيار ' + existing.name;
+    }
 }
 
 function updateTotals() {
@@ -218,38 +291,27 @@ function updateTotals() {
 }
 
 document.getElementById('addItemBtn').addEventListener('click', () => {
-    document.getElementById('itemsBody').insertAdjacentHTML('beforeend', createRow(rowIndex++));
+    addRow();
     updateTotals();
 });
 
-document.getElementById('itemsBody').addEventListener('change', e => {
+itemsBody.addEventListener('change', e => {
     const row = e.target.closest('tr');
-
     if (e.target.classList.contains('product-select')) {
-        const opt  = e.target.selectedOptions[0];
-        const type = opt?.dataset?.type;
-        const price = opt?.dataset?.price || 0;
-
-        row.querySelector('.selling-price').value = price;
-
-        const expiry = row.querySelector('.expiry-date');
-        const expiryNa = row.querySelector('.expiry-na');
-        if (type === 'vaccination') {
-            expiry.style.display = '';
-            expiryNa.style.display = 'none';
-            expiry.required = true;
-        } else {
-            expiry.style.display = 'none';
-            expiryNa.style.display = '';
-            expiry.required = false;
-            expiry.value = '';
-        }
+        row.querySelector('.selling-price').value = productsById.get(e.target.value)?.price ?? 0;
+        updateProductFields(row);
+        if (e.target.value === 'new') row.querySelector('.new-product-name').focus();
+    } else if (e.target.classList.contains('new-product-type')) {
+        updateProductFields(row);
     }
 
     updateTotals();
 });
 
-document.getElementById('itemsBody').addEventListener('input', e => {
+itemsBody.addEventListener('input', e => {
+    if (e.target.classList.contains('new-product-name')) {
+        showExistingProduct(e.target.closest('tr'));
+    }
     if (e.target.classList.contains('qty-input') ||
         e.target.classList.contains('purchase-price')) {
         updateTotals();
@@ -258,10 +320,17 @@ document.getElementById('itemsBody').addEventListener('input', e => {
 
 document.getElementById('amountPaid').addEventListener('input', updateTotals);
 
-document.getElementById('itemsBody').addEventListener('click', e => {
+itemsBody.addEventListener('click', e => {
+    const existingButton = e.target.closest('.use-existing-product');
+    if (existingButton) {
+        const select = existingButton.closest('tr').querySelector('.product-select');
+        select.value = existingButton.dataset.productId;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        select.focus();
+    }
+
     if (e.target.closest('.remove-row')) {
-        const rows = document.querySelectorAll('#itemsBody tr');
-        if (rows.length <= 1) {
+        if (itemsBody.rows.length <= 1) {
             alert('يجب أن تحتوي الفاتورة على بند واحد على الأقل');
             return;
         }
@@ -270,6 +339,12 @@ document.getElementById('itemsBody').addEventListener('click', e => {
     }
 });
 
-document.getElementById('itemsBody').insertAdjacentHTML('beforeend', createRow(rowIndex++));
+for (const [index, item] of Object.entries(previousItems ?? {})) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+        addRow(item, previousPriceUpdates?.[index]);
+    }
+}
+if (!itemsBody.rows.length) addRow();
+updateTotals();
 </script>
 @endsection

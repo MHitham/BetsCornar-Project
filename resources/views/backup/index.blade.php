@@ -62,7 +62,7 @@
                             <tr>
                                 <td class="text-muted small">{{ $index + 1 }}</td>
                                 <td class="fw-semibold font-monospace small">{{ $backup['filename'] }}</td>
-                                <td>{{ $backup['created_at']->format('Y-m-d H:i') }}</td>
+                                <td>{{ displayDateTime($backup['created_at']) }}</td>
                                 <td>
                                     <span class="badge bg-light text-dark border">{{ $backup['size_mb'] }} MB</span>
                                 </td>

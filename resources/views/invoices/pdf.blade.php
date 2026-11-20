@@ -132,7 +132,7 @@
             <td class="label">رقم الفاتورة:</td>
             <td class="value"><strong>{{ $invoice->invoice_number }}</strong></td>
             <td class="label">تاريخ الفاتورة:</td>
-            <td class="value">{{ $invoice->created_at->format('Y-m-d H:i') }}</td>
+            <td class="value">{{ displayDateTime($invoice->created_at) }}</td>
         </tr>
         <tr>
             <td class="label">اسم العميل:</td>

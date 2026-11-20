@@ -154,8 +154,9 @@ Route::middleware('auth')->group(function () {
         Route::post('purchases', [PurchaseOrderController::class, 'store'])->name('purchases.store')->middleware('idempotent');
         Route::post('purchases/{purchase}/pay', [PurchaseOrderController::class, 'pay'])
             ->name('purchases.pay')->middleware('idempotent');
+        // قصر إلغاء فاتورة الشراء على الإدارة مع منع الإرسال المكرر.
         Route::post('purchases/{purchase}/cancel', [PurchaseOrderController::class, 'cancel'])
-            ->name('purchases.cancel')->middleware('idempotent');
+            ->name('purchases.cancel')->middleware(['idempotent', 'role:admin']);
     });
 
     Route::middleware('role:admin')->group(function () {

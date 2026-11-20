@@ -91,7 +91,7 @@ class VaccinationController extends Controller
 
     public function index(Request $request): View
     {
-        $query = Vaccination::query()->with(['customer', 'product', 'invoice', 'animal:id,name']);
+        $query = Vaccination::query()->with(['customer', 'product', 'invoice', 'animal:id,name,species']);
         $search = trim((string) $request->input('q', ''));
         $filter = $request->string('filter')->toString();
         $dateFilter = (string) $request->input('date', '');
@@ -129,6 +129,7 @@ class VaccinationController extends Controller
 
             ->select([
                 'id',
+                'animal_id',
                 'customer_id',
                 'product_id',
                 'next_dose_date',
@@ -136,7 +137,7 @@ class VaccinationController extends Controller
                 'is_completed',
             ])
 
-            ->with(['customer:id,name,phone,animal_type', 'product:id,name', 'animal:id,name'])
+            ->with(['customer:id,name,phone,animal_type', 'product:id,name', 'animal:id,name,species'])
             ->where('is_completed', false)
             ->whereNotNull('next_dose_date')
             ->whereDate('next_dose_date', '>=', today())
@@ -160,6 +161,7 @@ class VaccinationController extends Controller
             $customerVaccinationsMap[$customerId]['vaccinations'][] = [
                 'name' => $vacc->product->name ?? '—',
                 'animal' => $vacc->animal?->name,
+                'species' => $vacc->animal?->species ?? $vacc->customer->animal_type,
                 'vaccination_date' => $vacc->vaccination_date?->format('Y-m-d') ?? '—',
                 'next_dose_date' => $vacc->next_dose_date?->format('Y-m-d') ?? null,
                 'is_completed' => $vacc->is_completed,

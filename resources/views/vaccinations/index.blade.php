@@ -155,7 +155,7 @@
                                 </td>
                                 <td>{{ $vacc->animal?->name ?? '—' }}</td>
                                 <td>
-                                    <span class="badge bg-light text-dark border">{{ $vacc->customer->animal_type }}</span>
+                                    <span class="badge bg-light text-dark border">{{ $vacc->animal?->species ?? $vacc->customer->animal_type }}</span>
                                 </td>
                                 <td>{{ $vacc->product->name ?? '—' }}</td>
                                 <td>{{ $vacc->vaccination_date->format('Y-m-d') }}</td>
@@ -171,7 +171,7 @@
                                 </td>
                                 <td class="text-center">
                                     @if ($vacc->customer->phone && !$vacc->is_completed)
-                                        <a href="https://wa.me/{{ $vacc->customer->phone }}?text={{ urlencode('مرحباً ' . $vacc->customer->name . '، نود تذكيركم بموعد تطعيم (' . $vacc->product->name . ')' . ($vacc->animal?->name ? ' للحيوان (' . $vacc->animal->name . ')' : '') . ' الخاص بـ (' . $vacc->customer->animal_type . ') يوم ' . $vacc->next_dose_date?->format('Y-m-d')) }}"
+                                        <a href="https://wa.me/{{ $vacc->customer->phone }}?text={{ urlencode('مرحباً ' . $vacc->customer->name . '، نود تذكيركم بموعد تطعيم (' . $vacc->product->name . ')' . ($vacc->animal?->name ? ' للحيوان (' . $vacc->animal->name . ')' : '') . ' الخاص بـ (' . ($vacc->animal?->species ?? $vacc->customer->animal_type) . ') يوم ' . $vacc->next_dose_date?->format('Y-m-d')) }}"
                                             target="_blank" class="btn btn-sm btn-outline-success" title="مراسلة واتساب">
                                             <i class="bi bi-whatsapp"></i>
                                         </a>
@@ -254,7 +254,7 @@
                                         <tr data-upcoming-phone="{{ $item->customer->phone ?? '' }}">
                                             <td>{{ $item->customer->name }}</td>
                                             <td>{{ $item->animal?->name ?? '—' }}</td>
-                                            <td>{{ $item->customer->animal_type }}</td>
+                                            <td>{{ $item->animal?->species ?? $item->customer->animal_type }}</td>
                                             <td>{{ $item->product ? $item->product->name : '—' }}</td>
                                             <td>
                                                 <span
@@ -262,7 +262,7 @@
                                             </td>
                                             <td class="text-center">
                                                 @if ($item->customer->phone)
-                                                    <a href="https://wa.me/{{ $item->customer->phone }}?text={{ urlencode('مرحباً ' . $item->customer->name . '، نود تذكيركم بموعد تطعيم (' . $item->product?->name . ')' . ($item->animal?->name ? ' للحيوان (' . $item->animal->name . ')' : '') . ' الخاص بـ (' . $item->customer->animal_type . ') يوم ' . $item->next_dose_date?->format('Y-m-d')) }}"
+                                                    <a href="https://wa.me/{{ $item->customer->phone }}?text={{ urlencode('مرحباً ' . $item->customer->name . '، نود تذكيركم بموعد تطعيم (' . $item->product?->name . ')' . ($item->animal?->name ? ' للحيوان (' . $item->animal->name . ')' : '') . ' الخاص بـ (' . ($item->animal?->species ?? $item->customer->animal_type) . ') يوم ' . $item->next_dose_date?->format('Y-m-d')) }}"
                                                         target="_blank" class="btn btn-sm btn-success">
                                                         <i class="bi bi-whatsapp"></i> واتساب
                                                     </a>
@@ -626,7 +626,7 @@
                     if (!data) return;
 
                     document.getElementById('cvm-title').textContent = data.name;
-                    document.getElementById('cvm-subtitle').textContent = data.animal_type;
+                    document.getElementById('cvm-subtitle').textContent = 'مواعيد تطعيمات حيوانات العميل';
 
                     const statusMap = {
                         late: {
@@ -671,11 +671,11 @@
                     const waBtn = document.getElementById('cvm-wa-btn');
                     if (data.phone) {
                         let msg =
-                            `السلام عليكم ${data.name}،\nنود تذكيركم بمواعيد تطعيم ${data.animal_type}:\n\n`;
+                            `السلام عليكم ${data.name}،\nنود تذكيركم بمواعيد التطعيم:\n\n`;
                         data.vaccinations
                             .filter(v => v.next_dose_date && v.status !== 'done')
                             .forEach(v => {
-                                msg += `• ${v.animal ? v.animal + ': ' : ''}${v.name} بتاريخ ${v.next_dose_date}\n`;
+                                msg += `• ${v.animal ? v.animal + (v.species ? ' (' + v.species + ')' : '') + ': ' : ''}${v.name} بتاريخ ${v.next_dose_date}\n`;
                             });
                         msg += '\nعيادة بيتس كورنر 🐾';
                         waBtn.href = 'https://wa.me/' + data.phone + '?text=' + encodeURIComponent(

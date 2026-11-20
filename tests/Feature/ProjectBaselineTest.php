@@ -56,7 +56,7 @@ test('baseline employees cannot open admin pages', function (string $path) {
 })->with(['/settings', '/users', '/reports', '/suppliers', '/vaccine-batches', '/api/notifications']);
 
 test('baseline record pages render with related data and outstanding payments', function () {
-    $customer = Customer::factory()->create();
+    $customer = Customer::factory()->create(['notes' => 'متابعة تجريبية']);
     $animal = Animal::factory()->for($customer)->create();
     $product = Product::factory()->product()->create();
     $invoice = Invoice::factory()->create([
@@ -77,8 +77,21 @@ test('baseline record pages render with related data and outstanding payments', 
         ]],
     ]);
 
+    $this->get(route('customers.show', $customer))->assertSuccessful()
+        ->assertSeeText([
+            'تعديل البيانات',
+            'حيوانات العميل',
+            'متبقي على العميل',
+            'إجمالي الفاتورة',
+            'ملاحظات العميل',
+            'سجل دفعات الفاتورة',
+            'إجمالي المدفوع',
+            'تسجيل دفعة جديدة',
+        ])
+        ->assertDontSee("\u{FEFF}", false);
+
     foreach ([
-        route('customers.show', $customer), route('customers.edit', $customer),
+        route('customers.edit', $customer),
         route('customers.animals.index', $customer), route('animals.show', $animal),
         route('invoices.show', $invoice), route('products.edit', $product),
         route('purchases.show', $purchase), route('suppliers.edit', $supplier),
@@ -212,17 +225,40 @@ test('baseline cash summaries use payment date and deduct only clinic supplier p
 });
 
 test('baseline ledger payment updates invoice and rejects overpayment', function () {
+    $this->travelTo(\Carbon\Carbon::parse('2026-11-20 17:16:00', 'UTC'));
     $invoice = Invoice::factory()->create(['status' => 'confirmed', 'total' => 100, 'amount_paid' => 0]);
     // استخدام رمز مختلف لكل عملية دفع اختبارية.
     $this->postWithToken(route('invoice.payments.store', $invoice), ['amount' => 40])
         ->assertSessionHasNoErrors();
     expect((float) $invoice->fresh()->amount_paid)->toBe(40.0)
         ->and((float) $invoice->payments()->sum('amount'))->toBe(40.0);
+    expect($invoice->payments()->first()->paid_at->equalTo(now()))->toBeTrue();
 
     // تجاوز الإجمالي يُعرض كرسالة جلسة عامة وليس كخطأ Form Request.
     $this->postWithToken(route('invoice.payments.store', $invoice), ['amount' => 61])
-        ->assertSessionHas('error');
+        ->assertSessionHasErrors(['amount' => 'المبلغ أكبر من المتبقي (60.00 ج)'], null, 'payment');
     expect((float) $invoice->fresh()->amount_paid)->toBe(40.0);
+    expect($invoice->payments()->count())->toBe(1);
+    $this->travelBack();
+});
+
+test('payment accepts an editable Cairo date and keeps validation errors in the payment form', function () {
+    $invoice = Invoice::factory()->create(['status' => 'confirmed', 'total' => 100, 'amount_paid' => 0]);
+    $this->postWithToken(route('invoice.payments.store', $invoice), [
+        'amount' => 10,
+        'paid_at' => '2026-11-19T19:30',
+        'payment_invoice_id' => $invoice->id,
+    ])->assertSessionHasNoErrors();
+    expect($invoice->payments()->first()->paid_at->format('Y-m-d H:i'))->toBe('2026-11-19 17:30');
+
+    $this->postWithToken(route('invoice.payments.store', $invoice), [
+        'amount' => 91,
+        'paid_at' => '2026-11-19T19:30',
+        'payment_invoice_id' => $invoice->id,
+    ])->assertSessionHasErrors(['amount' => 'المبلغ أكبر من المتبقي (90.00 ج)'], null, 'payment')
+        ->assertSessionMissing('error')
+        ->assertSessionHas('_old_input.paid_at', '2026-11-19T19:30');
+    expect($invoice->payments()->count())->toBe(1);
 });
 
 test('baseline customer edit normalizes phone and rejects another customers phone', function () {

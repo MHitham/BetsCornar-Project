@@ -36,17 +36,7 @@ class PurchaseOrderController extends Controller
 
     public function store(StorePurchaseOrderRequest $request): RedirectResponse
     {
-        $data = $request->validated();
-
-        foreach ($data['items'] as $index => $item) {
-            $updatePrice = $data['update_selling_price'][$index] ?? false;
-            if ($updatePrice) {
-                Product::where('id', $item['product_id'])
-                    ->update(['price' => $item['selling_price_per_unit']]);
-            }
-        }
-
-        $order = $this->purchaseService->createPurchaseOrder($data);
+        $order = $this->purchaseService->createPurchaseOrder($request->validated());
 
         return redirect()->route('purchases.show', $order)
             ->with('success', 'تم إضافة فاتورة الشراء بنجاح — '.$order->order_number);

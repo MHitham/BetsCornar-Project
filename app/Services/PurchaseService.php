@@ -10,6 +10,7 @@ use App\Models\PurchasePayment;
 use App\Models\VaccineBatch;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseService
 {
@@ -30,8 +31,13 @@ class PurchaseService
                 'purchased_at' => $data['purchased_at'],
             ]);
 
-            foreach ($data['items'] as $itemData) {
-                $this->processItem($order, $itemData);
+            foreach ($data['items'] as $index => $itemData) {
+                $product = $this->resolveProduct($itemData, $index);
+                if ($data['update_selling_price'][$index] ?? false) {
+                    $product->update(['price' => $itemData['selling_price_per_unit']]);
+                }
+
+                $this->processItem($order, $product, $itemData);
             }
 
             if (! empty($data['amount_paid']) && $data['amount_paid'] > 0) {
@@ -45,13 +51,46 @@ class PurchaseService
             }
 
             return $order->fresh(['items.product', 'items.batch', 'supplier', 'payments']);
-        });
+        }, attempts: 3);
     }
 
-    private function processItem(PurchaseOrder $order, array $itemData): void
+    private function resolveProduct(array $itemData, int|string $index): Product
     {
-        $product = Product::findOrFail($itemData['product_id']);
+        if ($itemData['product_id'] !== 'new') {
+            return Product::query()->lockForUpdate()->findOrFail($itemData['product_id']);
+        }
 
+        $name = trim($itemData['new_product_name']);
+        $type = $itemData['new_product_type'];
+        $existing = Product::query()
+            ->where('type', $type)
+            ->whereRaw('LOWER(TRIM(name)) = LOWER(?)', [$name])
+            ->orderByDesc('is_active')
+            ->lockForUpdate()
+            ->first();
+
+        if ($existing) {
+            $message = $existing->is_active
+                ? "الصنف «{$existing->name}» موجود بالفعل. اختاره من القائمة لإضافة الكمية إلى رصيده."
+                : "الصنف «{$existing->name}» موجود لكنه غير نشط. فعّله من صفحة المنتجات والخدمات لاختياره.";
+
+            throw ValidationException::withMessages(["items.{$index}.new_product_name" => $message]);
+        }
+
+        return Product::create([
+            'name' => $name,
+            'type' => $type,
+            'price' => $itemData['selling_price_per_unit'],
+            'quantity' => 0,
+            'track_stock' => true,
+            'stock_status' => 'out_of_stock',
+            'low_stock_threshold' => 0,
+            'is_active' => true,
+        ]);
+    }
+
+    private function processItem(PurchaseOrder $order, Product $product, array $itemData): void
+    {
         $item = PurchaseOrderItem::create([
             'purchase_order_id' => $order->id,
             'product_id' => $product->id,

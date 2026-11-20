@@ -225,7 +225,7 @@
                                         @endif
                                     </td>
                                     <td class="fw-semibold small" style="color: #198754;">{{ number_format($invoice->total) }} {{ __('messages.currency') }}</td>
-                                    <td class="text-muted small">{{ $invoice->created_at->format('m/d H:i') }}</td>
+                                    <td class="text-muted small">{{ displayDateTime($invoice->created_at, 'm/d') }}</td>
                                 </tr>
                             @endforeach
                         @else

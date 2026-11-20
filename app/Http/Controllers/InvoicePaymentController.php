@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Invoice;
 use App\Http\Requests\StoreInvoicePaymentRequest;
+use App\Models\Invoice;
 use App\Services\InvoiceService;
 use Illuminate\Http\RedirectResponse;
 
@@ -17,10 +17,13 @@ class InvoicePaymentController extends Controller
                 $invoice,
                 (float) $request->validated('amount'),
                 $request->validated('notes'),
-                $request->validated('paid_at'),
+                $request->validated('paid_at')
+                    ? \Carbon\Carbon::parse($request->validated('paid_at'), 'Africa/Cairo')->utc()
+                    : null,
             );
         } catch (\RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
+            return back()->withErrors(['amount' => $e->getMessage()], 'payment')
+                ->withInput($request->only('amount', 'notes', 'paid_at', 'payment_invoice_id'));
         }
 
         return back()->with('success', 'تم تسجيل الدفعة بنجاح ✅');

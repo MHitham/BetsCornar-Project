@@ -31,7 +31,7 @@
                     — {{ $invoice->cancellation_reason }}
                 @endif
                 <div class="small text-muted mt-1">
-                    تاريخ الإلغاء: {{ $invoice->cancelled_at?->format('Y-m-d H:i') }}
+                    تاريخ الإلغاء: {{ displayDateTime($invoice->cancelled_at) }}
                 </div>
             </div>
         </div>
@@ -78,7 +78,7 @@
                         </tr>
                         <tr>
                             <td class="text-muted">التاريخ</td>
-                            <td>{{ $invoice->created_at->format('(Y-m-d) - H:i') }}</td>
+                            <td>{{ displayDateTime($invoice->created_at, '(Y-m-d) -') }}</td>
                         </tr>
                         @if(filled($invoice->treatment))
                         <tr>
@@ -239,7 +239,7 @@
                         <div class="card-body border-bottom py-2">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <small class="text-muted">
-                                    {{ $ret->created_at->format('Y-m-d H:i') }}
+                                    {{ displayDateTime($ret->created_at) }}
                                     @if($ret->reason) — {{ $ret->reason }} @endif
                                 </small>
                                 <span class="badge bg-warning text-dark">
@@ -355,7 +355,7 @@
                             <tbody>
                                 @foreach($invoice->payments as $payment)
                                     <tr>
-                                        <td class="font-monospace small">{{ $payment->paid_at->format('Y-m-d H:i') }}</td>
+                                        <td class="font-monospace small">{{ displayDateTime($payment->paid_at) }}</td>
                                         <td class="fw-semibold text-success">{{ number_format($payment->amount, 2) }} ج.م</td>
                                         <td class="text-muted">{{ $payment->notes ?: '-' }}</td>
                                     </tr>
@@ -385,7 +385,7 @@
                         <hr>
                         <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1 text-success"></i>تسجيل دفعة جديدة</h6>
                         {{-- حماية تسجيل دفعة الفاتورة من الإرسال المكرر. --}}
-                        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" data-prevent-double>
+                        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" data-prevent-double data-payment-form novalidate>
                             @csrf
                             <x-idempotency-token />
                             <div class="row g-3">
@@ -405,8 +405,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold">تاريخ الدفع</label>
-                                    <input type="datetime-local" name="paid_at" class="form-control"
-                                           value="{{ now()->format('Y-m-d\TH:i') }}">
+                                    <x-payment-date :invoice="$invoice" />
                                 </div>
                             </div>
                             <div class="mt-3">

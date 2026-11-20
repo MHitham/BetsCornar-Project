@@ -58,7 +58,9 @@ test('customer file groups each invoice and vaccination under its own animal', f
         'invoice_number' => 'GROUP-ORPHAN',
     ]);
     $orphanResponse = $this->get(route('customers.show', $customer));
-    $orphanResponse->assertSee('سجلات بدون حيوان')->assertSee('GROUP-ORPHAN');
+    $orphanResponse->assertSee('أرشيف')->assertSee('GROUP-ORPHAN')
+        ->assertDontSeeText('سجلات بدون حيوان')
+        ->assertDontSeeText('الأصناف');
     expect($orphan->fresh()->animal_id)->toBeNull();
 });
 

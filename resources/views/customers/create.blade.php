@@ -717,6 +717,16 @@
             // ── بحث العميل بالهاتف لجلب قائمة الحيوانات (Phase 2) ──────────
             const phoneInput = document.getElementById('phone');
             const animalSelect = document.getElementById('animalSelect');
+            const animalTypeInput = document.getElementById('animal_type');
+
+            function syncSelectedAnimalType() {
+                const selected = animalSelect.selectedOptions[0];
+                if (selected?.value) {
+                    animalTypeInput.value = selected.dataset.species || '';
+                }
+            }
+
+            animalSelect.addEventListener('change', syncSelectedAnimalType);
             const addAnimalLink = document.getElementById('addAnimalLink');
             const animalLoading = document.getElementById('animalLoading');
 
@@ -799,11 +809,13 @@
                     animalSelect.appendChild(option);
                 }
                 option.textContent = `${name} (${species}) - مضاف جديد لهذه الزيارة`;
+                option.dataset.species = species;
                 
                 animalSelect.disabled = false;
                 animalSelect.value = 'new_animal';
 
                 // Close the modal correctly utilizing window.bootstrap
+                syncSelectedAnimalType();
                 const modalEl = document.getElementById('newAnimalModal');
                 const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                 modal.hide();
@@ -832,6 +844,7 @@
                             data.animals.forEach(animal => {
                                 const option = document.createElement('option');
                                 option.value = animal.id;
+                                option.dataset.species = animal.species || '';
                                 option.textContent = `${animal.name} (${animal.species || 'غير محدد'})`;
                                 animalSelect.appendChild(option);
                             });
@@ -866,11 +879,13 @@
                     if (possibleNewAnimalField && !Array.from(animalSelect.options).find(o => o.value === 'new_animal')) {
                         const opt = document.createElement('option');
                         opt.value = 'new_animal';
+                        opt.dataset.species = document.querySelector('input[name="new_animal[species]"]')?.value || '';
                         opt.textContent = document.getElementById('modal_animal_name').value + ' - مضاف جديد لهذه الزيارة';
                         animalSelect.appendChild(opt);
                         animalSelect.value = 'new_animal';
                         animalSelect.disabled = false;
                     }
+                    syncSelectedAnimalType();
                 } catch (error) {
                     console.error('Customer lookup error:', error);
                     resetAnimalSelect();

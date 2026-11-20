@@ -6,6 +6,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreInvoicePaymentRequest extends FormRequest
 {
+    protected $errorBag = 'payment';
+
     // السماح للمستخدمين المصرح لهم بالوصول إلى مسار تسجيل الدفعات.
     public function authorize(): bool
     {

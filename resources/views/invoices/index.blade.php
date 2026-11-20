@@ -194,7 +194,7 @@
                                     class="fw-bold fs-6 font-monospace {{ $invoice->isCancelled() ? 'text-muted text-decoration-line-through' : 'text-success' }}">
                                     {{ number_format($invoice->total) }} {{ __('messages.currency') }}
                                 </td>
-                                <td class="text-muted small">{{ $invoice->created_at->format('Y-m-d H:i') }}</td>
+                                <td class="text-muted small">{{ displayDateTime($invoice->created_at) }}</td>
                                 <td class="text-center">
                                     <a href="{{ route('invoices.show', $invoice) }}"
                                         class="btn btn-sm btn-outline-primary">

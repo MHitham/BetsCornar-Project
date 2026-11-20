@@ -31,7 +31,7 @@
         </div>
     @endif
     @if($purchase->isCancelled())
-        <div class="alert alert-danger">الفاتورة ملغية{{ $purchase->cancellation_reason ? ' — '.$purchase->cancellation_reason : '' }}{{ $purchase->cancelled_at ? ' بتاريخ '.$purchase->cancelled_at->format('Y/m/d H:i') : '' }}</div>
+        <div class="alert alert-danger">الفاتورة ملغية{{ $purchase->cancellation_reason ? ' — '.$purchase->cancellation_reason : '' }}{{ $purchase->cancelled_at ? ' بتاريخ '.displayDateTime($purchase->cancelled_at, 'Y/m/d') : '' }}</div>
     @endif
 
     <div class="row g-4">

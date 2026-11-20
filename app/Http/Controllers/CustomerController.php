@@ -49,17 +49,14 @@ class CustomerController extends Controller
             'animals.invoices' => fn ($q) => $q->latest()->select(
                 'id', 'invoice_number', 'animal_id', 'customer_id', 'created_at', 'total', 'status', 'diagnosis', 'treatment'
             ),
-            'animals.invoices.items.product:id,name,type',
             'animals.vaccinations' => fn ($q) => $q->latest('vaccination_date'),
             'animals.vaccinations.product:id,name',
             'invoices' => fn ($q) => $q->latest('created_at'),
-            'invoices.items.product',
             'invoices.vaccinations.product',
             'invoices.payments',
         ]);
 
-        $orphanInvoices = $customer->invoices()->whereNull('animal_id')->latest()
-            ->with('items.product:id,name,type')->get();
+        $orphanInvoices = $customer->invoices()->whereNull('animal_id')->latest()->get();
         $orphanVaccinations = $customer->vaccinations()->whereNull('animal_id')->latest('vaccination_date')
             ->with('product:id,name')->get();
 

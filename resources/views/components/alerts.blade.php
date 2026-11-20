@@ -1,4 +1,4 @@
-﻿@if (session('success'))
+@if (session('success'))
     <div class="alert alert-success alert-dismissible fade show mb-4 app-alert" role="alert">
         <div class="app-alert__row">
             <span class="app-alert__icon">

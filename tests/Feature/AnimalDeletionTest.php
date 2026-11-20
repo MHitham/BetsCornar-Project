@@ -35,6 +35,12 @@ it('deletes a pet file, preserves invoices, and removes vaccinations', function 
         ->and($invoice->fresh()->animal_name)->toBe('محذوف')
         ->and(Cache::get(dashboardKey('upcoming_vaccinations')))->toBeNull()
         ->and(Cache::get('dashboard.total_vaccinations'))->toBeNull();
+
+    $response = $this->get(route('customers.show', $customer))->assertOk();
+    preg_match('/<details id="medical-record-archive"[^>]*>(.*?)<\/details>/s', $response->getContent(), $archive);
+    expect($archive)->not->toBeEmpty();
+    expect($archive[0])->not->toMatch('/<details[^>]*\sopen[\s=>]/');
+    expect($archive[1])->toContain('أرشيف', 'محذوف', $invoice->invoice_number, route('invoices.show', $invoice));
 });
 
 it('does not allow an employee to delete a pet file', function () {

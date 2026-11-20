@@ -95,6 +95,30 @@ test('invoice and vaccination pages expose the pet name without null in WhatsApp
     expect(urldecode((string) $response->getContent()))->toContain('لولو');
 });
 
+test('three day reminders load each animals name and species instead of the customers type', function () {
+    $this->actingAsAdmin();
+    $customer = Customer::factory()->create(['name' => 'TEST-Story', 'animal_type' => 'قط']);
+    $vaccine = Product::factory()->vaccination()->create();
+    foreach (['روكي' => 'كلب', 'لولي' => 'قطة'] as $name => $species) {
+        $animal = Animal::factory()->create(['customer_id' => $customer->id, 'name' => $name, 'species' => $species]);
+        $invoice = Invoice::factory()->create(['customer_id' => $customer->id, 'animal_id' => $animal->id]);
+        Vaccination::create([
+            'customer_id' => $customer->id, 'animal_id' => $animal->id,
+            'invoice_id' => $invoice->id,
+            'product_id' => $vaccine->id, 'vaccination_date' => today(),
+            'next_dose_date' => today()->addDay(), 'is_completed' => false,
+        ]);
+    }
+    $response = $this->get(route('vaccinations.index'))->assertOk();
+    $response->assertViewHas('threeDaysUpcoming', function ($rows) {
+        return $rows->count() === 2 && $rows->every(fn ($row) => $row->animal !== null);
+    });
+    preg_match('/id="upcomingModal".*?<\/tbody>/s', $response->getContent(), $matches);
+    $modal = $matches[0] ?? '';
+    expect($modal)->toContain('<td>روكي</td>', '<td>كلب</td>', '<td>لولي</td>', '<td>قطة</td>');
+    expect(urldecode($modal))->toContain('للحيوان (روكي)', 'الخاص بـ (كلب)');
+});
+
 test('invoice pdf remains one page and includes the pet name', function () {
     $this->actingAsAdmin();
     $customer = Customer::factory()->create();
