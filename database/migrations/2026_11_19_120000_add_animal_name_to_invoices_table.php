@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('invoices', function (Blueprint $table) {
-            $table->string('animal_name')->nullable()->after('animal_id');
-        });
+        if (! Schema::hasColumn('invoices', 'animal_name')) {
+            Schema::table('invoices', function (Blueprint $table) {
+                $table->string('animal_name')->nullable()->after('animal_id');
+            });
+        }
 
         // نسخ اسم الحيوان على الفواتير القديمة المرتبطة بحيوان.
         $names = DB::table('animals')->pluck('name', 'id');
