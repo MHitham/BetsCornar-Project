@@ -2,10 +2,10 @@
 
 ## Release candidate verification
 
-- `vendor\bin\pest.bat --colors=never` passed all **174 tests (682 assertions)**, including Unit, Feature, and Audit. The test process explicitly used SQLite in memory and isolated cache, session, queue, and mail settings.
+- `vendor\bin\pest.bat --colors=never` passed all **178 tests (712 assertions)** after the backup restore fix, including Unit, Feature, and Audit. The test process explicitly used SQLite in memory and isolated cache, session, queue, and mail settings.
 - Pint passed on all **16 changed PHP files** after fixing two import-order findings. Blade templates were exercised by the test suite. `npm run build`, Composer platform checks, and `git diff --check` passed.
 - The production Composer lockfile audit reported **69 advisories across 16 packages**. The npm audit reported **11 affected entries** (2 critical, 8 high, 1 moderate). Dependency remediation is still pending.
-- The earlier same-minute backup restore issue below is still open. The passing suite and asset build do not certify production readiness.
+- The same-minute backup restore issue below was fixed. On a separate temporary MySQL server, restoring a legacy backup in the same minute restored the original fixture data and left the selected SQL file's SHA-256 unchanged. Restoring the automatically created safety copy recovered the data from immediately before the first restore. Pest also checked retention and the failure paths.
 
 ## Previous QA run
 
@@ -34,7 +34,7 @@ All 10 skills in `skills-lock.json` were present under `.agents/skills` and avai
 
 ## Confirmed findings
 
-1. **Restoring a backup in the same minute can overwrite the selected recovery file.** Backup filenames resolve to the minute. Before reading the selected file, `restore()` creates a safety backup, which reuses the filename when restoring in the same minute. The MySQL probe confirmed that the selected file's hash changed and the edited record stayed in the database after restore. Creating, listing, and restoring with a distinct-minute safety backup passed. [BackupService.php:51](app/Services/BackupService.php#L51) · [BackupService.php:122](app/Services/BackupService.php#L122)
+1. **Fixed: restoring a backup in the same minute could overwrite the selected recovery file.** The previous MySQL probe confirmed a filename collision. The service now validates the selected file, gives the safety copy a unique name, and protects both files from retention cleanup during restore. [BackupService.php](app/Services/BackupService.php)
 2. **The default MySQL database is missing from the current workstation.** Laravel returned `Unknown database 'bets-animal'` for the configured connection. The existing clinic records were available in `database/database.sqlite`, and the browser checks ran against a temporary copy of that file.
 3. **The annual and profitability report queries depend on MySQL date functions.** The browser reproduced HTTP 500 for `/reports` on SQLite. The controller uses `MONTH()` and `YEAR()`. The corresponding report routes and calculations passed on MySQL. [ReportController.php:22](app/Http/Controllers/ReportController.php#L22) · [ReportController.php:261](app/Http/Controllers/ReportController.php#L261)
 4. **Formatting and dependency audit checks are still failing.** Pint flagged `BackfillCashRefunds.php`, `InvoicePaymentController.php`, `VerifyCloudflareLicense.php`, `UpdateCustomerRequest.php`, and `PurchasePayment.php`. The dependency advisories are reproducible from both lockfiles with the audit commands below.

@@ -13,6 +13,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VaccinationController;
 use App\Http\Controllers\VaccineBatchController;
+use App\Services\BackupService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 
@@ -191,11 +192,11 @@ Route::middleware('auth')->group(function () {
 
         // إضافة حماية idempotent لاستعادة النسخ الاحتياطية — العملية خطيرة ولا يجوز تكرارها.
         Route::post('settings/backup/{filename}/restore', [BackupController::class, 'restoreBackup'])
-            ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sql$')
+            ->where('filename', BackupService::FILENAME_PATTERN)
             ->name('backup.restore')
             ->middleware('idempotent');
         Route::delete('settings/backup/{filename}', [BackupController::class, 'destroy'])
-            ->where('filename', '^backup_[\d]{4}-[\d]{2}-[\d]{2}_[\d]{2}-[\d]{2}\.sql$')
+            ->where('filename', BackupService::FILENAME_PATTERN)
             ->name('backup.destroy');
 
     });

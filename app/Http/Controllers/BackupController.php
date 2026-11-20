@@ -30,11 +30,6 @@ class BackupController extends Controller
 
     public function destroy(string $filename): RedirectResponse
     {
-
-        if (! preg_match('/^backup_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.sql$/', $filename)) {
-            return redirect()->back()->with('error', 'اسم الملف غير صحيح');
-        }
-
         try {
             $this->backupService->delete($filename);
 
@@ -51,11 +46,6 @@ class BackupController extends Controller
 
     public function restoreBackup(string $filename): RedirectResponse
     {
-
-        if (! preg_match('/^backup_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.sql$/', $filename)) {
-            return redirect()->back()->with('error', 'اسم الملف غير صحيح');
-        }
-
         try {
             $this->backupService->restore($filename);
 
