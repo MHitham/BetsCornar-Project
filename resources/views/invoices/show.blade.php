@@ -435,23 +435,23 @@
             <form class="modal-content" action="{{ route('invoice-returns.store', $invoice) }}" method="POST" data-prevent-double>
                 @csrf
                 <x-idempotency-token />
-                <div class="modal-header border-warning">
-                    <h5 class="modal-title text-warning" id="returnModalLabel">
-                        <i class="bi bi-arrow-return-right me-1"></i>
-                        إرجاع أصناف من الفاتورة {{ $invoice->invoice_number }}
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title h5" id="returnModalLabel">إرجاع أصناف</h2>
+                        <div class="small text-muted">الفاتورة <bdi>{{ $invoice->invoice_number }}</bdi></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق نافذة الإرجاع"></button>
                 </div>
                 <div class="modal-body">
                     @error('return')
                         <div class="alert alert-danger">{{ $message }}</div>
                     @enderror
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">سبب الإرجاع (اختياري)</label>
-                        <input type="text" name="reason" class="form-control"
+                        <label for="invoice-return-reason" class="form-label fw-semibold">سبب الإرجاع (اختياري)</label>
+                        <input id="invoice-return-reason" type="text" name="reason" class="form-control"
                                placeholder="مثال: منتج تالف، طلب العميل...">
                     </div>
-                    <table class="table table-bordered align-middle text-center">
+                    <table class="table table-bordered align-middle text-center return-items mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>المنتج</th>
@@ -491,10 +491,10 @@
                                     @if($returnable > 0)
                                         <input type="number"
                                                name="items[{{ $loop->index }}][quantity_returned]"
-                                               class="form-control form-control-sm text-center"
+                                               class="form-control form-control-sm text-center return-quantity"
+                                               aria-label="الكمية المُرجعة من {{ $item->product->name }}"
                                                min="0" max="{{ $returnable }}"
-                                               step="0.01" value="0"
-                                               style="width: 90px; margin: auto;">
+                                               step="0.01" value="0">
                                     @else
                                         <span class="badge bg-secondary">تم الإرجاع</span>
                                     @endif
@@ -505,7 +505,7 @@
                     </table>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary"
+                    <button type="button" class="btn btn-outline-secondary"
                             data-bs-dismiss="modal">إلغاء</button>
                     <button type="submit" class="btn btn-warning text-dark">
                         <i class="bi bi-arrow-return-right me-1"></i>تأكيد الإرجاع
