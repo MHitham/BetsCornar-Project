@@ -363,52 +363,96 @@
     </div>
     @endforeach
 
-    {{-- اعرض نافذة التأكيد للدورين المسموح لهما بالحذف، مع اشتراط مطابقة الهاتف. --}}
+    {{-- اعرض أثر المسح للدورين المسموح لهما بالحذف واطلب موافقة صريحة. --}}
     @can('delete', $customer)
-        <div class="modal fade" id="deleteCustomerHistoryModal" tabindex="-1" aria-labelledby="deleteCustomerHistoryTitle" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <form class="modal-content" action="{{ route('customers.destroy', $customer) }}" method="POST"
-                      data-prevent-double data-expected-phone="{{ $customer->phone }}"
-                      data-has-error="{{ $errors->customerDeletion->has('phone_confirmation') ? '1' : '0' }}">
+        <div class="modal fade" id="deleteCustomerHistoryModal" tabindex="-1" aria-labelledby="deleteCustomerHistoryTitle"
+             aria-describedby="deleteCustomerHistoryWarning" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <form class="modal-content bg-white" action="{{ route('customers.destroy', $customer) }}" method="POST"
+                      data-has-error="{{ $errors->customerDeletion->has('confirm_delete') ? '1' : '0' }}">
                     @csrf
                     @method('DELETE')
-                    <div class="modal-header">
-                        <h2 class="modal-title h5" id="deleteCustomerHistoryTitle">{{ __('customers.history_deletion.action') }}</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('customers.actions.cancel') }}"></button>
-                    </div>
+                    {{-- لا ترسل قيمة الموافقة حتى يختار المستخدم مربع التأكيد. --}}
+                    <input type="hidden" name="confirm_delete" value="1" disabled>
                     <div class="modal-body">
-                        <p>{{ __('customers.history_deletion.warning') }}</p>
-                        <ul>
-                            <li>{{ __('customers.history_deletion.invoice_count', ['count' => $customer->invoices_count]) }}</li>
-                            <li>{{ __('customers.history_deletion.animal_count', ['count' => $customer->animals_count]) }}</li>
-                            <li>{{ __('customers.history_deletion.vaccination_count', ['count' => $customer->vaccinations_count]) }}</li>
-                        </ul>
-                        <label for="delete-customer-phone" class="form-label">{{ __('customers.history_deletion.phone_label', ['phone' => $customer->phone]) }}</label>
-                        <input id="delete-customer-phone" name="phone_confirmation" type="tel" class="form-control @error('phone_confirmation', 'customerDeletion') is-invalid @enderror"
-                               dir="ltr" inputmode="tel" autocomplete="off" required>
-                        @error('phone_confirmation', 'customerDeletion')
-                            <div class="invalid-feedback" role="alert">{{ $message }}</div>
+                        {{-- وضّح العميل المقصود ومقدار السجل المتأثر قبل الموافقة. --}}
+                        <div class="text-center mb-3">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10 text-danger fs-3 mb-3"
+                                  style="width: 3.5rem; height: 3.5rem;" aria-hidden="true">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </span>
+                            <h2 class="modal-title h5 fw-bold mb-1" id="deleteCustomerHistoryTitle">{{ __('customers.history_deletion.action') }}</h2>
+                            <p class="text-muted mb-0"><bdi>{{ $customer->name }}</bdi></p>
+                        </div>
+                        <div class="row row-cols-3 g-2 text-center mb-3">
+                            @foreach (['invoice_count' => $customer->invoices_count, 'animal_count' => $customer->animals_count, 'vaccination_count' => $customer->vaccinations_count] as $label => $count)
+                                <div class="col">
+                                    <div class="h-100 border rounded-3 bg-light px-1 py-2">
+                                        <div class="fs-5 fw-bold">{{ $count }}</div>
+                                        <div class="small text-muted">{{ __('customers.history_deletion.'.$label) }}</div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <p class="small text-muted mb-2">{{ __('customers.history_deletion.financial_note') }}</p>
+                        <p id="deleteCustomerHistoryWarning" class="alert alert-danger small py-2 px-3 mb-3">{{ __('customers.history_deletion.warning') }}</p>
+                        <div class="form-check mb-1">
+                            <input id="delete-customer-acknowledgement" type="checkbox" class="form-check-input" autocomplete="off">
+                            <label for="delete-customer-acknowledgement" class="form-check-label fw-semibold">{{ __('customers.history_deletion.acknowledgement') }}</label>
+                        </div>
+                        @error('confirm_delete', 'customerDeletion')
+                            <div class="small text-danger" role="alert">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="modal-footer">
+                    {{-- حافظ على الإلغاء وخطوة المسح واضحة دون زر إغلاق إضافي. --}}
+                    <div class="modal-footer bg-white border-0 pt-0">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ __('customers.actions.cancel') }}</button>
-                        <button type="submit" class="btn btn-danger" disabled>{{ __('customers.history_deletion.confirm') }}</button>
+                        <button type="submit" class="btn btn-danger" disabled>
+                            <i class="bi bi-trash me-1" aria-hidden="true"></i>{{ __('customers.history_deletion.confirm') }}
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
         @push('scripts')
             <script>
-                // فعّل التأكيد عند التطابق وأعد فتح النافذة إذا رفض الخادم الرقم.
+                // أعد ضبط الموافقة عند فتح النافذة وإغلاقها وامنع الإرسال المكرر.
                 (() => {
                     const modal = document.getElementById('deleteCustomerHistoryModal');
                     const form = modal.querySelector('form');
-                    const phone = form.elements.phone_confirmation;
+                    const acknowledgement = form.querySelector('#delete-customer-acknowledgement');
+                    const confirmation = form.elements.confirm_delete;
                     const confirmButton = form.querySelector('button[type="submit"]');
-                    const update = () => { confirmButton.disabled = phone.value.trim() !== form.dataset.expectedPhone; };
-                    phone.addEventListener('input', update);
-                    modal.addEventListener('shown.bs.modal', () => phone.focus());
-                    update();
+                    let submitting = false;
+
+                    const update = () => {
+                        confirmation.disabled = !acknowledgement.checked;
+                        confirmButton.disabled = submitting || confirmation.disabled;
+                    };
+                    const reset = () => {
+                        submitting = false;
+                        acknowledgement.checked = false;
+                        acknowledgement.disabled = false;
+                        update();
+                    };
+                    acknowledgement.addEventListener('change', update);
+                    modal.addEventListener('show.bs.modal', reset);
+                    modal.addEventListener('hidden.bs.modal', reset);
+                    window.addEventListener('pageshow', (event) => { if (event.persisted) reset(); });
+
+                    // توقّف عند غياب الموافقة أو عند وجود طلب جارٍ، مع إبقاء الحقل المخفي قابلًا للإرسال.
+                    form.addEventListener('submit', (event) => {
+                        if (submitting || !acknowledgement.checked) {
+                            event.preventDefault();
+                            return;
+                        }
+                        submitting = true;
+                        acknowledgement.disabled = true;
+                        update();
+                    });
+                    modal.addEventListener('hide.bs.modal', (event) => { if (submitting) event.preventDefault(); });
+
+                    reset();
                     if (form.dataset.hasError === '1') bootstrap.Modal.getOrCreateInstance(modal).show();
                 })();
             </script>

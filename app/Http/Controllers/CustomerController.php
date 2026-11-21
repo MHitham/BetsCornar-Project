@@ -15,8 +15,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-// اعرض خطأ مطابقة الهاتف داخل نافذة الحذف.
-use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
 use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
@@ -83,22 +81,14 @@ class CustomerController extends Controller
         return view('customers.show', compact('customer', 'orphanInvoices', 'orphanVaccinations'));
     }
 
-    // طابق رقم الهاتف على الخادم قبل طلب المسح النهائي للسجل الطبي.
+    // اطلب موافقة صريحة على الخادم قبل طلب المسح النهائي للسجل الطبي.
     public function destroy(Request $request, Customer $customer, CustomerDeletionService $deletion): RedirectResponse
     {
-        $validated = $request->validateWithBag('customerDeletion', [
-            'phone_confirmation' => ['required', 'string', 'max:255'],
+        $request->validateWithBag('customerDeletion', [
+            'confirm_delete' => ['accepted'],
         ], [
-            'phone_confirmation.required' => __('customers.history_deletion.phone_mismatch'),
-            'phone_confirmation.string' => __('customers.history_deletion.phone_mismatch'),
-            'phone_confirmation.max' => __('customers.history_deletion.phone_mismatch'),
+            'confirm_delete.accepted' => __('customers.history_deletion.acknowledgement_required'),
         ]);
-
-        if (! hash_equals($customer->phone, $validated['phone_confirmation'])) {
-            throw ValidationException::withMessages([
-                'phone_confirmation' => __('customers.history_deletion.phone_mismatch'),
-            ])->errorBag('customerDeletion');
-        }
 
         $deletion->deleteCustomerWithHistory($customer);
 

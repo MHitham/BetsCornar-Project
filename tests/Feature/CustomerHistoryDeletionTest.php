@@ -64,18 +64,22 @@ it('deletes medical history and still collects the hidden debt without affecting
         ];
     };
 
+    // تحقق من تسميات الملخص والأعداد الفعلية وحقل الموافقة المغلق افتراضيًا.
     $this->get(route('customers.show', $customer))->assertOk()
         ->assertSeeText('مسح العميل وسجله بالكامل')
-        ->assertSeeText('الفواتير التي ستُخفى: 2')->assertSeeText('الحيوانات التي ستُحذف: 1')
-        ->assertSeeText('التطعيمات التي ستُحذف: 1')->assertSee('data-expected-phone="201012345678"', false);
+        ->assertSeeText('فواتير تتخفى')->assertSeeText('حيوانات تتمسح')->assertSeeText('تطعيمات تتمسح')
+        ->assertViewHas('customer', fn ($record) => $record->invoices_count === 2
+            && $record->animals_count === 1 && $record->vaccinations_count === 1)
+        ->assertSee('name="confirm_delete" value="1" disabled', false)
+        ->assertDontSee('name="phone_confirmation"', false);
     $before = $financialSnapshot();
     expect($before['daily_revenue'])->toBe(250.0)->and($before['daily_visits'])->toBe(2)
         ->and($before['monthly_cogs'])->toBe(60.0)->and($before['monthly_profit'])->toBe(190.0)
         ->and($before['product'])->toBe(8.0)->and($before['batch'])->toBe(8.0);
     expect(Cache::get(dashboardKey('upcoming_vaccinations'))->modelKeys())->toContain($vaccination->id);
 
-    // نفّذ الطلب الفعلي بصلاحية المدير ورقم العميل الصحيح.
-    $this->delete(route('customers.destroy', $customer), ['phone_confirmation' => $customer->phone])
+    // نفّذ الطلب الفعلي بصلاحية المدير بعد قبول تأكيد المسح.
+    $this->delete(route('customers.destroy', $customer), ['confirm_delete' => 1])
         ->assertRedirect(route('customers.index'))->assertSessionHas('success');
 
     $this->assertSoftDeleted($customer);
@@ -123,32 +127,40 @@ it('deletes medical history and still collects the hidden debt without affecting
     expect($invoice->fresh()->customer_id)->toBe($customer->id);
 });
 
-// تحقق من ظهور الحذف للموظف ورفض الرقم الخاطئ وقبول الرقم الصحيح.
-it('allows employees to delete only after confirming the correct phone', function () {
+// تحقق من ظهور الحذف للموظف ورفض الطلب عند غياب الموافقة أو رفضها.
+it('allows employees to delete only after acknowledging permanent deletion', function () {
     $customer = Customer::factory()->create(['phone' => '201012345678']);
-    $invoice = Invoice::factory()->for($customer)->create();
+    $animal = Animal::factory()->for($customer)->create();
+    $invoice = Invoice::factory()->for($customer)->for($animal)->create();
+    $vaccination = Vaccination::factory()->for($customer)->for($animal)->for($invoice)->create();
     $this->actingAsEmployee();
     $this->get(route('customers.show', $customer))->assertOk()
         ->assertSeeText('مسح العميل وسجله بالكامل')
         ->assertSee('id="deleteCustomerHistoryModal"', false)
-        ->assertSeeText('الفواتير التي ستُخفى: 1');
+        ->assertSeeText('فاهم إن المسح نهائي');
 
-    $this->from(route('customers.show', $customer))->delete(route('customers.destroy', $customer), ['phone_confirmation' => '201000000000'])
-        ->assertRedirect(route('customers.show', $customer))->assertSessionHasErrors(['phone_confirmation'], null, 'customerDeletion');
-    expect($customer->fresh()->trashed())->toBeFalse()->and($invoice->fresh()->is_hidden)->toBeFalse();
+    // أثبت أن الطلب المرفوض لا يغيّر العميل أو الفاتورة أو السجل الطبي.
+    foreach ([[], ['confirm_delete' => 0]] as $payload) {
+        $this->from(route('customers.show', $customer))->delete(route('customers.destroy', $customer), $payload)
+            ->assertRedirect(route('customers.show', $customer))->assertSessionHasErrors(['confirm_delete'], null, 'customerDeletion');
+        expect($customer->fresh()->trashed())->toBeFalse()
+            ->and($customer->fresh()->phone)->toBe($customer->phone)
+            ->and($invoice->fresh()->is_hidden)->toBeFalse();
+        $this->assertModelExists($animal)->assertModelExists($vaccination);
+    }
 
-    // تأكد من تنفيذ الحذف وإخفاء الفاتورة عند مطابقة الرقم.
-    $this->delete(route('customers.destroy', $customer), ['phone_confirmation' => $customer->phone])
+    // تأكد من تنفيذ الحذف وإخفاء الفاتورة بعد الموافقة.
+    $this->delete(route('customers.destroy', $customer), ['confirm_delete' => 1])
         ->assertRedirect(route('customers.index'))->assertSessionHas('success');
     $this->assertSoftDeleted($customer);
     expect($invoice->fresh()->is_hidden)->toBeTrue();
 });
 
-// تحقق من تحويل الضيف إلى تسجيل الدخول حتى إذا أرسل رقم العميل الصحيح.
+// تحقق من تحويل الضيف إلى تسجيل الدخول حتى إذا أرسل حقل الموافقة.
 it('requires login before deleting a customer with history', function () {
     $customer = Customer::factory()->create();
     $this->get(route('customers.show', $customer))->assertRedirect(route('login'));
-    $this->delete(route('customers.destroy', $customer), ['phone_confirmation' => $customer->phone])
+    $this->delete(route('customers.destroy', $customer), ['confirm_delete' => 1])
         ->assertRedirect(route('login'));
     expect($customer->fresh()->trashed())->toBeFalse();
 });

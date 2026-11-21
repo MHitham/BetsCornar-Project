@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Customer;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class CustomerDeletionService
 {
@@ -13,13 +12,8 @@ class CustomerDeletionService
     public function deleteCustomerWithHistory(Customer $customer): void
     {
         DB::transaction(function () use ($customer) {
-            // أعد فحص الهاتف المؤكد بعد قفل صف العميل.
+            // اقفل صف العميل قبل تعديل سجله الطبي لتحميل حالته الحالية داخل المعاملة.
             $locked = Customer::query()->lockForUpdate()->findOrFail($customer->getKey());
-            if (! hash_equals($locked->phone, $customer->phone)) {
-                throw ValidationException::withMessages([
-                    'phone_confirmation' => __('customers.history_deletion.phone_mismatch'),
-                ])->errorBag('customerDeletion');
-            }
 
             // حذف الحيوان يفصل مرجعه من الفاتورة تلقائيًا بفضل قيد قاعدة البيانات.
             $locked->vaccinations()->delete();
