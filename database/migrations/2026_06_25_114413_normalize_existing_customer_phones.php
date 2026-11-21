@@ -3,6 +3,8 @@
 use App\Helpers\PhoneHelper;
 use App\Models\Customer;
 use Illuminate\Database\Migrations\Migration;
+// تحقّق من وجود عمود الحذف المنطقي وقت تشغيل الترحيل التاريخي.
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -14,6 +16,8 @@ return new class extends Migration
     public function up(): void
     {
         Customer::query()
+            // في التثبيت الجديد لم يُضف عمود الحذف المنطقي في هذه المرحلة بعد.
+            ->when(! Schema::hasColumn('customers', 'deleted_at'), fn ($query) => $query->withTrashed())
             ->whereNotNull('phone')
             ->where('phone', '!=', '')
             ->chunkById(500, function ($customers) {

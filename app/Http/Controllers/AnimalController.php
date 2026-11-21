@@ -44,10 +44,12 @@ class AnimalController extends Controller
         $animal->load([
             'customer',
             'vaccinations' => function ($query) {
-                $query->with(['product', 'invoice'])->latest('created_at');
+                // لا تجلب رابطًا لفاتورة مخفية في سجل الحيوان الطبي.
+                $query->with(['product', 'invoice' => fn ($invoices) => $invoices->visible()])->latest('created_at');
             },
             'invoices' => function ($query) {
-                $query->with(['items.product'])->latest('created_at');
+                // حمّل التشخيصات من الفواتير الظاهرة فقط.
+                $query->visible()->with(['items.product'])->latest('created_at');
             },
         ]);
 

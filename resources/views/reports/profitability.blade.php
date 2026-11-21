@@ -355,6 +355,8 @@
                                     <th class="text-muted small">المدفوع</th>
                                     <th class="text-muted small">المتبقي</th>
                                     <th class="text-muted small">التاريخ</th>
+                                    {{-- إتاحة تحصيل الدين حتى عند إخفاء الفاتورة. --}}
+                                    <th class="text-muted small">{{ __('customers.debt_payment.action') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -364,13 +366,12 @@
                                     @endphp
                                     <tr>
                                         <td class="px-4 fw-semibold small">
-                                            @if($inv->customer)
-                                                <a href="{{ route('invoices.show', $inv->id) }}" class="text-decoration-none fw-bold" style="color: #0d6efd;">
-                                                    {{ $inv->customer->name }}
-                                                </a>
+                                            {{-- استخدم الاسم المحفوظ على الفاتورة المخفية دون رابط لشاشتها. --}}
+                                            @if($inv->is_hidden)
+                                                {{ $inv->customer_name ?: ($inv->customer?->name ?? __('customers.debt_payment.unknown_customer')) }}
                                             @else
-                                                <a href="{{ route('invoices.show', $inv->id) }}" class="text-decoration-none fw-bold text-muted">
-                                                    {{ $inv->customer_name }}
+                                                <a href="{{ route('invoices.show', $inv->id) }}" class="text-decoration-none fw-bold" style="color: #0d6efd;">
+                                                    {{ $inv->customer?->name ?? $inv->customer_name }}
                                                 </a>
                                             @endif
                                         </td>
@@ -379,13 +380,21 @@
                                         <td class="small font-monospace text-success">{{ number_format($inv->amount_paid) }}</td>
                                         <td class="fw-bold small font-monospace" style="color: #b45309;">{{ number_format($rem) }}</td>
                                         <td class="text-muted small">{{ $inv->created_at->format('Y-m-d') }}</td>
+                                        {{-- افتح نموذج الدفع للفواتير المدينة الظاهرة والمخفية. --}}
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-success text-nowrap"
+                                                    data-bs-toggle="modal" data-bs-target="#debtPayment{{ $inv->id }}">
+                                                {{ __('customers.debt_payment.action') }}
+                                            </button>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                             <tfoot style="background: rgba(255,193,7,0.06);">
                                 <tr>
                                     <td colspan="4" class="px-4 fw-bold text-end">إجمالي الديون على العملاء:</td>
-                                    <td colspan="2" class="fw-bold font-monospace" style="color: #b45309;">{{ number_format($totalCustomerDebts) }} {{ __('messages.currency') }}</td>
+                                    {{-- يشمل التذييل عمود التحصيل المضاف. --}}
+                                    <td colspan="3" class="fw-bold font-monospace" style="color: #b45309;">{{ number_format($totalCustomerDebts) }} {{ __('messages.currency') }}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -396,6 +405,42 @@
     </div>
 
 </div>
+
+{{-- أرسل دفعات التقرير إلى المسار الحالي وأعد استخدام حقل التاريخ والتحقق الموجودين. --}}
+@foreach($customerDebts as $inv)
+    <div class="modal fade" id="debtPayment{{ $inv->id }}" tabindex="-1" aria-labelledby="debtPaymentTitle{{ $inv->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <form class="modal-content" method="POST" action="{{ route('invoice.payments.store', $inv) }}"
+                  data-prevent-double data-payment-form novalidate>
+                @csrf
+                <x-idempotency-token />
+                <div class="modal-header">
+                    <h2 class="modal-title h6" id="debtPaymentTitle{{ $inv->id }}">{{ __('customers.debt_payment.title', ['invoice' => $inv->invoice_number]) }}</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('customers.actions.cancel') }}"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">{{ __('customers.debt_payment.remaining', ['amount' => number_format($inv->remaining_amount, 2)]) }}</p>
+                    <label class="form-label w-100 mb-3">
+                        {{ __('customers.debt_payment.amount') }}
+                        <input class="form-control" type="number" name="amount" min="0.01" max="{{ $inv->remaining_amount }}" step="0.01" required>
+                    </label>
+                    <label class="form-label w-100 mb-3">
+                        {{ __('customers.fields.notes') }}
+                        <input class="form-control" type="text" name="notes" maxlength="255">
+                    </label>
+                    <div>
+                        <span class="form-label">{{ __('customers.debt_payment.date') }}</span>
+                        <x-payment-date :invoice="$inv" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ __('customers.actions.cancel') }}</button>
+                    <button type="submit" class="btn btn-success">{{ __('customers.debt_payment.action') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endforeach
 
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.45.2/apexcharts.min.js"></script>

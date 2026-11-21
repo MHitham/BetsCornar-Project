@@ -7,10 +7,16 @@ use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\VaccineBatch;
+// اجمع تغييرات الحذف الطبي داخل خدمة واحدة.
+use App\Services\CustomerDeletionService;
 use App\Services\CustomerVisitService;
 use Illuminate\Http\JsonResponse;
+// أعد التوجيه إلى قائمة العملاء بعد نجاح الحذف.
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+// اعرض خطأ مطابقة الهاتف داخل نافذة الحذف.
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
 use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
@@ -46,21 +52,51 @@ class CustomerController extends Controller
     {
         $customer->load([
             'animals' => fn ($q) => $q->orderBy('name'),
-            'animals.invoices' => fn ($q) => $q->latest()->select(
+            // استبعد الفواتير المخفية من بطاقات الحيوانات ومن رصيد العميل وأرشيفه.
+            'animals.invoices' => fn ($q) => $q->visible()->latest()->select(
                 'id', 'invoice_number', 'animal_id', 'customer_id', 'created_at', 'total', 'status', 'diagnosis', 'treatment'
             ),
             'animals.vaccinations' => fn ($q) => $q->latest('vaccination_date'),
             'animals.vaccinations.product:id,name',
-            'invoices' => fn ($q) => $q->latest('created_at'),
+            // يُستخدم هذا التحميل كذلك لملخص الرصيد ونوافذ سجل الدفعات.
+            'invoices' => fn ($q) => $q->visible()->latest('created_at'),
             'invoices.vaccinations.product',
             'invoices.payments',
         ]);
 
-        $orphanInvoices = $customer->invoices()->whereNull('animal_id')->latest()->get();
+        // لا تعرض الفواتير المخفية في الأرشيف الطبي.
+        $orphanInvoices = $customer->invoices()->visible()->whereNull('animal_id')->latest()->get();
         $orphanVaccinations = $customer->vaccinations()->whereNull('animal_id')->latest('vaccination_date')
             ->with('product:id,name')->get();
 
+        // احسب كل السجلات المتأثرة حتى لو كانت إحدى الفواتير مخفية مسبقًا.
+        if (request()->user()->can('delete', $customer)) {
+            $customer->loadCount(['invoices', 'animals', 'vaccinations']);
+        }
+
         return view('customers.show', compact('customer', 'orphanInvoices', 'orphanVaccinations'));
+    }
+
+    // طابق رقم الهاتف على الخادم قبل طلب المسح النهائي للسجل الطبي.
+    public function destroy(Request $request, Customer $customer, CustomerDeletionService $deletion): RedirectResponse
+    {
+        $validated = $request->validateWithBag('customerDeletion', [
+            'phone_confirmation' => ['required', 'string', 'max:255'],
+        ], [
+            'phone_confirmation.required' => __('customers.history_deletion.phone_mismatch'),
+            'phone_confirmation.string' => __('customers.history_deletion.phone_mismatch'),
+            'phone_confirmation.max' => __('customers.history_deletion.phone_mismatch'),
+        ]);
+
+        if (! hash_equals($customer->phone, $validated['phone_confirmation'])) {
+            throw ValidationException::withMessages([
+                'phone_confirmation' => __('customers.history_deletion.phone_mismatch'),
+            ])->errorBag('customerDeletion');
+        }
+
+        $deletion->deleteCustomerWithHistory($customer);
+
+        return redirect()->route('customers.index')->with('success', __('customers.history_deletion.success'));
     }
 
     // عرض فورم تعديل بيانات العميل (الاسم/التليفون/العنوان/نوع الحيوان/الملاحظات)
@@ -88,8 +124,8 @@ class CustomerController extends Controller
         }
 
         $results = Customer::query()
-            ->where('name', 'like', "%{$q}%")
-            ->orWhere('phone', 'like', "%{$q}%")
+            // اجمع شروط البحث حتى يظل شرط الحذف المنطقي مطبّقًا على كل النتائج.
+            ->where(fn ($query) => $query->where('name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%"))
             ->orderBy('name')
             ->limit(10)
             ->get(['id', 'name', 'phone', 'address', 'animal_type']);

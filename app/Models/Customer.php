@@ -6,10 +6,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+// أبقِ صف العميل لأغراض السجل المالي بعد حذفه من الشاشات.
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
 {
     use HasFactory;
+
+    // استبعد العملاء المحذوفين من القوائم والبحث وربط المسارات المعتاد.
+    use SoftDeletes;
 
     protected $fillable = [
         'name',

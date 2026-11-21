@@ -35,6 +35,8 @@ class Invoice extends Model
             'total' => 'decimal:2',
             'amount_paid' => 'decimal:2',
             'cancelled_at' => 'datetime',
+            // علامة الإخفاء تخص العرض ولا تغيّر حالة الفاتورة.
+            'is_hidden' => 'boolean',
         ];
     }
 
@@ -82,6 +84,12 @@ class Invoice extends Model
     public function scopeConfirmed($query)
     {
         return $query->where('status', 'confirmed');
+    }
+
+    // يُستخدم الإخفاء صراحةً في الشاشات المحددة فقط.
+    public function scopeVisible($query)
+    {
+        return $query->where('is_hidden', false);
     }
 
     public function scopeCancelled($query)

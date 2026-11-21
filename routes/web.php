@@ -110,6 +110,10 @@ Route::middleware('auth')->group(function () {
         Route::post('customers/export-excel', [CustomerController::class, 'exportExcel'])->name('customers.export-excel');
         Route::get('customers/export-phones', [CustomerController::class, 'getPhones'])->name('customers.export-phones');
         Route::get('customers/lookup-for-visit', [CustomerController::class, 'lookupForVisit'])->name('customers.lookup-for-visit');
+        // افحص صلاحية الحذف أولًا لإرجاع 403 للموظف، واقصر المسار على المدير.
+        Route::delete('customers/{customer}', [CustomerController::class, 'destroy'])
+            ->middleware(['can:delete,customer', 'role:admin'])
+            ->name('customers.destroy');
         // صفحة تعديل بيانات العميل
         Route::get('customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
         // حفظ تعديل بيانات العميل

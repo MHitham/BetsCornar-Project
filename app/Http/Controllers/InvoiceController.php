@@ -27,7 +27,8 @@ class InvoiceController extends Controller
         $period = $request->input('period', 'today');
         $date = $request->input('date');
 
-        $baseQuery = Invoice::query()
+        // القائمة ونتائج البحث تستبعد المخفي؛ شريط الإيراد يستخدم حسابه الأصلي.
+        $baseQuery = Invoice::visible()
             ->when($q, function ($query) use ($q) {
                 $query->where(function ($subQuery) use ($q) {
                     $subQuery->where('invoice_number', 'like', "%{$q}%")
@@ -107,17 +108,17 @@ class InvoiceController extends Controller
         }
     }
 
-    public function show(Invoice $invoice)
+    // احصر 404 للفواتير المخفية في شاشة العرض، واترك ربط مسار الدفعات كما هو.
+    public function show(string $invoice)
     {
-
-        $invoice->load([
+        $invoice = Invoice::visible()->with([
             'animal:id,name',
             'items.product',
             'items.vaccineBatches',
             'vaccinations.product',
             'payments',
             'returns.items.product',
-        ]);
+        ])->findOrFail($invoice);
 
         $showRevenueBar = true;
         $revenueSummary = $showRevenueBar

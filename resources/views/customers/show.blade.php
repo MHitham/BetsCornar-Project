@@ -47,6 +47,12 @@
                     <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-right me-1"></i>{{ __('customers.timeline.back_to_list') }}
                     </a>
+                    {{-- اظهر مسح السجل الكامل للمدير فقط. --}}
+                    @can('delete', $customer)
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteCustomerHistoryModal">
+                            <i class="bi bi-trash me-1" aria-hidden="true"></i>{{ __('customers.history_deletion.action') }}
+                        </button>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -351,4 +357,55 @@
     </div>
     @endforeach
 
+    {{-- اعرض أثر الحذف واطلب كتابة الهاتف قبل تفعيل زر التأكيد. --}}
+    @can('delete', $customer)
+        <div class="modal fade" id="deleteCustomerHistoryModal" tabindex="-1" aria-labelledby="deleteCustomerHistoryTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form class="modal-content" action="{{ route('customers.destroy', $customer) }}" method="POST"
+                      data-prevent-double data-expected-phone="{{ $customer->phone }}"
+                      data-has-error="{{ $errors->customerDeletion->has('phone_confirmation') ? '1' : '0' }}">
+                    @csrf
+                    @method('DELETE')
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="deleteCustomerHistoryTitle">{{ __('customers.history_deletion.action') }}</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('customers.actions.cancel') }}"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>{{ __('customers.history_deletion.warning') }}</p>
+                        <ul>
+                            <li>{{ __('customers.history_deletion.invoice_count', ['count' => $customer->invoices_count]) }}</li>
+                            <li>{{ __('customers.history_deletion.animal_count', ['count' => $customer->animals_count]) }}</li>
+                            <li>{{ __('customers.history_deletion.vaccination_count', ['count' => $customer->vaccinations_count]) }}</li>
+                        </ul>
+                        <label for="delete-customer-phone" class="form-label">{{ __('customers.history_deletion.phone_label', ['phone' => $customer->phone]) }}</label>
+                        <input id="delete-customer-phone" name="phone_confirmation" type="tel" class="form-control @error('phone_confirmation', 'customerDeletion') is-invalid @enderror"
+                               dir="ltr" inputmode="tel" autocomplete="off" required>
+                        @error('phone_confirmation', 'customerDeletion')
+                            <div class="invalid-feedback" role="alert">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ __('customers.actions.cancel') }}</button>
+                        <button type="submit" class="btn btn-danger" disabled>{{ __('customers.history_deletion.confirm') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @push('scripts')
+            <script>
+                // فعّل التأكيد عند التطابق وأعد فتح النافذة إذا رفض الخادم الرقم.
+                (() => {
+                    const modal = document.getElementById('deleteCustomerHistoryModal');
+                    const form = modal.querySelector('form');
+                    const phone = form.elements.phone_confirmation;
+                    const confirmButton = form.querySelector('button[type="submit"]');
+                    const update = () => { confirmButton.disabled = phone.value.trim() !== form.dataset.expectedPhone; };
+                    phone.addEventListener('input', update);
+                    modal.addEventListener('shown.bs.modal', () => phone.focus());
+                    update();
+                    if (form.dataset.hasError === '1') bootstrap.Modal.getOrCreateInstance(modal).show();
+                })();
+            </script>
+        @endpush
+    @endcan
 @endsection

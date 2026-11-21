@@ -83,7 +83,8 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if($vacc->invoice_id)
+                                    {{-- اعرض الرابط فقط إذا كانت الفاتورة ظاهرة. --}}
+                                    @if($vacc->invoice)
                                     <a href="{{ route('invoices.show', $vacc->invoice_id) }}" class="btn btn-sm btn-link text-decoration-none">
                                         عرض الفاتورة
                                     </a>
@@ -109,7 +110,8 @@
             </div>
             <div class="card-body">
                 @php
-                    $diagnoses = $animal->invoices()->whereNotNull('diagnosis')->where('diagnosis', '!=', '')->latest()->get();
+                    // اعتمد على الفواتير الظاهرة المحمّلة مسبقًا.
+                    $diagnoses = $animal->invoices->filter(fn ($invoice) => filled($invoice->diagnosis));
                 @endphp
                 @if($diagnoses->count() > 0)
                 <div class="table-responsive">

@@ -347,8 +347,9 @@ class ReportController extends Controller
             ->orderByDesc('purchased_at')
             ->get();
 
+        // الدين يظل مستحقًا عند إخفاء الفاتورة أو حذف العميل منطقيًا.
         $customerDebts = Invoice::confirmed()
-            ->with('customer')
+            ->with(['customer' => fn ($query) => $query->withTrashed()])
             ->whereColumn('amount_paid', '<', 'total')
             ->where('amount_paid', '>=', 0)
             ->orderByDesc('created_at')
