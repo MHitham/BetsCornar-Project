@@ -431,9 +431,8 @@
 <div class="modal fade" id="returnModal" tabindex="-1"
      aria-labelledby="returnModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
-        <div class="modal-content">
-            {{-- حماية مرتجع الفاتورة من الإرسال المكرر. --}}
-            <form action="{{ route('invoice-returns.store', $invoice) }}" method="POST" data-prevent-double>
+            {{-- اجعل النموذج هو حاوية النافذة حتى يتمرّر جسمها وتظل الأزرار ظاهرة. --}}
+            <form class="modal-content" action="{{ route('invoice-returns.store', $invoice) }}" method="POST" data-prevent-double>
                 @csrf
                 <x-idempotency-token />
                 <div class="modal-header border-warning">
@@ -513,7 +512,6 @@
                     </button>
                 </div>
             </form>
-        </div>
     </div>
 </div>
 @endif
