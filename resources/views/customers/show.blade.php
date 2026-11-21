@@ -9,13 +9,25 @@
             !$inv->isCancelled() && (float)$inv->remaining_amount > 0
         );
         $totalOutstanding = $unpaidInvoices->sum('remaining_amount');
+        $payments = $customer->invoices
+            ->flatMap(fn ($invoice) => $invoice->payments->map(fn ($payment) => [$invoice, $payment]))
+            ->sortByDesc(fn ($entry) => $entry[1]->paid_at);
     @endphp
 
     <div class="card">
         <div class="card-body">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3">
                 <div>
-                    <h2 class="h4 mb-2">{{ $customer->name }}</h2>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <h2 class="h4 mb-0">{{ $customer->name }}</h2>
+                        @if ($unpaidInvoices->isNotEmpty())
+                            <a href="#customer-balance" class="badge rounded-pill bg-danger bg-opacity-10 text-danger text-decoration-none px-3 py-2">
+                                المتبقي <bdi>{{ number_format($totalOutstanding, 2) }}</bdi> ج
+                            </a>
+                        @else
+                            <span class="badge rounded-pill bg-light text-secondary border px-3 py-2">المتبقي 0.00 ج</span>
+                        @endif
+                    </div>
                     <div class="d-flex flex-wrap gap-3 text-muted small">
                         <span>
                             <i class="bi bi-telephone me-1"></i>
@@ -25,12 +37,6 @@
                         </span>
                         <span><i class="bi bi-heart-pulse me-1"></i>{{ $customer->animal_type }}</span>
                         <span><i class="bi bi-clock-history me-1"></i>{{ __('customers.timeline.total_visits') }}: {{ $customer->invoices->count() }}</span>
-                        @if ($totalOutstanding > 0)
-                            <a href="#customer-balance" class="medical-record-balance-link">
-                                <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>
-                                المتبقي {{ number_format($totalOutstanding, 2) }} ج
-                            </a>
-                        @endif
                     </div>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
@@ -44,6 +50,18 @@
                     <a href="{{ route('customers.animals.index', $customer) }}" class="btn btn-outline-primary">
                         <i class="bi bi-list-ul me-1"></i>حيوانات العميل
                     </a>
+                    <button type="button" class="btn btn-outline-success"
+                            @if ($unpaidInvoices->isNotEmpty())
+                                data-bs-toggle="modal"
+                                data-bs-target="{{ $unpaidInvoices->count() === 1 ? '#payModal'.$unpaidInvoices->first()->id : '#customerInvoiceChooser' }}"
+                            @else
+                                disabled
+                            @endif>
+                        <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>تسجيل دفعة
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#customerPaymentHistory">
+                        <i class="bi bi-clock-history me-1" aria-hidden="true"></i>سجل الدفعات
+                    </button>
                     <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-right me-1"></i>{{ __('customers.timeline.back_to_list') }}
                     </a>
@@ -228,14 +246,43 @@
         </div>
     </aside>
 
-    
+    @if ($unpaidInvoices->count() > 1)
+        {{-- أغلق قائمة الاختيار فورًا قبل فتح نافذة الدفع حتى لا يتداخل الغطاءان. --}}
+        <div class="modal" id="customerInvoiceChooser" tabindex="-1" aria-labelledby="customerInvoiceChooserTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="customerInvoiceChooserTitle">اختار الفاتورة لتسجيل دفعة</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="list-group list-group-flush">
+                            @foreach ($unpaidInvoices as $unpaidInv)
+                                <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2 px-0">
+                                    <div>
+                                        <bdi class="fw-semibold">{{ $unpaidInv->invoice_number }}</bdi>
+                                        <div class="small text-danger">المتبقي <bdi>{{ number_format($unpaidInv->remaining_amount, 2) }}</bdi> ج</div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#payModal{{ $unpaidInv->id }}"
+                                            aria-label="تسجيل دفعة للفاتورة {{ $unpaidInv->invoice_number }}">
+                                        تسجيل دفعة
+                                    </button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @foreach($unpaidInvoices as $unpaidInv)
-    <div class="modal fade" id="payModal{{ $unpaidInv->id }}" tabindex="-1">
-        <div class="modal-dialog">
+    <div class="modal fade" id="payModal{{ $unpaidInv->id }}" tabindex="-1" aria-labelledby="payModalTitle{{ $unpaidInv->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">تسجيل دفعة — {{ $unpaidInv->invoice_number }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h2 class="modal-title h5" id="payModalTitle{{ $unpaidInv->id }}">تسجيل دفعة — <bdi>{{ $unpaidInv->invoice_number }}</bdi></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
                 <form action="{{ route('invoice.payments.store', $unpaidInv) }}" method="POST" data-prevent-double data-payment-form novalidate>
                     @csrf
@@ -243,13 +290,13 @@
                     <div class="modal-body">
                         <div class="alert alert-warning">
                             المتبقي على هذه الفاتورة:
-                            <strong>{{ number_format($unpaidInv->remaining_amount, 1) }} ج</strong>
+                            <strong>{{ number_format($unpaidInv->remaining_amount, 2) }} ج</strong>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">المبلغ المدفوع <span class="text-danger">*</span></label>
                             <input type="number" name="amount" class="form-control"
                                    min="0.01" step="0.01"
-                                   max="{{ $unpaidInv->remaining_amount }}">
+                                   max="{{ number_format($unpaidInv->remaining_amount, 2, '.', '') }}">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">تاريخ الدفع</label>
@@ -269,99 +316,49 @@
     @endforeach
     @endif
 
-    @foreach($customer->invoices as $invoice)
-    <div class="modal fade" id="paymentsModal{{ $invoice->id }}" tabindex="-1" aria-labelledby="paymentsModalLabel{{ $invoice->id }}" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+    <div class="modal fade" id="customerPaymentHistory" tabindex="-1" aria-labelledby="customerPaymentHistoryTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="paymentsModalLabel{{ $invoice->id }}">
-                        <i class="bi bi-clock-history me-2 text-primary"></i>
-                        سجل دفعات الفاتورة #{{ $invoice->invoice_number }}
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h2 class="modal-title h5" id="customerPaymentHistoryTitle">سجل دفعات العميل</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
                 <div class="modal-body">
-                    
-                    @if($invoice->payments->isEmpty())
-                        <p class="text-muted text-center py-3">لا توجد دفعات مسجلة</p>
+                    @if ($payments->isEmpty())
+                        <p class="text-muted text-center mb-0 py-3">لا توجد دفعات مسجلة لهذا العميل.</p>
                     @else
-                        @php $totalPaid = $invoice->payments->sum('amount'); @endphp
-                        <table class="table table-sm align-middle mb-3">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>التاريخ</th>
-                                    <th>المبلغ</th>
-                                    <th>ملاحظات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($invoice->payments as $payment)
+                        <div class="table-responsive p-0">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
                                     <tr>
-                                        <td class="font-monospace small">{{ displayDateTime($payment->paid_at) }}</td>
-                                        <td class="fw-semibold text-success">{{ number_format($payment->amount, 2) }} ج.م</td>
-                                        <td class="text-muted">{{ $payment->notes ?: '-' }}</td>
+                                        <th scope="col">تاريخ الدفع</th>
+                                        <th scope="col">الفاتورة</th>
+                                        <th scope="col">المبلغ</th>
+                                        <th scope="col">ملاحظات</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                            <tfoot class="table-light fw-bold">
-                                <tr>
-                                    <td>إجمالي المدفوع</td>
-                                    <td class="text-success">{{ number_format($totalPaid, 2) }} ج.م</td>
-                                    <td>-</td>
-                                </tr>
-                                @php $rem = $invoice->total - $totalPaid; @endphp
-                                <tr>
-                                    <td>المتبقي</td>
-                                    <td class="{{ $rem > 0 ? 'text-danger' : 'text-success' }}">
-                                        {{ number_format($rem, 2) }} ج.م
-                                    </td>
-                                    <td>-</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    @endif
-
-                    
-                    @php $remaining = $invoice->total - $invoice->payments->sum('amount'); @endphp
-                    @if($remaining > 0 && $invoice->status !== 'cancelled')
-                        <hr>
-                        <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1 text-success"></i>تسجيل دفعة جديدة</h6>
-                        {{-- حماية تسجيل دفعة العميل من الإرسال المكرر. --}}
-                        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" data-prevent-double data-payment-form novalidate>
-                            @csrf
-                            <x-idempotency-token />
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">المبلغ المدفوع <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <input type="number" name="amount" class="form-control"
-                                               min="0.01" step="0.01" max="{{ $remaining }}"
-                                               placeholder="المبلغ المدفوع" required>
-                                        <span class="input-group-text">ج.م</span>
-                                    </div>
-                                    <div class="form-text text-muted">الحد الأقصى: {{ number_format($remaining, 2) }} ج.م</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">ملاحظات</label>
-                                    <input type="text" name="notes" class="form-control" placeholder="ملاحظات (اختياري)">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">تاريخ الدفع</label>
-                                    <x-payment-date :invoice="$invoice" />
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <button type="submit" class="btn btn-success">
-                                    <i class="bi bi-check-lg me-1"></i>تسجيل دفعة
-                                </button>
-                            </div>
-                        </form>
+                                </thead>
+                                <tbody>
+                                    @foreach ($payments as [$invoice, $payment])
+                                        <tr>
+                                            <td class="text-nowrap">{{ displayDateTime($payment->paid_at) }}</td>
+                                            <td>
+                                                <a href="{{ route('invoices.show', $invoice) }}" class="fw-semibold text-decoration-none"><bdi>{{ $invoice->invoice_number }}</bdi></a>
+                                                @if ($invoice->isCancelled())
+                                                    <span class="badge bg-danger">ملغية</span>
+                                                @endif
+                                            </td>
+                                            <td class="fw-semibold text-success text-nowrap"><bdi>{{ number_format($payment->amount, 2) }}</bdi> ج</td>
+                                            <td>{{ $payment->notes ?: '—' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     @endif
                 </div>
             </div>
         </div>
     </div>
-    @endforeach
 
     {{-- اعرض أثر المسح للدورين المسموح لهما بالحذف واطلب موافقة صريحة. --}}
     @can('delete', $customer)
@@ -384,16 +381,7 @@
                             <h2 class="modal-title h5 fw-bold mb-1" id="deleteCustomerHistoryTitle">{{ __('customers.history_deletion.action') }}</h2>
                             <p class="text-muted mb-0"><bdi>{{ $customer->name }}</bdi></p>
                         </div>
-                        <div class="row row-cols-3 g-2 text-center mb-3">
-                            @foreach (['invoice_count' => $customer->invoices_count, 'animal_count' => $customer->animals_count, 'vaccination_count' => $customer->vaccinations_count] as $label => $count)
-                                <div class="col">
-                                    <div class="h-100 border rounded-3 bg-light px-1 py-2">
-                                        <div class="fs-5 fw-bold">{{ $count }}</div>
-                                        <div class="small text-muted">{{ __('customers.history_deletion.'.$label) }}</div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
+                        
                         <p class="small text-muted mb-2">{{ __('customers.history_deletion.financial_note') }}</p>
                         <p id="deleteCustomerHistoryWarning" class="alert alert-danger small py-2 px-3 mb-3">{{ __('customers.history_deletion.warning') }}</p>
                         <div class="form-check mb-1">

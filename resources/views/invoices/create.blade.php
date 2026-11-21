@@ -157,6 +157,18 @@
         const selectProductPlaceholder = @json(__('invoices.messages.select_product'));
         let rowIdx = 0;
 
+        // تقريب القيم لأقرب قرش مثل PHP، مع معالجة فروق الفاصلة العائمة عند النصف.
+        function round2(n) {
+            const value = Number(n);
+            const scaled = Math.abs(value) * 100;
+            return Math.sign(value) * Math.round(scaled + scaled * Number.EPSILON) / 100;
+        }
+
+        // تقريب الكمية وسعر الوحدة قبل حساب إجمالي السطر.
+        function lineTotal(qty, price) {
+            return round2(round2(qty) * round2(price));
+        }
+
         function isProductOos(p) {
             return p.stock_status === 'out_of_stock' || (p.track_stock && p.quantity <= 0);
         }
@@ -225,8 +237,9 @@
                 '<td class="p-2"><input type="number" name="items[' + idx +
                 '][unit_price]" class="form-control text-center" id="price-' + idx +
                 '" placeholder="0" min="0" step="1" oninput="recalcRow(' + idx + ')" required></td>' +
+                // إجمالي السطر للعرض؛ التعديل من الكمية أو سعر الوحدة.
                 '<td class="p-2"><input type="text" class="form-control text-center bg-light text-primary fw-bold" id="total-' + idx +
-                '" data-idx="' + idx + '" placeholder="0" oninput="recalcFromTotal(' + idx + ')"></td>' +
+                '" data-idx="' + idx + '" placeholder="0" readonly></td>' +
                 '<td class="text-center p-2 delete-col"><button type="button" class="btn btn-outline-danger btn-sm delete-row-btn" onclick="removeRow(' +
 idx + ')"><i class="bi bi-trash"></i></button></td>' +
                 '</tr>';
@@ -236,32 +249,11 @@ idx + ')"><i class="bi bi-trash"></i></button></td>' +
             initProductSelect(document.getElementById('product-select-' + idx));
         }
 
-        // ── حساب الكمية تلقائياً من الإجمالي اللي كتبه المستخدم ──────────
-        function recalcFromTotal(idx) {
-            const priceInput = document.getElementById('price-' + idx);
-            const qtyInput = document.querySelector('[name="items[' + idx + '][quantity]"]');
-            const totalInput = document.getElementById('total-' + idx);
-            const price = parseFloat(priceInput.value) || 0;
-            const total = parseFloat(totalInput.value) || 0;
-
-            if (price <= 0) {
-                // السعر لسه صفر أو الصنف لسه ماتحددش، منقدرش نحسب الكمية
-                return;
-            }
-
-            let qty = total / price;
-            if (qty < 0.01) qty = 0.01;
-            qty = parseFloat(qty.toFixed(2));
-
-            qtyInput.value = qty;
-
-            recalcGrandTotal();
-        }
-
         function recalcRow(idx) {
             var qty = parseFloat(document.querySelector('[name="items[' + idx + '][quantity]"]').value) || 0;
             var price = parseFloat(document.getElementById('price-' + idx).value) || 0;
-            document.getElementById('total-' + idx).value = (qty * price);
+            // عرض إجمالي الصنف بعد التقريب.
+            document.getElementById('total-' + idx).value = lineTotal(qty, price).toFixed(2);
             recalcGrandTotal();
         }
 
@@ -277,12 +269,13 @@ idx + ')"><i class="bi bi-trash"></i></button></td>' +
             recalcGrandTotal();
         }
 
+        // جمع إجماليات السطور المقربة بالقروش مثل حساب الفاتورة.
         function recalcGrandTotal() {
-            var total = 0;
+            let totalCents = 0;
             document.querySelectorAll('[id^="total-"]').forEach(function(el) {
-                total += parseFloat(el.value) || 0;
+                totalCents += Math.round(Number(el.value) * 100);
             });
-            document.getElementById('grand-total-display').textContent = total.toFixed(2);
+            document.getElementById('grand-total-display').textContent = (totalCents / 100).toFixed(2);
         }
 
         // Add first row on load

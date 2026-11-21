@@ -118,7 +118,7 @@
                                     class="form-control @error('consultation_price') is-invalid @enderror"
                                     {{-- سعر الكشف يبدأ دايماً بصفر، الدكتورة تكتبه بنفسها في كل زيارة --}}
                                     value="{{ old('consultation_price', 0) }}"
-                                    step="1" min="0" required>
+                                    step="0.01" min="0" required>
                                 <span class="input-group-text">{{ __('messages.currency') }}</span>
                             </div>
                             @error('consultation_price')
@@ -390,6 +390,21 @@
             // ── عداد صفوف التطعيمات الديناميكية ────────────────────
             let vaccinationIndex = 0;
 
+            // تقريب القيم لأقرب قرش مثل PHP، مع معالجة فروق الفاصلة العائمة عند النصف.
+            function round2(n) {
+                const value = Number(n);
+                const scaled = Math.abs(value) * 100;
+                return Math.sign(value) * Math.round(scaled + scaled * Number.EPSILON) / 100;
+            }
+
+            // تقريب الكمية وسعر الوحدة قبل حساب إجمالي السطر.
+            function lineTotal(qty, price) {
+                return round2(round2(qty) * round2(price));
+            }
+
+            // مشاركة الإجمالي المحسوب بين عرض الفاتورة وحقول الدفع.
+            let visitTotal = 0;
+
             /* ─── OOS helpers ─────────────────────────────────────────── */
             function isProductOos(p) {
                 return p.stock_status === 'out_of_stock' || (p.track_stock && p.quantity <= 0);
@@ -517,7 +532,8 @@
                     0;
                 const price = parseFloat(document.querySelector(`[name="vaccinations[${idx}][vaccine_unit_price]"]`)
                     .value) || 0;
-                document.getElementById(`vacc-line-total-${idx}`).value = (qty * price);
+                // عرض إجمالي التطعيم بعد التقريب.
+                document.getElementById(`vacc-line-total-${idx}`).value = lineTotal(qty, price).toFixed(2);
                 recalcTotal();
             };
 
@@ -617,9 +633,9 @@
             </td>
             <td>
                 
+                <!-- إجمالي الصنف محسوب؛ التعديل من الكمية أو سعر الوحدة. -->
                 <input type="text" class="form-control form-control-sm bg-light line-total"
-                       id="line-total-${idx}" data-idx="${idx}" placeholder="0"
-                       oninput="recalcFromTotal(${idx})">
+                       id="line-total-${idx}" data-idx="${idx}" placeholder="0" readonly>
             </td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})">
@@ -632,32 +648,11 @@
                 initProductSelect(document.getElementById('product-select-' + idx));
             }
 
-            // ── حساب الكمية تلقائياً من الإجمالي اللي كتبه المستخدم ──────────
-            function recalcFromTotal(idx) {
-                const priceInput = document.querySelector(`[name="additional_items[${idx}][unit_price]"]`);
-                const qtyInput = document.querySelector(`[name="additional_items[${idx}][quantity]"]`);
-                const totalInput = document.getElementById(`line-total-${idx}`);
-                const price = parseFloat(priceInput.value) || 0;
-                const total = parseFloat(totalInput.value) || 0;
-
-                if (price <= 0) {
-                    // السعر لسه صفر أو الصنف لسه ماتحددش، منقدرش نحسب الكمية
-                    return;
-                }
-
-                let qty = total / price;
-                if (qty < 0.01) qty = 0.01;
-                qty = parseFloat(qty.toFixed(2));
-
-                qtyInput.value = qty;
-
-                recalcTotal();
-            }
-
             function recalcRow(idx) {
                 const qty = parseFloat(document.querySelector(`[name="additional_items[${idx}][quantity]"]`).value) || 0;
                 const price = parseFloat(document.querySelector(`[name="additional_items[${idx}][unit_price]"]`).value) || 0;
-                document.getElementById(`line-total-${idx}`).value = (qty * price);
+                // عرض إجمالي الصنف بعد التقريب.
+                document.getElementById(`line-total-${idx}`).value = lineTotal(qty, price).toFixed(2);
                 recalcTotal();
             }
 
@@ -674,20 +669,24 @@
                 recalcTotal();
             }
 
+            // جمع الكشف وإجماليات السطور المقربة بالقروش لتفادي أخطاء الجمع العشري.
             function recalcTotal() {
-                let total = parseFloat(document.getElementById('consultation_price').value) || 0;
-
-                // جمع إجماليات التطعيمات من كل صف
-                document.querySelectorAll('.vacc-line-total').forEach(function(el) {
-                    total += parseFloat(el.value) || 0;
+                const consultation = round2(document.getElementById('consultation_price').value);
+                let totalCents = Math.round(consultation * 100);
+                document.querySelectorAll('.vacc-line-total, .line-total').forEach(function(el) {
+                    totalCents += Math.round(Number(el.value) * 100);
                 });
 
-                // جمع إجماليات المنتجات/الخدمات الإضافية
-                document.querySelectorAll('.line-total').forEach(function(el) {
-                    total += parseFloat(el.value) || 0;
-                });
+                visitTotal = totalCents / 100;
+                const formattedTotal = visitTotal.toFixed(2);
+                document.getElementById('grand-total-cell').textContent = formattedTotal + ' ج.م';
 
-                document.getElementById('grand-total-cell').textContent = total.toFixed(2) + ' ج.م';
+                // تحديث المدفوع في السداد الكامل، أو تحديث عرض المتبقي فقط في الدفع الجزئي.
+                if (document.getElementById('partial_payment_toggle').checked) {
+                    updateRemaining();
+                } else {
+                    document.getElementById('amount_paid_input').value = formattedTotal;
+                }
             }
 
             // ── إظهار/إخفاء قسم التطعيمات عند الضغط على الـ checkbox ──
@@ -710,9 +709,6 @@
                 }
                 recalcTotal();
             };
-
-            /* ─── مستمعو الإدخال العام ─────────────────────────── */
-            document.getElementById('consultation_price').addEventListener('input', recalcTotal);
 
             // ── بحث العميل بالهاتف لجلب قائمة الحيوانات (Phase 2) ──────────
             const phoneInput = document.getElementById('phone');
@@ -975,56 +971,26 @@
                 });
             })();
 
-            // ── الدفع الجزئي ────────────────────────────────────────
+            // تحديث عرض الدفع من الإجمالي المحسوب عند تبديل وضع الدفع.
             window.togglePartialPayment = function(checkbox) {
                 const section = document.getElementById('partial-payment-section');
-                const input   = document.getElementById('amount_paid_input');
-                if (checkbox.checked) {
-                    section.style.display = 'block';
-                    updateRemaining();
-                } else {
-                    section.style.display = 'none';
-                    // لما الدفع الجزئي مش مفعل، المبلغ المدفوع = الإجمالي كاملاً
-                    const totalText = document.getElementById('grand-total-cell').textContent;
-                    const total = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
-                    if (input) input.value = total.toFixed(2);
-                }
+                section.style.display = checkbox.checked ? 'block' : 'none';
+                recalcTotal();
             };
 
+            // عرض المتبقي باستخدام الإجمالي المحسوب مع إبقاء الدفعة اليدوية كما هي.
             window.updateRemaining = function() {
-                const totalText = document.getElementById('grand-total-cell').textContent;
-                const total     = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
-                const paid      = parseFloat(document.getElementById('amount_paid_input').value) || 0;
-                const remaining = Math.max(0, total - paid);
+                const paid = parseFloat(document.getElementById('amount_paid_input').value) || 0;
+                const remaining = Math.max(0, visitTotal - paid);
 
-                document.getElementById('pp_total_display').value    = total.toFixed(2) + ' ج';
+                document.getElementById('pp_total_display').value    = visitTotal.toFixed(2) + ' ج';
                 document.getElementById('pp_remaining_display').value = remaining.toFixed(2);
             };
 
-            // تحديث عرض الإجمالي في سيكشن الدفع لما الإجمالي يتغير
-            const origRecalcTotal = recalcTotal;
-            recalcTotal = function() {
-                origRecalcTotal();
-                const toggle = document.getElementById('partial_payment_toggle');
-                if (toggle && toggle.checked) {
-                    updateRemaining();
-                } else {
-                    const totalText = document.getElementById('grand-total-cell').textContent;
-                    const total = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
-                    const input = document.getElementById('amount_paid_input');
-                    if (input) input.value = total.toFixed(2);
-                }
-            };
-
-            document.getElementById('visitForm').addEventListener('submit', function(e) {
-                const toggle = document.getElementById('partial_payment_toggle');
-                if (toggle && !toggle.checked) {
-                    const totalText = document.getElementById('grand-total-cell').textContent;
-                    const total = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
-                    const input = document.getElementById('amount_paid_input');
-                    if (input) input.value = total.toFixed(2);
-                }
-            });
+            // استخدام الحساب الكامل عند تعديل الكشف أو إرسال النموذج.
+            document.getElementById('consultation_price').addEventListener('input', recalcTotal);
+            document.getElementById('visitForm').addEventListener('submit', recalcTotal);
+            recalcTotal();
 
         </script>
     @endpush
