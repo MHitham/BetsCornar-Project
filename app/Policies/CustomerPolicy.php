@@ -7,9 +7,9 @@ use App\Models\User;
 
 class CustomerPolicy
 {
-    // ارفض حذف سجل العميل لغير المدير بإجابة 403.
+    // اسمح للمدير والموظف بحذف سجل العميل.
     public function delete(User $user, Customer $customer): bool
     {
-        return $user->hasRole('admin');
+        return $user->hasAnyRole(['admin', 'employee']);
     }
 }

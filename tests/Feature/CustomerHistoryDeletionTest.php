@@ -123,18 +123,34 @@ it('deletes medical history and still collects the hidden debt without affecting
     expect($invoice->fresh()->customer_id)->toBe($customer->id);
 });
 
-// تحقق من منع الموظف، ومن أن الرقم الخاطئ لا يسمح بالمسح حتى للمدير.
-it('denies employees and rejects an invalid confirmation phone', function () {
+// تحقق من ظهور الحذف للموظف ورفض الرقم الخاطئ وقبول الرقم الصحيح.
+it('allows employees to delete only after confirming the correct phone', function () {
     $customer = Customer::factory()->create(['phone' => '201012345678']);
     $invoice = Invoice::factory()->for($customer)->create();
     $this->actingAsEmployee();
-    $this->get(route('customers.show', $customer))->assertOk()->assertDontSee('deleteCustomerHistoryModal');
-    $this->delete(route('customers.destroy', $customer), ['phone_confirmation' => $customer->phone])->assertForbidden();
+    $this->get(route('customers.show', $customer))->assertOk()
+        ->assertSeeText('مسح العميل وسجله بالكامل')
+        ->assertSee('id="deleteCustomerHistoryModal"', false)
+        ->assertSeeText('الفواتير التي ستُخفى: 1');
 
-    $this->actingAsAdmin();
     $this->from(route('customers.show', $customer))->delete(route('customers.destroy', $customer), ['phone_confirmation' => '201000000000'])
         ->assertRedirect(route('customers.show', $customer))->assertSessionHasErrors(['phone_confirmation'], null, 'customerDeletion');
     expect($customer->fresh()->trashed())->toBeFalse()->and($invoice->fresh()->is_hidden)->toBeFalse();
+
+    // تأكد من تنفيذ الحذف وإخفاء الفاتورة عند مطابقة الرقم.
+    $this->delete(route('customers.destroy', $customer), ['phone_confirmation' => $customer->phone])
+        ->assertRedirect(route('customers.index'))->assertSessionHas('success');
+    $this->assertSoftDeleted($customer);
+    expect($invoice->fresh()->is_hidden)->toBeTrue();
+});
+
+// تحقق من تحويل الضيف إلى تسجيل الدخول حتى إذا أرسل رقم العميل الصحيح.
+it('requires login before deleting a customer with history', function () {
+    $customer = Customer::factory()->create();
+    $this->get(route('customers.show', $customer))->assertRedirect(route('login'));
+    $this->delete(route('customers.destroy', $customer), ['phone_confirmation' => $customer->phone])
+        ->assertRedirect(route('login'));
+    expect($customer->fresh()->trashed())->toBeFalse();
 });
 
 // افحص الإخفاء صراحةً في قائمة الموظف وخط الزمن حتى لو كان العميل لا يزال نشطًا.

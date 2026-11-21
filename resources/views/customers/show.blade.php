@@ -47,7 +47,7 @@
                     <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-right me-1"></i>{{ __('customers.timeline.back_to_list') }}
                     </a>
-                    {{-- اظهر مسح السجل الكامل للمدير فقط. --}}
+                    {{-- أظهر زر المسح للمدير والموظف حسب سياسة حذف العميل. --}}
                     @can('delete', $customer)
                         <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteCustomerHistoryModal">
                             <i class="bi bi-trash me-1" aria-hidden="true"></i>{{ __('customers.history_deletion.action') }}
@@ -357,7 +357,7 @@
     </div>
     @endforeach
 
-    {{-- اعرض أثر الحذف واطلب كتابة الهاتف قبل تفعيل زر التأكيد. --}}
+    {{-- اعرض نافذة التأكيد للدورين المسموح لهما بالحذف، مع اشتراط مطابقة الهاتف. --}}
     @can('delete', $customer)
         <div class="modal fade" id="deleteCustomerHistoryModal" tabindex="-1" aria-labelledby="deleteCustomerHistoryTitle" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
