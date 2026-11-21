@@ -119,7 +119,11 @@
                         <dl class="medical-record-details">
                             <div>
                                 <dt>التشخيص</dt>
-                                <dd>{{ $invoice->diagnosis ?: '—' }}</dd>
+                                <dd>
+                                    {{ $invoice->diagnosis ?: '—' }}
+                                    {{-- اعرض أسماء الأصناف أسفل التشخيص داخل بطاقة الحيوان. --}}
+                                    @include('customers.partials.invoice-item-names', ['invoice' => $invoice])
+                                </dd>
                             </div>
                             @if (filled($invoice->treatment))
                                 <div>
@@ -165,6 +169,8 @@
                             <span class="badge bg-light text-dark border ms-2">{{ $invoice->animal_name }}</span>
                         @endif
                         <div class="mt-2"><strong>التشخيص:</strong> {{ $invoice->diagnosis ?: '—' }}</div>
+                        {{-- اعرض نفس ملخص الأسماء لفواتير الأرشيف. --}}
+                        @include('customers.partials.invoice-item-names', ['invoice' => $invoice])
                         @if(filled($invoice->treatment))<div class="mt-2"><strong>العلاج:</strong> {!! nl2br(e($invoice->treatment)) !!}</div>@endif
                     </div>
                 @endforeach

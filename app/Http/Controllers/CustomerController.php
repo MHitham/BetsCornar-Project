@@ -56,6 +56,9 @@ class CustomerController extends Controller
             'animals.invoices' => fn ($q) => $q->visible()->latest()->select(
                 'id', 'invoice_number', 'animal_id', 'customer_id', 'created_at', 'total', 'status', 'diagnosis', 'treatment'
             ),
+            // حمّل مفاتيح البنود وأسماء المنتجات فقط لكل بطاقات فواتير الحيوانات.
+            'animals.invoices.items' => fn ($q) => $q->select('invoice_id', 'product_id')->orderBy('id'),
+            'animals.invoices.items.product:id,name',
             'animals.vaccinations' => fn ($q) => $q->latest('vaccination_date'),
             'animals.vaccinations.product:id,name',
             // يُستخدم هذا التحميل كذلك لملخص الرصيد ونوافذ سجل الدفعات.
@@ -64,8 +67,11 @@ class CustomerController extends Controller
             'invoices.payments',
         ]);
 
-        // لا تعرض الفواتير المخفية في الأرشيف الطبي.
-        $orphanInvoices = $customer->invoices()->visible()->whereNull('animal_id')->latest()->get();
+        // حمّل أسماء أصناف الأرشيف مسبقًا مع استمرار استبعاد الفواتير المخفية.
+        $orphanInvoices = $customer->invoices()->visible()->whereNull('animal_id')->latest()->with([
+            'items' => fn ($q) => $q->select('invoice_id', 'product_id')->orderBy('id'),
+            'items.product:id,name',
+        ])->get();
         $orphanVaccinations = $customer->vaccinations()->whereNull('animal_id')->latest('vaccination_date')
             ->with('product:id,name')->get();
 
