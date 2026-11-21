@@ -67,7 +67,7 @@ test('baseline record pages render with related data and outstanding payments', 
         'invoice_id' => $invoice->id, 'product_id' => $product->id,
         'quantity' => 2, 'unit_price' => 50, 'line_total' => 100,
     ]);
-    $invoice->payments()->create(['amount' => 25, 'paid_at' => now()]);
+    $invoice->payments()->create(['amount' => 25, 'paid_at' => now(), 'notes' => 'دفعة تجريبية']);
     $supplier = Supplier::create(['name' => 'Baseline supplier', 'is_active' => true]);
     $purchase = app(PurchaseService::class)->createPurchaseOrder([
         'supplier_id' => $supplier->id, 'purchased_at' => today()->toDateString(),
@@ -84,10 +84,12 @@ test('baseline record pages render with related data and outstanding payments', 
             'متبقي على العميل',
             'إجمالي الفاتورة',
             'ملاحظات العميل',
-            'سجل دفعات الفاتورة',
-            'إجمالي المدفوع',
-            'تسجيل دفعة جديدة',
+            'سجل دفعات العميل',
+            'دفعة تجريبية',
+            'تسجيل دفعة',
         ])
+        ->assertSee('data-bs-target="#customerPaymentHistory"', false)
+        ->assertSee('data-bs-target="#payModal'.$invoice->id.'"', false)
         ->assertDontSee("\u{FEFF}", false);
 
     foreach ([
